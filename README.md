@@ -2,6 +2,7 @@
 
 ## 项目结构
 
+```
 src/
 ├── api/ # 接口文件 (后端接口调用)
 ├── assets/ # 静态资源
@@ -21,6 +22,7 @@ src/
 │ └─ ClientLayout.vue # 客户界面骨架
 ├── main.ts
 └── App.vue # 根组件，后期需要利用 Vue Router 提供的路由信息，实现动态切换布局
+```
 
 This template should help get you started developing with Vue 3 in Vite.
 
