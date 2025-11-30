@@ -109,7 +109,6 @@ const handleUserCommand = (command: string) => {
       break
     case 'logout':
       isLogin.value = false // 模拟退出
-      router.push('/login')
       break
   }
 }
@@ -280,5 +279,15 @@ const handleUserCommand = (command: string) => {
   padding: 0 5px;
   font-size: 10px; /* 字体改小 */
   border: none; /* 去掉白边，看起来更精致 */
+}
+
+/* --- 修复 Element Plus 下拉菜单的黑框问题 --- */
+
+:deep(.el-dropdown :focus-visible) {
+  outline: none !important;
+}
+
+:deep(.el-tooltip__trigger:focus-visible) {
+  outline: none !important;
 }
 </style>
