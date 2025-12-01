@@ -36,9 +36,99 @@ export function getProductList(params: {
  */
 export function getProductDetail(id: number) {
   void id
-  // 参考实现：
-  // return get<ProductDetail>(`/product/detail/${id}`)
-  return Promise.resolve({} as ProductDetail)
+
+  const mockData: ProductDetail = {
+    id: 1001,
+    name: 'Lenovo Legion Y9000X 2024 AI元启',
+    desc: '14代酷睿i9-14900HX / RTX4060 / 3.2K 165Hz 电竞屏',
+    priceRange: '¥13999 - ¥15848',
+    mainImages: [
+      'https://p2.lefile.cn/product/adminweb/2024/02/23/83917866-9818-4296-8296-180666666666.jpg',
+      'https://p3.lefile.cn/product/adminweb/2024/02/23/12345678-1234-1234-1234-123456789012.jpg', // 示例占位
+      'https://p4.lefile.cn/product/adminweb/2024/02/23/87654321-4321-4321-4321-210987654321.jpg', // 示例占位
+    ],
+    detailHtml: `
+      <div class="product-intro">
+        <img src="https://p1.lefile.cn/product/adminweb/2024/02/23/intro1.jpg" style="width:100%;display:block;" />
+        <p style="padding: 20px; font-size: 16px; line-height: 1.8;">
+          <strong>强悍性能，AI 加持</strong><br>
+          搭载英特尔酷睿 Ultra 9 处理器，释放强劲性能。
+        </p>
+        <img src="https://p2.lefile.cn/product/adminweb/2024/02/23/intro2.jpg" style="width:100%;display:block;" />
+      </div>
+    `,
+    specs: [
+      {
+        name: '硬盘容量',
+        values: ['1T', '2T'],
+      },
+      {
+        name: '显卡',
+        values: ['RTX 5060', 'RTX 5070'],
+      },
+    ],
+    skus: [
+      {
+        id: 100101,
+        specs: { 硬盘容量: '1T', 显卡: 'RTX 5060' },
+        price: 13999,
+        stock: 100,
+      },
+      {
+        id: 100102,
+        specs: { 硬盘容量: '1T', 显卡: 'RTX 5070' },
+        price: 14999,
+        stock: 50,
+      },
+      {
+        id: 100103,
+        specs: { 硬盘容量: '2T', 显卡: 'RTX 5060' },
+        price: 14848,
+        stock: 80,
+      },
+      {
+        id: 100104,
+        specs: { 硬盘容量: '2T', 显卡: 'RTX 5070' },
+        price: 15848,
+        stock: 20,
+      },
+    ],
+    params: {
+      model: 'LEGION Y9000X IAX10',
+      os: 'Windows 11 家庭中文版',
+      positioning: '游戏本',
+      cpuModel: 'Ultra 9 275HX',
+      cpuSeries: 'Ultra 9',
+      maxTurboFreq: '5.4GHz',
+      cpuChip: '英特尔酷睿Ultra 9',
+      screenSize: '16.0英寸',
+      screenRatio: '16:10',
+      resolution: '2560×1600',
+      colorGamut: '100% DCI-P3',
+      refreshRate: '240Hz',
+      ramCapacity: '32GB（16+16）',
+      ramType: 'DDR5',
+      ssdCapacity: '2T（1T+1T）',
+      ssdType: 'SSD固态硬盘',
+      gpuType: '独立显卡',
+      gpuChip: 'NVIDIA® GeForce RTX™ 5070',
+      vramCapacity: '8GB',
+      vramType: 'GDDR7',
+      camera: '有',
+      wifi: '有',
+      bluetooth: '有',
+      dataInterfaces: 'USB-A*2+USB-C*1+雷电4*1',
+      videoInterfaces: 'HDMI',
+      audioInterfaces: '3.5mm 耳麦接口',
+      keyboard: '背光键盘',
+      faceId: '支持',
+      weight: '1.5-2.0Kg',
+      thickness: '15.9mm',
+      software: '正版Office家庭版',
+    },
+  }
+
+  return Promise.resolve(mockData)
 }
 
 /**
