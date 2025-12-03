@@ -39,8 +39,8 @@ export function getProductDetail(id: number) {
 
   const mockData: ProductDetail = {
     id: 1001,
-    name: 'Lenovo Legion Y9000X 2024 AI元启',
-    desc: '14代酷睿i9-14900HX / RTX4060 / 3.2K 165Hz 电竞屏',
+    name: '联想拯救者 Y9000X 2025 AI元启',
+    desc: '英特尔® 酷睿™ Ultra 9/Windows 11 家庭中文版/16英寸/32GB(16+16)/冰魄白',
     priceRange: '¥13999 - ¥15848',
     mainImages: [
       'https://p4.lefile.cn/product/adminweb/2025/05/20/UsLzKs0iPovinA04fp6vfjbmq-1832.jpg',
@@ -57,8 +57,20 @@ export function getProductDetail(id: number) {
     `,
     specs: [
       {
+        name: '操作系统',
+        values: ['Windows 11 家庭中文版'],
+      },
+      {
+        name: '处理器',
+        values: ['Ultra 9 275HX'],
+      },
+      {
+        name: '内存容量',
+        values: ['32GB(16+16)'],
+      },
+      {
         name: '存储容量',
-        values: ['1T', '2T'],
+        values: ['1T SSD', '2T SSD'],
       },
       {
         name: '显卡',
@@ -68,29 +80,78 @@ export function getProductDetail(id: number) {
     skus: [
       {
         id: 100101,
-        specs: { 存储容量: '1T', 显卡: 'RTX 5060' },
+        specs: {
+          操作系统: 'Windows 11 家庭中文版',
+          处理器: 'Ultra 9 275HX',
+          内存容量: '32GB(16+16)',
+          存储容量: '1T SSD',
+          显卡: 'RTX 5060',
+        },
         price: 13999,
         stock: 100,
+        // SKU 特有参数：1T + RTX 5060 配置
+        diffParams: {
+          ssdCapacity: '1TB SSD',
+          gpuChip: 'NVIDIA® GeForce RTX™ 5060',
+          vramCapacity: '8GB',
+        },
       },
       {
         id: 100102,
-        specs: { 存储容量: '1T', 显卡: 'RTX 5070' },
+        specs: {
+          操作系统: 'Windows 11 家庭中文版',
+          处理器: 'Ultra 9 275HX',
+          内存容量: '32GB(16+16)',
+          存储容量: '1T SSD',
+          显卡: 'RTX 5070',
+        },
         price: 14999,
         stock: 50,
+        // SKU 特有参数：1T + RTX 5070 配置
+        diffParams: {
+          ssdCapacity: '1TB SSD',
+          gpuChip: 'NVIDIA® GeForce RTX™ 5070',
+          vramCapacity: '8GB',
+        },
       },
       {
         id: 100103,
-        specs: { 存储容量: '2T', 显卡: 'RTX 5060' },
+        specs: {
+          操作系统: 'Windows 11 家庭中文版',
+          处理器: 'Ultra 9 275HX',
+          内存容量: '32GB(16+16)',
+          存储容量: '2T SSD',
+          显卡: 'RTX 5060',
+        },
         price: 14848,
         stock: 80,
+        // SKU 特有参数：2T + RTX 5060 配置
+        diffParams: {
+          ssdCapacity: '2TB (1TB+1TB) SSD',
+          gpuChip: 'NVIDIA® GeForce RTX™ 5060',
+          vramCapacity: '8GB',
+        },
       },
       {
         id: 100104,
-        specs: { 存储容量: '2T', 显卡: 'RTX 5070' },
+        specs: {
+          操作系统: 'Windows 11 家庭中文版',
+          处理器: 'Ultra 9 275HX',
+          内存容量: '32GB(16+16)',
+          存储容量: '2T SSD',
+          显卡: 'RTX 5070',
+        },
         price: 15848,
         stock: 20,
+        // SKU 特有参数：2T + RTX 5070 配置
+        diffParams: {
+          ssdCapacity: '2TB (1TB+1TB) SSD',
+          gpuChip: 'NVIDIA® GeForce RTX™ 5070',
+          vramCapacity: '8GB',
+        },
       },
     ],
+    // 所有 SKU 共用的参数（与具体配置无关的参数）
     params: {
       model: 'LEGION Y9000X IAX10',
       os: 'Windows 11 家庭中文版',
@@ -99,18 +160,16 @@ export function getProductDetail(id: number) {
       cpuSeries: 'Ultra 9',
       maxTurboFreq: '5.4GHz',
       cpuChip: '英特尔酷睿Ultra 9',
-      screenSize: '16.0英寸',
+      screenSize: '16英寸',
       screenRatio: '16:10',
       resolution: '2560×1600',
       colorGamut: '100% DCI-P3',
       refreshRate: '240Hz',
-      ramCapacity: '32GB（16+16）',
+      ramCapacity: '32GB(16+16)',
       ramType: 'DDR5',
-      ssdCapacity: '2T（1T+1T）',
       ssdType: 'SSD固态硬盘',
       gpuType: '独立显卡',
-      gpuChip: 'NVIDIA® GeForce RTX™ 5070',
-      vramCapacity: '8GB',
+      // gpuChip, vramCapacity, ssdCapacity 已移至各 SKU 的 diffParams
       vramType: 'GDDR7',
       camera: '有',
       wifi: '有',

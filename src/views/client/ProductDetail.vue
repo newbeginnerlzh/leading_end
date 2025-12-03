@@ -17,7 +17,7 @@ const activeTab = ref('intro')
 const activeImageIndex = ref(0)
 const carouselRef = ref()
 
-// 选中的规格：{ "硬盘容量": "1T", "显卡": "RTX 5060" }
+// 选中的规格
 const selectedSpecs = ref<Record<string, string>>({})
 
 // 初始化数据
@@ -29,10 +29,12 @@ const loadData = async () => {
     product.value = data
     document.title = `${data.name} - 联想商城`
 
-    // 默认选中第一个 SKU 的规格（可选）
-    // if (data.skus.length > 0) {
-    //   selectedSpecs.value = { ...data.skus[0].specs }
-    // }
+    // 自动选中只有一个选项的规格
+    data.specs.forEach((spec) => {
+      if (spec.values.length === 1 && spec.values[0]) {
+        selectedSpecs.value[spec.name] = spec.values[0]
+      }
+    })
   } catch (error) {
     console.error('Failed to load product:', error)
     ElMessage.error('商品加载失败')
@@ -185,6 +187,21 @@ const paramLabels: Record<string, string> = {
   thickness: '厚度',
   software: '附带软件',
 }
+
+// 合并公共参数和当前 SKU 的差异参数
+const mergedParams = computed(() => {
+  if (!product.value) return {}
+
+  // 基础参数：从 product.params 获取（公共参数）
+  const baseParams = { ...product.value.params }
+
+  // 如果有选中的 SKU 且该 SKU 有差异参数，则用差异参数覆盖公共参数
+  if (currentSku.value?.diffParams) {
+    Object.assign(baseParams, currentSku.value.diffParams)
+  }
+
+  return baseParams
+})
 </script>
 
 <template>
@@ -288,7 +305,7 @@ const paramLabels: Record<string, string> = {
               <div class="group-items">
                 <div v-for="key in group.keys" :key="key" class="param-row">
                   <span class="param-key">{{ paramLabels[key] || key }}</span>
-                  <span class="param-value">{{ (product.params as any)[key] }}</span>
+                  <span class="param-value">{{ (mergedParams as any)[key] || '—' }}</span>
                 </div>
               </div>
             </div>
@@ -329,6 +346,9 @@ const paramLabels: Record<string, string> = {
 .gallery-section {
   width: 500px;
   flex-shrink: 0;
+  position: sticky;
+  top: 200px;
+  align-self: flex-start;
 }
 
 .product-carousel {
@@ -403,20 +423,29 @@ const paramLabels: Record<string, string> = {
   font-weight: bold;
 }
 
+.specs-container {
+  padding-left: 20px;
+}
+
 .spec-row {
   margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
 
 .spec-name {
   font-size: 14px;
   color: #333;
-  margin-bottom: 8px;
+  min-width: 80px;
+  flex-shrink: 0;
 }
 
 .spec-values {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  flex: 1;
 }
 
 .spec-item {
@@ -426,6 +455,10 @@ const paramLabels: Record<string, string> = {
   cursor: pointer;
   font-size: 13px;
   transition: all 0.2s;
+  /* 强制一行两个：(100% - gap) / 2 */
+  width: calc(50% - 5px);
+  text-align: center;
+  box-sizing: border-box;
 }
 
 .spec-item:hover {
@@ -435,8 +468,8 @@ const paramLabels: Record<string, string> = {
 
 .spec-item.active {
   border-color: #e4393c;
-  background-color: #e4393c;
-  color: #fff;
+  color: #e4393c;
+  background-color: transparent;
 }
 
 .spec-item.disabled {
@@ -448,9 +481,22 @@ const paramLabels: Record<string, string> = {
 
 .quantity-row {
   margin: 20px 0;
+  padding-left: 20px;
   display: flex;
   align-items: center;
   gap: 15px;
+}
+
+.quantity-row .label {
+  font-size: 14px;
+  color: #333;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+/* 让数量选择器与上面的规格选项对齐 */
+.quantity-row :deep(.el-input-number) {
+  margin-left: 0;
 }
 
 .stock-info {
@@ -462,6 +508,8 @@ const paramLabels: Record<string, string> = {
   margin-top: 30px;
   display: flex;
   gap: 20px;
+  justify-content: flex-start;
+  padding-left: 20px;
 }
 
 .btn-cart {
@@ -479,12 +527,23 @@ const paramLabels: Record<string, string> = {
 .details-tabs {
   margin-top: 40px;
   background: #fff;
-  padding: 20px;
+  padding: 0;
   border: 1px solid #eee;
 }
 
-.rich-text-content {
-  padding: 20px;
+/* 增大 tabs 字体 */
+.details-tabs :deep(.el-tabs__item) {
+  font-size: 16px;
+  padding: 0 24px;
+}
+
+/* 让 Tabs 头部吸顶 */
+.details-tabs :deep(.el-tabs__header) {
+  position: sticky;
+  top: 64px; /* 顶部导航栏高度 */
+  z-index: 100;
+  background-color: #fff;
+  padding: 0px 15px;
 }
 
 /* 规格参数新样式 */
