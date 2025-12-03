@@ -10,12 +10,19 @@ export interface CartItem {
   specs: Record<string, string> // e.g. { "硬盘": "1T", "显卡": "RTX 5060" }
   price: number
   count: number
+  selected: boolean
 }
 
 export const useCartStore = defineStore(
   'cart',
   () => {
     const items = ref<CartItem[]>([])
+    const userId = ref<string | null>(null)
+
+    function setUser(id: string) {
+      userId.value = id
+      // TODO: 可以在这里触发合并云端购物车的逻辑
+    }
 
     // Getters
     const totalCount = computed(() => {
@@ -28,6 +35,26 @@ export const useCartStore = defineStore(
         return sum + Math.round(item.price * 100) * item.count
       }, 0)
       return totalCent / 100
+    })
+
+    // 选中的总数量
+    const selectedTotalCount = computed(() => {
+      return items.value.filter((item) => item.selected).reduce((sum, item) => sum + item.count, 0)
+    })
+
+    // 选中的总价
+    const selectedTotalPrice = computed(() => {
+      const totalCent = items.value
+        .filter((item) => item.selected)
+        .reduce((sum, item) => {
+          return sum + Math.round(item.price * 100) * item.count
+        }, 0)
+      return totalCent / 100
+    })
+
+    // 全选状态
+    const isAllSelected = computed(() => {
+      return items.value.length > 0 && items.value.every((item) => item.selected)
     })
 
     // Actions
@@ -44,6 +71,7 @@ export const useCartStore = defineStore(
 
       if (existingItem) {
         existingItem.count += count
+        existingItem.selected = true // 重新加入时默认选中
       } else {
         items.value.push({
           skuId: sku.id,
@@ -53,6 +81,7 @@ export const useCartStore = defineStore(
           specs: sku.specs,
           price: sku.price,
           count: count,
+          selected: true,
         })
       }
     }
@@ -75,14 +104,24 @@ export const useCartStore = defineStore(
       items.value = []
     }
 
+    function toggleSelectAll(selected: boolean) {
+      items.value.forEach((item) => (item.selected = selected))
+    }
+
     return {
       items,
       totalCount,
       totalPrice,
+      selectedTotalCount,
+      selectedTotalPrice,
+      isAllSelected,
       addToCart,
       removeFromCart,
       updateQuantity,
       clearCart,
+      setUser,
+      userId,
+      toggleSelectAll,
     }
   },
   {

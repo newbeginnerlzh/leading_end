@@ -43,18 +43,16 @@ export function getProductDetail(id: number) {
     desc: '14代酷睿i9-14900HX / RTX4060 / 3.2K 165Hz 电竞屏',
     priceRange: '¥13999 - ¥15848',
     mainImages: [
-      'https://p2.lefile.cn/product/adminweb/2024/02/23/83917866-9818-4296-8296-180666666666.jpg',
-      'https://p3.lefile.cn/product/adminweb/2024/02/23/12345678-1234-1234-1234-123456789012.jpg', // 示例占位
-      'https://p4.lefile.cn/product/adminweb/2024/02/23/87654321-4321-4321-4321-210987654321.jpg', // 示例占位
+      'https://p4.lefile.cn/product/adminweb/2025/05/20/UsLzKs0iPovinA04fp6vfjbmq-1832.jpg',
+      'https://p4.lefile.cn/product/adminweb/2025/05/20/UsLzKs0iPovinA04fp6vfjbmq-1832.jpg', // 示例占位
+      'https://p4.lefile.cn/product/adminweb/2025/05/20/UsLzKs0iPovinA04fp6vfjbmq-1832.jpg', // 示例占位
     ],
     detailHtml: `
       <div class="product-intro">
-        <img src="https://p1.lefile.cn/product/adminweb/2024/02/23/intro1.jpg" style="width:100%;display:block;" />
-        <p style="padding: 20px; font-size: 16px; line-height: 1.8;">
-          <strong>强悍性能，AI 加持</strong><br>
-          搭载英特尔酷睿 Ultra 9 处理器，释放强劲性能。
-        </p>
-        <img src="https://p2.lefile.cn/product/adminweb/2024/02/23/intro2.jpg" style="width:100%;display:block;" />
+        <img src="https://p1.lefile.cn/product/adminweb/2025/05/30/ivmwzHYISsEs787D4nMDl4BlF-4937.jpg" data-original="https://p1.lefile.cn/product/adminweb/2025/05/30/ivmwzHYISsEs787D4nMDl4BlF-4937.jpg" title="" alt="" style="width:100%;display:block;" />
+        <img src="https://p1.lefile.cn/product/adminweb/2025/05/30/iqoRIQ0SdVKqVug76oVbuAphk-3909.jpg" data-original="https://p1.lefile.cn/product/adminweb/2025/05/30/iqoRIQ0SdVKqVug76oVbuAphk-3909.jpg" title="" alt="" style="width:100%;display:block;" />
+        <img src="https://p4.lefile.cn/product/adminweb/2025/05/30/XIZCpxCFmHvwlF2sKAPR9T0Ls-6634.jpg" data-original="https://p4.lefile.cn/product/adminweb/2025/05/30/XIZCpxCFmHvwlF2sKAPR9T0Ls-6634.jpg" title="" alt="" style="width:100%;display:block;" />
+        <img src="https://p1.lefile.cn/product/adminweb/2025/05/30/PeVYjXc3SIrqtnhHtEXooiln5-0950.jpg" data-original="https://p1.lefile.cn/product/adminweb/2025/05/30/PeVYjXc3SIrqtnhHtEXooiln5-0950.jpg" title="" alt="" style="width:100%;display:block;" />
       </div>
     `,
     specs: [

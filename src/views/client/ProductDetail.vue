@@ -14,6 +14,8 @@ const product = ref<ProductDetail | null>(null)
 const loading = ref(false)
 const count = ref(1)
 const activeTab = ref('intro')
+const activeImageIndex = ref(0)
+const carouselRef = ref()
 
 // 选中的规格：{ "硬盘容量": "1T", "显卡": "RTX 5060" }
 const selectedSpecs = ref<Record<string, string>>({})
@@ -120,6 +122,69 @@ const handleBuyNow = () => {
     router.push('/checkout')
   }
 }
+
+// --- 图片画廊逻辑 ---
+const setActiveImage = (index: number) => {
+  activeImageIndex.value = index
+  carouselRef.value?.setActiveItem(index)
+}
+
+const handleCarouselChange = (index: number) => {
+  activeImageIndex.value = index
+}
+
+// 规格参数分组
+const paramGroups = [
+  { title: '基本参数', keys: ['model', 'os', 'positioning'] },
+  { title: '处理器', keys: ['cpuModel', 'cpuSeries', 'maxTurboFreq', 'cpuChip'] },
+  {
+    title: '显示屏',
+    keys: ['screenSize', 'screenRatio', 'resolution', 'colorGamut', 'refreshRate'],
+  },
+  { title: '存储设备', keys: ['ramCapacity', 'ramType', 'ssdCapacity', 'ssdType'] },
+  { title: '显卡', keys: ['gpuType', 'gpuChip', 'vramCapacity', 'vramType'] },
+  { title: '多媒体', keys: ['camera'] },
+  { title: '网络通信', keys: ['wifi', 'bluetooth'] },
+  { title: 'I/O 接口', keys: ['dataInterfaces', 'videoInterfaces', 'audioInterfaces'] },
+  { title: '输入设备', keys: ['keyboard', 'faceId'] },
+  { title: '外观', keys: ['weight', 'thickness'] },
+  { title: '其他', keys: ['software'] },
+]
+
+// 规格参数中文映射
+const paramLabels: Record<string, string> = {
+  model: '产品型号',
+  os: '操作系统',
+  positioning: '产品定位',
+  cpuModel: 'CPU型号',
+  cpuSeries: 'CPU系列',
+  maxTurboFreq: '最高睿频',
+  cpuChip: 'CPU芯片',
+  screenSize: '屏幕尺寸',
+  screenRatio: '显示比例',
+  resolution: '屏幕分辨率',
+  colorGamut: '色域',
+  refreshRate: '屏幕刷新率',
+  ramCapacity: '内存容量',
+  ramType: '内存类型',
+  ssdCapacity: '硬盘容量',
+  ssdType: '硬盘类型',
+  gpuType: '显卡类型',
+  gpuChip: '显卡芯片',
+  vramCapacity: '显存容量',
+  vramType: '显存类型',
+  camera: '摄像头',
+  wifi: '无线网卡',
+  bluetooth: '蓝牙',
+  dataInterfaces: '数据接口',
+  videoInterfaces: '视频接口',
+  audioInterfaces: '音频接口',
+  keyboard: '键盘描述',
+  faceId: '人脸识别',
+  weight: '重量',
+  thickness: '厚度',
+  software: '附带软件',
+}
 </script>
 
 <template>
@@ -137,7 +202,13 @@ const handleBuyNow = () => {
     <div class="main-container">
       <!-- 左侧图片 -->
       <div class="gallery-section">
-        <el-carousel trigger="click" height="400px" class="product-carousel">
+        <el-carousel
+          ref="carouselRef"
+          trigger="click"
+          height="400px"
+          class="product-carousel"
+          @change="handleCarouselChange"
+        >
           <el-carousel-item v-for="item in product.mainImages" :key="item">
             <img :src="item" class="carousel-image" alt="Product Image" />
           </el-carousel-item>
@@ -149,6 +220,8 @@ const handleBuyNow = () => {
             :key="index"
             :src="img"
             class="thumbnail"
+            :class="{ active: activeImageIndex === index }"
+            @click="setActiveImage(index)"
           />
         </div>
       </div>
@@ -186,7 +259,7 @@ const handleBuyNow = () => {
 
         <!-- 数量选择 -->
         <div class="quantity-row">
-          <span class="label">数量</span>
+          <span class="label">购买数量</span>
           <el-input-number v-model="count" :min="1" :max="currentSku?.stock || 5" />
           <span class="stock-info" v-if="currentSku"> (库存: {{ currentSku.stock }})</span>
         </div>
@@ -209,10 +282,15 @@ const handleBuyNow = () => {
         </el-tab-pane>
 
         <el-tab-pane label="规格参数" name="params">
-          <div class="params-table">
-            <div class="param-row" v-for="(value, key) in product.params" :key="key">
-              <span class="param-key">{{ key }}</span>
-              <span class="param-value">{{ value }}</span>
+          <div class="params-container">
+            <div v-for="group in paramGroups" :key="group.title" class="param-group">
+              <h3 class="group-title">{{ group.title }}</h3>
+              <div class="group-items">
+                <div v-for="key in group.keys" :key="key" class="param-row">
+                  <span class="param-key">{{ paramLabels[key] || key }}</span>
+                  <span class="param-value">{{ (product.params as any)[key] }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </el-tab-pane>
@@ -275,9 +353,18 @@ const handleBuyNow = () => {
 .thumbnail {
   width: 60px;
   height: 60px;
-  border: 1px solid #ddd;
+  border: 2px solid #ddd; /* 加粗一点边框以便高亮更明显 */
   cursor: pointer;
   object-fit: cover;
+  transition: all 0.2s;
+}
+
+.thumbnail:hover {
+  border-color: #999;
+}
+
+.thumbnail.active {
+  border-color: #e4393c;
 }
 
 .info-section {
@@ -400,21 +487,41 @@ const handleBuyNow = () => {
   padding: 20px;
 }
 
-.params-table {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+/* 规格参数新样式 */
+.params-container {
+  padding: 10px 0;
+}
+
+.param-group {
+  margin-bottom: 30px;
+}
+
+.group-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 15px;
+  padding-left: 10px;
+  border-left: 4px solid #e4393c;
+  background-color: #f9f9f9;
+  padding: 10px;
+}
+
+.group-items {
+  border-top: 1px solid #eee;
 }
 
 .param-row {
   display: flex;
-  border-bottom: 1px solid #f0f0f0;
-  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  padding: 12px 20px;
+  align-items: center;
 }
 
 .param-key {
-  width: 120px;
+  width: 150px;
   color: #666;
+  font-weight: 500;
 }
 
 .param-value {
