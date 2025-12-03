@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useCartStore } from '@/stores/cart'
+import { useCartStore, type CartItem } from '@/stores/cart'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete } from '@element-plus/icons-vue'
+import { Minus, Plus } from '@element-plus/icons-vue'
 
 const cartStore = useCartStore()
 const router = useRouter()
@@ -35,11 +35,29 @@ const handleClear = async () => {
 
 // 结算
 const handleCheckout = () => {
-  if (cartStore.items.length === 0) {
-    ElMessage.warning('购物车是空的')
+  if (cartStore.selectedTotalCount === 0) {
+    ElMessage.warning('请至少选择一件商品')
     return
   }
   router.push('/checkout')
+}
+
+// 数量变更逻辑
+const decreaseQuantity = (item: CartItem) => {
+  if (item.count <= 1) {
+    ElMessage.warning('最低限购一件！')
+    return
+  }
+  cartStore.updateQuantity(item.skuId, item.count - 1)
+}
+
+const increaseQuantity = (item: CartItem) => {
+  cartStore.updateQuantity(item.skuId, item.count + 1)
+}
+
+// 全选/取消全选
+const handleSelectAllChange = (val: boolean | string | number) => {
+  cartStore.toggleSelectAll(val as boolean)
 }
 </script>
 
@@ -61,6 +79,13 @@ const handleCheckout = () => {
     <div v-else class="cart-content">
       <el-card shadow="never" class="cart-card">
         <el-table :data="cartStore.items" style="width: 100%">
+          <!-- 选择框 -->
+          <el-table-column width="55" align="center">
+            <template #default="{ row }">
+              <el-checkbox v-model="row.selected" />
+            </template>
+          </el-table-column>
+
           <el-table-column label="商品信息" min-width="400">
             <template #default="{ row }">
               <div class="product-info" @click="goToDetail(row.productId)">
@@ -91,13 +116,11 @@ const handleCheckout = () => {
 
           <el-table-column label="数量" width="200" align="center">
             <template #default="{ row }">
-              <el-input-number
-                v-model="row.count"
-                :min="1"
-                :max="99"
-                size="small"
-                @change="(val: number) => cartStore.updateQuantity(row.skuId, val)"
-              />
+              <div class="quantity-control">
+                <el-button size="small" :icon="Minus" @click="decreaseQuantity(row)" />
+                <span class="quantity-text">{{ row.count }}</span>
+                <el-button size="small" :icon="Plus" @click="increaseQuantity(row)" />
+              </div>
             </template>
           </el-table-column>
 
@@ -109,9 +132,18 @@ const handleCheckout = () => {
 
           <el-table-column label="操作" width="100" align="center">
             <template #default="{ row }">
-              <el-popconfirm title="确定删除该商品吗？" @confirm="handleDelete(row.skuId)">
+              <el-popconfirm
+                title="确定删除该商品吗？"
+                confirm-button-text="删除"
+                cancel-button-text="取消"
+                confirm-button-type="danger"
+                placement="left"
+                width="200"
+                hide-icon
+                @confirm="handleDelete(row.skuId)"
+              >
                 <template #reference>
-                  <el-button type="danger" :icon="Delete" circle size="small" />
+                  <el-button type="danger" link>删除</el-button>
                 </template>
               </el-popconfirm>
             </template>
@@ -120,12 +152,23 @@ const handleCheckout = () => {
 
         <div class="cart-footer">
           <div class="footer-left">
-            <el-button link type="danger" @click="handleClear">清空购物车</el-button>
+            <el-checkbox :model-value="cartStore.isAllSelected" @change="handleSelectAllChange">
+              全选
+            </el-checkbox>
+            <el-button link type="danger" @click="handleClear" style="margin-left: 20px">
+              清空购物车
+            </el-button>
           </div>
           <div class="footer-right">
-            <span class="total-label">总价：</span>
-            <span class="total-price">¥{{ cartStore.totalPrice.toFixed(2) }}</span>
-            <el-button type="primary" size="large" class="checkout-btn" @click="handleCheckout">
+            <span class="total-label">已选 {{ cartStore.selectedTotalCount }} 件，总价：</span>
+            <span class="total-price">¥{{ cartStore.selectedTotalPrice.toFixed(2) }}</span>
+            <el-button
+              type="primary"
+              size="large"
+              class="checkout-btn"
+              :disabled="cartStore.selectedTotalCount === 0"
+              @click="handleCheckout"
+            >
               去结算
             </el-button>
           </div>
@@ -247,6 +290,19 @@ const handleCheckout = () => {
   width: 120px;
   background-color: #e4393c;
   border-color: #e4393c;
+}
+
+.quantity-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.quantity-text {
+  width: 30px;
+  text-align: center;
+  font-size: 14px;
 }
 
 .empty-cart {

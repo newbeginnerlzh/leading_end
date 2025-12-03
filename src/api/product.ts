@@ -57,7 +57,7 @@ export function getProductDetail(id: number) {
     `,
     specs: [
       {
-        name: '硬盘容量',
+        name: '存储容量',
         values: ['1T', '2T'],
       },
       {
@@ -68,25 +68,25 @@ export function getProductDetail(id: number) {
     skus: [
       {
         id: 100101,
-        specs: { 硬盘容量: '1T', 显卡: 'RTX 5060' },
+        specs: { 存储容量: '1T', 显卡: 'RTX 5060' },
         price: 13999,
         stock: 100,
       },
       {
         id: 100102,
-        specs: { 硬盘容量: '1T', 显卡: 'RTX 5070' },
+        specs: { 存储容量: '1T', 显卡: 'RTX 5070' },
         price: 14999,
         stock: 50,
       },
       {
         id: 100103,
-        specs: { 硬盘容量: '2T', 显卡: 'RTX 5060' },
+        specs: { 存储容量: '2T', 显卡: 'RTX 5060' },
         price: 14848,
         stock: 80,
       },
       {
         id: 100104,
-        specs: { 硬盘容量: '2T', 显卡: 'RTX 5070' },
+        specs: { 存储容量: '2T', 显卡: 'RTX 5070' },
         price: 15848,
         stock: 20,
       },
