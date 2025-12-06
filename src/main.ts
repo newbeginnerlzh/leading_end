@@ -7,9 +7,13 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import App from './App.vue'
 import router from './router'
 
-const app = createApp(App)
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
-app.use(createPinia())
+const app = createApp(App)
+const pinia = createPinia()
+pinia.use(piniaPluginPersistedstate)
+
+app.use(pinia)
 app.use(router)
 
 app.config.globalProperties.$ELEMENT = {
