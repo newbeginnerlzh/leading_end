@@ -20,7 +20,9 @@ export interface ProductDetail {
   detailHtml: string // 详情页长图富文本
   specs: SpecItem[] // 规格项，用于前端渲染选择按钮
   skus: SkuItem[] // SKU 组合，包含具体价格和库存
-  params: ComputerParams // 详细参数，用于"规格参数"tab显示
+  // 这里放所有 SKU 共用的参数(如屏幕尺寸、接口)
+  // 使用 Partial 表示这里的字段也是可选的,因为可能会被 SKU 里的覆盖
+  params: Partial<ComputerParams> // 详细参数,用于"规格参数"tab显示
 }
 
 export interface SpecItem {
@@ -33,6 +35,10 @@ export interface SkuItem {
   specs: Record<string, string> // 规格组合，例如 { "CPU": "i7", "内存": "16G" }
   price: number // 该配置的具体价格
   stock: number // 库存
+
+  // 【关键修改】:每个 SKU 可以拥有自己独特的参数
+  // 当用户切换 SKU 时,前端需要用这里的参数覆盖 ProductDetail.params
+  diffParams?: Partial<ComputerParams>
 }
 
 // 电脑详细参数接口

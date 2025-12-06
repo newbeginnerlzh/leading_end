@@ -34,7 +34,7 @@
         <template v-if="isLogin">
           <!-- 购物车 (带小红点角标) -->
           <div class="action-item" @click="goCart" style="gap: 4px">
-            <el-badge :value="3" class="cart-badge" :max="99">
+            <el-badge :value="cartStore.totalCount" class="cart-badge" :max="99">
               <el-icon :size="25"><ShoppingCart /></el-icon>
             </el-badge>
             <span class="text">购物车</span>
@@ -78,8 +78,10 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 // 引入图标
 import { Search, ShoppingCart, User, ArrowDown } from '@element-plus/icons-vue'
+import { useCartStore } from '@/stores/cart'
 
 const router = useRouter()
+const cartStore = useCartStore()
 
 // --- 模拟状态 ---
 const keyword = ref('')
@@ -155,6 +157,7 @@ const handleUserCommand = (command: string) => {
 .nav-links {
   display: flex;
   gap: 25px;
+  margin-right: 40px; /* 商品列表右侧加上空白占位 */
 }
 
 .nav-item {
@@ -242,6 +245,7 @@ const handleUserCommand = (command: string) => {
   cursor: pointer;
   color: #666;
   transition: color 0.2s;
+  margin-left: 20px; /* 购物车图标的左侧加上空白占位 */
 }
 .action-item:hover {
   color: #409eff;
