@@ -9,15 +9,48 @@ import type { PageResult } from './model/common'
  * 如果是从购物车结算，后端会清空对应购物车项
  */
 export function createOrder(data: {
-  addressId: number
-  couponId?: number
+  // 支持前端结算页传入的完整信息（用于 mock 后端）
+  address?: { name: string; phone: string; address: string }
+  payment?: string
+  shipping?: number
   remark?: string
-  items?: { skuId: number; count: number }[]
+  items?: { id: number; name: string; price: number; qty: number; imgUrl?: string }[]
 }) {
-  void data
-  // 参考实现：
-  // return post<{ orderId: string }>('/order/create', data)
-  return Promise.resolve({ orderId: 'mock-order-id' })
+  // 模拟后端生成完整订单并保存到 localStorage
+  const id = `ORD-${Date.now()}-${Math.floor(Math.random() * 9000 + 1000)}`
+  const subtotal = (data.items || []).reduce((s, it) => s + it.price * it.qty, 0)
+  const shipping = data.shipping ?? 0
+  const order = {
+    id,
+    status: 10, // 10:待支付
+    createTime: new Date().toISOString(),
+    totalPrice: Number((subtotal + shipping).toFixed(2)),
+    payPrice: Number((subtotal + shipping).toFixed(2)),
+    receiverName: data.address?.name || '',
+    receiverPhone: data.address?.phone || '',
+    receiverAddress: data.address?.address || '',
+    items: (data.items || []).map((it) => ({
+      productId: it.id,
+      name: it.name,
+      skuSpecStr: '',
+      price: it.price,
+      count: it.qty,
+      imgUrl: it.imgUrl || '',
+    })),
+  }
+
+  try {
+    const key = 'mock_orders'
+    const raw = localStorage.getItem(key)
+    const arr = raw ? JSON.parse(raw) : []
+    arr.push(order)
+    localStorage.setItem(key, JSON.stringify(arr, null, 2))
+  } catch (e) {
+    // ignore storage errors in mock
+    void e
+  }
+
+  return Promise.resolve(order)
 }
 
 /**
@@ -26,10 +59,22 @@ export function createOrder(data: {
  * status: 0-全部, 10-待支付, 20-待发货, 30-待收货, 40-已完成
  */
 export function getOrderList(params: { status?: number; page?: number; pageSize?: number }) {
-  void params
-  // 参考实现：
-  // return get<PageResult<Order>>('/order/list', params)
-  return Promise.resolve({ list: [], total: 0 } as unknown as PageResult<Order>)
+  const { status, page = 1, pageSize = 10 } = params || {}
+  try {
+    const raw = localStorage.getItem('mock_orders')
+    const arr: Order[] = raw ? JSON.parse(raw) : []
+    let list = arr
+    if (typeof status !== 'undefined' && status !== 0) {
+      list = list.filter((o) => o.status === status)
+    }
+    const total = list.length
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    const pageList = list.slice(start, end)
+    return Promise.resolve({ list: pageList, total, page, pageSize } as unknown as PageResult<Order>)
+  } catch (e) {
+    return Promise.resolve({ list: [], total: 0, page: 1, pageSize: 10 } as unknown as PageResult<Order>)
+  }
 }
 
 /**
@@ -37,10 +82,14 @@ export function getOrderList(params: { status?: number; page?: number; pageSize?
  * @param id 订单号
  */
 export function getOrderDetail(id: string) {
-  void id
-  // 参考实现：
-  // return get<Order>(`/order/detail/${id}`)
-  return Promise.resolve({} as Order)
+  try {
+    const raw = localStorage.getItem('mock_orders')
+    const arr: Order[] = raw ? JSON.parse(raw) : []
+    const found = arr.find((o) => o.id === id)
+    return Promise.resolve((found as Order) || ({} as Order))
+  } catch (e) {
+    return Promise.resolve({} as Order)
+  }
 }
 
 /**
@@ -48,10 +97,22 @@ export function getOrderDetail(id: string) {
  * @param id 订单号
  */
 export function payOrder(id: string) {
-  void id
-  // 参考实现：
-  // return post('/order/pay', { orderId: id })
-  return Promise.resolve(null)
+  try {
+    const raw = localStorage.getItem('mock_orders')
+    const arr: Order[] = raw ? JSON.parse(raw) : []
+    const idx = arr.findIndex((o) => o.id === id)
+    if (idx >= 0) {
+      const o = arr[idx]
+      if (o) {
+        o.status = 20 // 标记为已支付、待发货
+        localStorage.setItem('mock_orders', JSON.stringify(arr, null, 2))
+        return Promise.resolve(o)
+      }
+    }
+    return Promise.resolve(null)
+  } catch (e) {
+    return Promise.reject(e)
+  }
 }
 
 /**
