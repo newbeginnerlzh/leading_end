@@ -1,115 +1,48 @@
-<template>
-  <div class="home-page">
-    <!-- 1. 顶部标题 -->
-    <h1 class="title">💻 热门电脑推荐</h1>
-
-    <!-- 2. 搜索框区域 (使用 Element Plus) -->
-    <div class="search-box">
-      <el-input
-        v-model="searchText"
-        placeholder="搜索 ThinkPad / 拯救者..."
-        class="search-input"
-        clearable
-        @keyup.enter="handleSearch"
-      >
-        <template #append>
-          <el-button @click="handleSearch">搜索</el-button>
-        </template>
-      </el-input>
-    </div>
-
-    <!-- 3. 商品列表区域 (使用 El-Card 和 Grid 布局) -->
-    <!-- :gutter="20" 代表卡片之间的间距 -->
-    <el-row :gutter="20">
-      <!-- :span="6" 代表占24份中的6份，即一行放4个 (24/6=4) -->
-      <!-- xs/sm/md/lg 是响应式配置，不同屏幕显示不同数量 -->
-      <el-col
-        v-for="item in products"
-        :key="item.id"
-        :xs="24"
-        :sm="12"
-        :md="8"
-        :lg="6"
-        class="mb-20"
-      >
-        <el-card shadow="hover" class="product-card" @click="goToDetail(item.id)">
-          <!-- 图片区域 -->
-          <el-image :src="item.image" fit="cover" class="product-img">
-            <template #error>
-              <div class="image-slot">暂无图片</div>
-            </template>
-          </el-image>
-
-          <!-- 信息区域 -->
-          <div class="card-body">
-            <h3 class="product-name">{{ item.name }}</h3>
-            <div class="specs-tag">
-              <el-tag size="small" effect="plain">{{ item.cpu }}</el-tag>
-              <el-tag size="small" effect="plain" type="success" style="margin-left: 5px">{{
-                item.ram
-              }}</el-tag>
-            </div>
-            <div class="price-row">
-              <span class="price">¥ {{ item.price }}</span>
-              <span class="sales">销量: 99+</span>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-  </div>
-</template>
-
-<!-- 注意这里多了 lang="ts" -->
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import type { ProductSimple } from '@/api/model/productModel'
 
-// --- TS 核心差异点 1: 定义数据的“形状” (Interface) ---
-// 这相当于给商品数据制定了一个“身份证规范”，不符合这个规范的数据会报错
-interface Product {
-  id: number
-  name: string
-  price: number
-  cpu: string
-  ram: string
-  image: string
-}
+// 轮播图数据
+const bannerList = [
+  'https://p3.lefile.cn/fes/cms/2025/11/26/q9wa3g5jnkik6rl6gxjykhc0xvphbd164310.jpg',
+  'https://p1.lefile.cn/fes/cms/2025/11/25/whw61hnappz3x3k2n9rqbq8giucyd9076100.jpg',
+  'https://p4.lefile.cn/fes/cms/2025/12/04/pqvp2a8gia2eu549qaljn49e9hn0pt791216.jpg'
+]
 
-const router = useRouter()
+const searchText = ref('')
+const products = ref<ProductSimple[]>([])
 
-// --- TS 核心差异点 2: 为变量指定类型 ---
-const searchText = ref<string>('') // 明确告诉 TS，这个 ref 存的是 string
-const products = ref<Product[]>([]) // 明确告诉 TS，这是一个由 Product 组成的数组
-
-// 模拟获取数据
+// 模拟数据
 const fetchProducts = () => {
-  // 模拟后端数据
-  const mockData: Product[] = [
+  const mockData: ProductSimple[] = [
     {
-      id: 101,
-      name: '联想拯救者 Y9000P',
+      id: 1001,
+      name: '联想拯救者 Y9000P 2025款 (i9-14900HX 32G 1T RTX4060)',
       price: 9999,
-      cpu: 'i9-13900HX',
-      ram: '32G',
-      image: 'https://images.indianexpress.com/2025/08/Google-AI-Studio-Tutorial.jpg', // 找了个网图测试
+      imgUrl: 'https://p4.lefile.cn/fes/cms/2025/12/04/pqvp2a8gia2eu549qaljn49e9hn0pt791216.jpg',
+      tags: ['热销', '新品']
     },
     {
-      id: 102,
-      name: 'ThinkPad X1 Carbon',
+      id: 1002,
+      name: 'ThinkPad X1 Carbon Gen12 商务旗舰',
+      price: 14999,
+      imgUrl: 'https://p1.lefile.cn/fes/cms/2025/11/25/whw61hnappz3x3k2n9rqbq8giucyd9076100.jpg',
+      tags: ['商务办公']
+    },
+    {
+      id: 1003,
+      name: 'MacBook Pro 14 (M3 Pro)',
       price: 12999,
-      cpu: 'i7-1360P',
-      ram: '16G',
-      image: '', // 测试无图片情况
+      imgUrl: 'https://img14.360buyimg.com/n0/jfs/t1/227546/15/8026/49257/655b1eb2F671c6999/874b2164d50c1844.jpg',
+      tags: ['Apple']
     },
     {
-      id: 103,
-      name: '小新 Pro 16',
+      id: 1004,
+      name: '联想小新Pro16 2024 AI超能本',
       price: 5999,
-      cpu: 'R7-7840HS',
-      ram: '32G',
-      image: '',
-    },
+      imgUrl: 'https://img14.360buyimg.com/n0/jfs/t1/231580/40/15720/57134/65d6c29bF99839446/745a308c1488c946.jpg',
+      tags: ['高性价比']
+    }
   ]
   products.value = mockData
 }
@@ -119,78 +52,138 @@ onMounted(() => {
 })
 
 const handleSearch = () => {
-  console.log('正在搜索:', searchText.value)
-}
-
-const goToDetail = (id: number) => {
-  // 这里也要指定 id 是 number 类型
-  router.push(`/product/${id}`)
+  console.log('搜索:', searchText.value)
 }
 </script>
 
+<template>
+  <!-- 外层容器：不需要 padding-top，因为 Header 是 sticky 的，会自动把内容挤下来 -->
+  <div class="main-view">
+    
+    <!-- 1. 全宽轮播图区域 -->
+    <div class="banner-container">
+      <!-- 
+        height: 设置为 550px 或 600px，确保大屏下视觉效果好
+        arrow="hover": 鼠标悬停显示箭头
+      -->
+      <el-carousel trigger="click" height="550px" :interval="5000" arrow="hover">
+        <el-carousel-item v-for="(img, index) in bannerList" :key="index">
+          <img :src="img" alt="banner" class="banner-img" />
+        </el-carousel-item>
+      </el-carousel>
+    </div>
+
+    <!-- 2. 内容主体 -->
+    <div class="content-body">
+      <h1 class="section-title">💻 热门电脑推荐</h1>
+
+      <!-- 首页辅助搜索框 -->
+      <div class="search-box-home">
+        <el-input
+          v-model="searchText"
+          placeholder="在此搜索更多商品..."
+          size="large"
+          clearable
+          @keyup.enter="handleSearch"
+        >
+          <template #append>
+            <el-button @click="handleSearch">搜索</el-button>
+          </template>
+        </el-input>
+      </div>
+
+      <!-- 商品列表 -->
+      <el-row :gutter="20">
+        <el-col
+          v-for="item in products"
+          :key="item.id"
+          :xs="24" :sm="12" :md="8" :lg="6"
+          class="mb-20"
+        >
+          <ProductCard :product="item" />
+        </el-col>
+      </el-row>
+    </div>
+  </div>
+</template>
+
 <style scoped>
-.home-page {
-  padding: 20px;
+/* 
+  核心修改：
+  1. 移除了 padding-top: 64px; 
+  2. 因为您的 Header 是 sticky，它在文档流中占位，所以这里不需要留空，
+     轮播图会自动接在 Header 下面。
+*/
+.main-view {
+  width: 100%;
+  padding: 0;
+}
+
+/* --- 轮播图样式 --- */
+.banner-container {
+  width: 100%;
+  /* 防止图片溢出导致出现滚动条 */
+  overflow: hidden; 
+}
+
+.banner-img {
+  width: 100%;
+  height: 100%;
+  /* 
+    object-fit: cover 
+    保证图片铺满容器，不会变形，但可能会裁掉边缘。
+    这是全屏轮播图最标准的做法。
+  */
+  object-fit: cover; 
+  /* 
+    object-position: center top
+    优先展示图片的中心偏上部分（通常是产品主体所在位置）
+  */
+  object-position: center top; 
+  display: block;
+}
+
+/* --- 下方圆点样式 (覆盖 Element Plus 默认样式) --- */
+:deep(.el-carousel__indicators--horizontal) {
+  bottom: 20px; 
+}
+
+:deep(.el-carousel__indicator--horizontal .el-carousel__button) {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.5);
+  transition: all 0.3s;
+}
+
+:deep(.el-carousel__indicator--horizontal.is-active .el-carousel__button) {
+  width: 20px; /* 选中变成长胶囊 */
+  height: 10px;
+  border-radius: 5px;
+  background-color: #ffffff;
+  opacity: 1;
+}
+
+/* --- 页面主体内容样式 --- */
+.content-body {
   max-width: 1200px;
   margin: 0 auto;
+  padding: 40px 20px;
 }
-.title {
+
+.section-title {
   text-align: center;
   margin-bottom: 30px;
-  color: #303133;
+  color: #333;
+  font-weight: 700;
 }
-.search-box {
+
+.search-box-home {
   max-width: 600px;
   margin: 0 auto 40px;
 }
+
 .mb-20 {
   margin-bottom: 20px;
-}
-.product-card {
-  cursor: pointer;
-  transition: all 0.3s;
-}
-.product-card:hover {
-  transform: translateY(-5px);
-}
-.product-img {
-  width: 100%;
-  height: 200px;
-  display: block;
-  background: #f5f7fa;
-}
-.image-slot {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  color: #909399;
-}
-.card-body {
-  padding: 10px 0;
-}
-.product-name {
-  font-size: 16px;
-  margin: 10px 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.specs-tag {
-  margin-bottom: 10px;
-}
-.price-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.price {
-  color: #f56c6c;
-  font-size: 18px;
-  font-weight: bold;
-}
-.sales {
-  font-size: 12px;
-  color: #999;
 }
 </style>
