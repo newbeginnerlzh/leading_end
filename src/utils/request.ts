@@ -1,50 +1,72 @@
-import axios, { type AxiosInstance, type AxiosResponse } from 'axios'
-import { ElMessage } from 'element-plus'
-import type { ApiResponse } from '@/api/model/common'
+// src/utils/request.ts
+import axios, { type AxiosResponse } from 'axios';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { useRouter } from 'vue-router';
 
-// 1. 创建 axios 实例
-const service: AxiosInstance = axios.create({
-  // 这里填后端的地址。如果后端还没好，先随便填，或者填 '/api' 配合代理
-  // 等后端好了，只需要改这一行
-  baseURL: 'http://localhost:8080/api',
-  timeout: 10000, // 请求超时时间
-})
+// 创建Axios实例
+const service = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api', // 环境变量配置接口前缀
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 
-// 2. 请求拦截器：每次发请求前自动执行
+// 请求拦截器：添加Token
 service.interceptors.request.use(
   (config) => {
-    // 从 LocalStorage 获取 Token
-    const token = localStorage.getItem('token')
+    // 从localStorage获取Token
+    const token = localStorage.getItem('token');
     if (token) {
-      // 如果有 token，把它加到请求头里发给后端
-      config.headers['Authorization'] = `Bearer ${token}`
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    return config
+    return config;
   },
   (error) => {
-    return Promise.reject(error)
-  },
-)
+    console.error('请求错误:', error);
+    return Promise.reject(error);
+  }
+);
 
-// 3. 响应拦截器：后端回消息后自动执行
+// 响应拦截器：统一处理响应
 service.interceptors.response.use(
-  (response) => {
-    const res = response.data as ApiResponse
-    // 假设后端返回格式是：{ code: 200, data: {...}, msg: '成功' }
-    if (res.code !== 200) {
-      // 如果 code 不是 200，说明业务出错（比如密码错误），弹窗提示
-      ElMessage.error(res.msg || '系统错误')
-      return Promise.reject(new Error(res.msg || 'Error'))
-    } else {
-      return res.data as unknown as AxiosResponse
+  (response: AxiosResponse) => {
+    const res = response.data;
+
+    // 业务状态码非200时，提示错误
+    if (res.status !== 200) {
+      ElMessage.error(res.message || '请求失败');
+      return Promise.reject(res);
     }
+
+    return res;
   },
   (error) => {
-    // 处理网络错误（比如 404, 500）
-    ElMessage.error(error.message || '网络异常')
-    return Promise.reject(error)
-  },
-)
+    console.error('响应错误:', error);
+
+    // Token过期处理
+    if (error.response?.status === 401) {
+      ElMessageBox.confirm(
+        '登录状态已过期，请重新登录',
+        '提示',
+        {
+          confirmButtonText: '重新登录',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      ).then(() => {
+        // 清除Token并跳转到登录页
+        localStorage.removeItem('token');
+        const router = useRouter();
+        router.push('/login');
+      });
+    }
+
+    ElMessage.error(error.message || '服务器错误');
+    return Promise.reject(error);
+  }
+);
+
 
 // 通用 GET 请求
 export function get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
