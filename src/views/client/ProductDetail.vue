@@ -29,7 +29,20 @@ const loadData = async () => {
     product.value = data
     document.title = `${data.name} - 联想商城`
 
-    // 自动选中只有一个选项的规格
+    // 从 URL 查询参数中读取 skuId（从购物车跳转时会带上）
+    const urlSkuId = route.query.skuId ? Number(route.query.skuId) : null
+
+    if (urlSkuId) {
+      // 查找对应的 SKU
+      const targetSku = data.skus.find((sku) => sku.id === urlSkuId)
+      if (targetSku) {
+        // 自动填充该 SKU 的规格选择
+        selectedSpecs.value = { ...targetSku.specs }
+        return // 已完成预选，无需后续自动选择逻辑
+      }
+    }
+
+    // 自动选中只有一个选项的规格（原有逻辑）
     data.specs.forEach((spec) => {
       if (spec.values.length === 1 && spec.values[0]) {
         selectedSpecs.value[spec.name] = spec.values[0]

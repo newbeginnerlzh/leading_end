@@ -7,7 +7,7 @@
         <nav class="nav-links">
           <!-- 这里的 active-class 可以让当前页面的链接高亮，Vue Router 自带功能 -->
           <router-link to="/" class="nav-item">商城首页</router-link>
-          <router-link to="/list" class="nav-item">商品列表</router-link>
+          <router-link to="/products" class="nav-item">商品列表</router-link>
         </nav>
       </div>
 
