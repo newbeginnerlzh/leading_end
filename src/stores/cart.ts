@@ -125,6 +125,11 @@ export const useCartStore = defineStore(
       return items.value.length > 0 && items.value.every((item) => item.selected)
     })
 
+    // 选中的购物车项
+    const selectedItems = computed(() => {
+      return items.value.filter((item) => item.selected)
+    })
+
     // Actions
     async function addToCart(product: ProductDetail, skuId: number, count: number) {
       // 1. 找到对应的 SKU 信息
@@ -305,6 +310,7 @@ export const useCartStore = defineStore(
       selectedTotalCount,
       selectedTotalPrice,
       isAllSelected,
+      selectedItems,
       addToCart,
       removeFromCart,
       updateQuantity,
