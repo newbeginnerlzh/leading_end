@@ -80,7 +80,7 @@ const fetchHomeData = () => {
       subTitle: '为战而生',
       themeColor: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)', // 蓝紫电竞
       products: [
-        createProduct(201, '拯救者 Y9000K 旗舰电竞本', 24999, '旗舰', 'https://p4.lefile.cn/product/adminweb/2023/09/01/e4f21503-6258-4721-8255-738673756854.jpg'),
+        createProduct(201, '拯救者 Y9000K 旗舰电竞本', 24999, '旗舰', 'https://p1.lefile.cn/product/adminweb/2025/07/31/CcEZSHRcpAOosO45VjSvYXCBY-0478.jpg'),
         createProduct(202, '拯救者 R9000P 2024', 8999, 'AMD锐龙', 'https://p3.lefile.cn/product/adminweb/2024/03/28/76583421-2345-4235-8235-235472354235.jpg'),
         createProduct(203, '拯救者 M5 鼠标', 129, '电竞外设', 'https://p2.lefile.cn/product/adminweb/2023/04/18/1681788756086.jpg'),
         createProduct(204, '拯救者 C170 氮化镓适配器', 249, '便携', 'https://p1.lefile.cn/product/adminweb/2024/04/08/1712543567890.jpg')
