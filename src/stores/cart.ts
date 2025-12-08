@@ -126,5 +126,5 @@ export const useCartStore = defineStore(
   },
   {
     persist: true, // 开启持久化
-  },
+  } as any,
 )
