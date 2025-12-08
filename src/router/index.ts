@@ -69,6 +69,16 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  // 每次路由切换时，滚动到页面顶部
+  scrollBehavior(to, from, savedPosition) {
+    // 如果有保存的位置（例如浏览器前进/后退），使用保存的位置
+    if (savedPosition) {
+      return savedPosition
+    } else {
+      // 否则滚动到顶部
+      return { top: 0 }
+    }
+  },
 })
 
 // 全局前置守卫
