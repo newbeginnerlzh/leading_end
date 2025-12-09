@@ -9,6 +9,8 @@ export interface Order {
   receiverPhone: string
   receiverAddress: string
   items: OrderItem[]
+  // 如果订单来源于购物车结算，这里保存相关的 skuId 列表，方便支付后清理购物车
+  cartSkuIds?: number[]
 }
 
 export interface OrderItem {
