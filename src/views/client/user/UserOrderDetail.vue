@@ -2,7 +2,15 @@
 <template>
   <div>
     <el-card>
-      <h3>订单详情</h3>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <el-button type="text" :icon="ArrowLeft" @click="router.back()">返回</el-button>
+          <h3 style="margin:0">订单详情</h3>
+        </div>
+        <div>
+          <el-button type="danger" size="small" @click="onDelete">删除订单</el-button>
+        </div>
+      </div>
       <div v-if="loading">加载中...</div>
       <div v-else-if="!order">未找到订单</div>
       <div v-else>
@@ -33,6 +41,9 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOrderDetail } from '@/api/order'
+import { deleteOrder } from '@/api/order'
+import { ElMessageBox, ElMessage } from 'element-plus'
+import { ArrowLeft } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -72,6 +83,25 @@ function goPay() {
 }
 
 onMounted(load)
+
+async function onDelete() {
+  if (!order.value) return
+  try {
+    await ElMessageBox.confirm('确定要删除该订单吗？此操作不可恢复', '删除订单', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+    await deleteOrder(order.value.id)
+    ElMessage.success('订单已删除')
+    router.push({ path: '/user/orders' })
+  } catch (e) {
+    // 如果用户取消或删除失败，都在这里忽略或提示
+    if (e && typeof e === 'object' && 'message' in e) {
+      ElMessage.error('删除失败：' + (e as Error).message)
+    }
+  }
+}
 </script>
 
 <style scoped>

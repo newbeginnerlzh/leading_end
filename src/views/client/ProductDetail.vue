@@ -132,8 +132,26 @@ const handleBuyNow = () => {
     return
   }
   // 先加购，再跳转（或者直接带参数跳转，这里简化为先加购）
+  // 为了实现“立即购买”不影响购物车的行为：
+  // 不将商品加入购物车，而是将临时的购买数据写入 localStorage（key: direct_purchase），
+  // 结算页会优先读取该数据进行结算。
   if (product.value) {
-    cartStore.addToCart(product.value, currentSku.value.id, count.value)
+    const direct = [
+      {
+        skuId: currentSku.value.id,
+        productId: product.value.id,
+        name: product.value.name,
+        imgUrl: product.value.mainImages?.[0] || '',
+        specs: selectedSpecs.value,
+        price: currentSku.value.price,
+        count: count.value,
+      },
+    ]
+    try {
+      localStorage.setItem('direct_purchase', JSON.stringify(direct))
+    } catch (e) {
+      // ignore
+    }
     router.push('/checkout')
   }
 }
