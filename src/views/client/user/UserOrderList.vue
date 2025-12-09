@@ -6,6 +6,15 @@
       <el-table :data="orders" style="width:100%" size="small">
         <el-table-column prop="id" label="订单号" />
         <el-table-column prop="createTime" label="创建时间" />
+          <el-table-column label="商品" min-width="180">
+            <template #default="{ row }">
+              <div>
+                <template v-if="row.items && row.items.length === 1">{{ row.items[0].name }}</template>
+                <template v-else-if="row.items && row.items.length > 1">{{ row.items.map((i:any)=>i.name).join(' / ') }}</template>
+                <template v-else>—</template>
+              </div>
+            </template>
+          </el-table-column>
         <el-table-column label="状态" width="120">
           <template #default="{ row }">{{ statusText(row.status) }}</template>
         </el-table-column>

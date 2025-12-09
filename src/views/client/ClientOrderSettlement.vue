@@ -1,6 +1,9 @@
 <!-- 结算页：展示购物车条目、收货地址选择、订单概要并创建订单（调用 mock API） -->
 <template>
   <div class="order-settlement">
+    <div style="margin-bottom:12px">
+      <el-button type="text" :icon="ArrowLeft" @click="router.back()">返回</el-button>
+    </div>
     <el-row :gutter="20">
       <el-col :span="16">
         <el-card>
@@ -31,7 +34,7 @@
               <template #default="{ row }">
                 <div class="quantity-control">
                   <el-button size="small" @click="decreaseQuantity(row)">-</el-button>
-                  <span class="quantity-text">{{ row.qty }}</span>
+                  <span class="quantity-text">{{ row.count }}</span>
                   <el-button size="small" @click="increaseQuantity(row)">+</el-button>
                 </div>
               </template>
@@ -39,7 +42,7 @@
 
             <el-table-column label="小计" width="150" align="center">
               <template #default="{ row }">
-                <span class="subtotal">¥{{ (row.price * row.qty).toFixed(2) }}</span>
+                <span class="subtotal">¥{{ (row.price * row.count).toFixed(2) }}</span>
               </template>
             </el-table-column>
           </el-table>
@@ -116,25 +119,27 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { createOrder as apiCreateOrder } from '@/api/order'
 import { useRouter } from 'vue-router'
+import { useCartStore } from '@/stores/cart'
+import { ArrowLeft } from '@element-plus/icons-vue'
 
-interface CartItem {
-  id: number
-  name: string
-  price: number
-  imgUrl: string
-  qty: number
-}
-
-const items = reactive<CartItem[]>([])
+const cart = useCartStore()
+// 支持两种结算模式：
+// - 直接购买（direct_purchase 存在于 localStorage）：使用临时项，不影响购物车
+// - 购物车结算：使用 cart.selectedItems
+import { ref as _ref } from 'vue'
+const directItems = _ref<any[] | null>(null)
+const items = computed(() => {
+  return (directItems.value && directItems.value.length > 0) ? directItems.value : cart.selectedItems
+})
 
 // 地址管理：从 localStorage 中读取 mock_addresses（示例格式：[{ id, name, phone, address }])
 const addresses = ref<{ id: number; name: string; phone: string; address: string }[]>([])
 const selectedAddressId = ref<number | null>(null)
-const address = reactive({ name: '', phone: '', address: '' })
+const address = ref({ name: '', phone: '', address: '' })
 
 const shipping = ref<number>(10)
 const payment = ref<string>('alipay')
@@ -142,92 +147,94 @@ const payment = ref<string>('alipay')
 // 不在结算页展示订单详情；创建后跳转到支付页
 const router = useRouter()
 
-const total = computed(() => items.reduce((s, it) => s + it.price * it.qty, 0))
-const selectedCount = computed(() => items.reduce((s, it) => s + (it.qty || 0), 0))
+const total = computed(() => cart.selectedTotalPrice)
+const selectedCount = computed(() => cart.selectedTotalCount)
 
 onMounted(() => {
-  // 从 localStorage 加载购物车
   try {
-    const raw = localStorage.getItem('mock_cart')
-    const cart = raw ? JSON.parse(raw) : null
-    if (Array.isArray(cart) && cart.length > 0) {
-      // 只加入被勾选的商品。兼容 pinia 存储字段名：skuId/productId/id, count/qty, selected
-      cart.forEach((c: any) => {
-        const selected = typeof c.selected !== 'undefined' ? c.selected : true
-        if (!selected) return
-        const id = c.skuId ?? c.id ?? c.productId
-        const qty = c.count ?? c.qty ?? 1
-        items.push({ id, name: c.name || c.title || '商品', price: c.price || 0, imgUrl: c.imgUrl || c.mainImage || 'https://via.placeholder.com/120', qty })
-      })
-    } else {
-      // fallback 示例
-      items.push({ id: 1001, name: '示例商品 A', price: 1299, imgUrl: 'https://via.placeholder.com/120', qty: 1 })
+    // 读取直购临时数据（若存在）
+    try {
+      const rawDirect = localStorage.getItem('direct_purchase')
+      if (rawDirect) {
+        const parsed = JSON.parse(rawDirect)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          directItems.value = parsed
+        }
+        // 读取后移除，避免重复使用
+        localStorage.removeItem('direct_purchase')
+      }
+    } catch (err) {
+      // ignore parsing errors
     }
 
     const rawAddr = localStorage.getItem('mock_addresses')
     const addr = rawAddr ? JSON.parse(rawAddr) : []
-    if (Array.isArray(addr) && addr.length > 0) {
+
+    //begin:if (Array.isArray(addr) && addr.length > 0) {
+
+    if (!Array.isArray(addr) || addr.length === 0) {
+      // 如果没有地址，写入一个虚拟地址便于测试
+      const demo = [{ id: 1, name: '测试用户', phone: '13800138000', address: '北京市朝阳区示例路1号' }]
+      try {
+        localStorage.setItem('mock_addresses', JSON.stringify(demo))
+      } catch (e) {
+        // ignore
+      }
+      addresses.value = demo
+      const first = demo[0]!
+      selectedAddressId.value = first.id
+      address.value = { name: first.name, phone: first.phone, address: first.address }
+    } else {
+
+      //end:if (Array.isArray(addr) && addr.length > 0) {
+
       addresses.value = addr
       selectedAddressId.value = addr[0].id
-      address.name = addr[0].name || ''
-      address.phone = addr[0].phone || ''
-      address.address = addr[0].address || ''
+      address.value = { name: addr[0].name || '', phone: addr[0].phone || '', address: addr[0].address || '' }
     }
   } catch (e) {
     // ignore
   }
 })
 
-function recalc() {
-  // 触发响应
-}
-
-function removeItem(id: number) {
-  const idx = items.findIndex((i) => i.id === id)
-  if (idx >= 0) items.splice(idx, 1)
-}
-
 function decreaseQuantity(item: any) {
-  if (item.qty <= 1) return
-  const idx = items.findIndex((i) => i.id === item.id)
-  if (idx >= 0) {
-    const o = items[idx]
-    if (o) o.qty = o.qty - 1
+  if (!item) return
+  if ((item.count ?? 1) <= 1) return
+  if (directItems.value && directItems.value.length > 0) {
+    const idx = directItems.value.findIndex((i: any) => i.skuId === item.skuId)
+    if (idx !== -1) {
+      directItems.value[idx].count = (directItems.value[idx].count ?? 1) - 1
+    }
+  } else {
+    cart.updateQuantity(item.skuId, (item.count ?? 1) - 1)
   }
 }
 
 function increaseQuantity(item: any) {
-  const idx = items.findIndex((i) => i.id === item.id)
-  if (idx >= 0) {
-    const o = items[idx]
-    if (o) o.qty = o.qty + 1
-  }
-}
-
-function clearCart() {
-  items.splice(0, items.length)
-  try {
-    localStorage.removeItem('mock_cart')
-  } catch (e) {
-    void e
+  if (!item) return
+  if (directItems.value && directItems.value.length > 0) {
+    const idx = directItems.value.findIndex((i: any) => i.skuId === item.skuId)
+    if (idx !== -1) {
+      directItems.value[idx].count = (directItems.value[idx].count ?? 1) + 1
+    }
+  } else {
+    cart.updateQuantity(item.skuId, (item.count ?? 1) + 1)
   }
 }
 
 function onAddressChange(id: number) {
   const found = addresses.value.find((a) => a.id === id)
   if (found) {
-    address.name = found.name
-    address.phone = found.phone
-    address.address = found.address
+    address.value = { name: found.name, phone: found.phone, address: found.address }
   }
 }
 
 async function createOrder() {
-  if (items.length === 0) {
-    ElMessage.warning('购物车为空，无法生成订单')
+  if (!items.value || items.value.length === 0) {
+    ElMessage.warning('请选择至少一件商品进行结算')
     return
   }
-  if (!address.name || !address.phone || !address.address) {
+  if (!address.value.name || !address.value.phone || !address.value.address) {
     ElMessage.warning('请填写完整收货信息')
     return
   }
@@ -240,13 +247,21 @@ async function createOrder() {
 
     const payload = {
       addressId: selectedAddressId.value,
-      items: items.map((it) => ({ skuId: it.id, count: it.qty })),
+      // 传递完整的 item 信息（回退字段 name/price/imgUrl/productId），保证 createOrder 能保存正确的数据
+      items: items.value.map((it: any) => ({
+        skuId: it.skuId,
+        count: it.count,
+        name: it.name,
+        price: it.price,
+        imgUrl: it.imgUrl,
+        productId: it.productId,
+      })),
       remark: '',
     }
 
     const created = await apiCreateOrder(payload)
     ElMessage.success('订单已通过 API 创建（mock），即将跳转到支付页')
-    try { localStorage.removeItem('mock_cart') } catch (e) { void e }
+    // 下单成功后：不在此处删除购物车项，支付成功后由支付页统一清理。
     router.push({ path: '/payment', query: { orderId: (created as any).orderId || (created as any).id } })
   } catch (e) {
     ElMessage.error('创建订单失败：' + (e as Error).message)
@@ -256,4 +271,41 @@ async function createOrder() {
 
 <style scoped>
 .order-settlement h3 { margin: 0 0 12px 0 }
+
+/* 使用与购物车页面一致的商品信息样式 */
+.product-info {
+  display: flex;
+  gap: 15px;
+  text-align: left;
+  align-items: center;
+}
+
+.product-img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #eee;
+  flex-shrink: 0;
+}
+
+.product-detail {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.product-name {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  line-height: 1.4;
+}
+
+.product-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
 </style>
