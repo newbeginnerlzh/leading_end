@@ -3,12 +3,7 @@
     <div class="profile-title">个人信息</div>
 
     <el-card>
-      <el-form
-        :model="userInfo"
-        :rules="rules"
-        ref="formRef"
-        label-width="120px"
-      >
+      <el-form :model="userInfo" :rules="rules" ref="formRef" label-width="120px">
         <el-row :gutter="20">
           <el-col :span="8">
             <!-- 头像上传 -->
@@ -62,11 +57,7 @@
         <el-form-item>
           <el-button type="primary" @click="handleSubmit">保存修改</el-button>
           <el-button type="warning" @click="showChangePwdDialog = true">修改密码</el-button>
-          <el-button
-            type="danger"
-            @click="handleCancelAccount"
-            style="margin-left: 10px"
-          >
+          <el-button type="danger" @click="handleCancelAccount" style="margin-left: 10px">
             注销账号
           </el-button>
         </el-form-item>
@@ -74,37 +65,16 @@
     </el-card>
 
     <!-- 修改密码弹窗 -->
-    <el-dialog
-      v-model="showChangePwdDialog"
-      title="修改密码"
-      width="400px"
-    >
-      <el-form
-        :model="pwdForm"
-        :rules="pwdRules"
-        ref="pwdFormRef"
-        label-width="100px"
-      >
+    <el-dialog v-model="showChangePwdDialog" title="修改密码" width="400px">
+      <el-form :model="pwdForm" :rules="pwdRules" ref="pwdFormRef" label-width="100px">
         <el-form-item label="原密码" prop="oldPassword">
-          <el-input
-            v-model="pwdForm.oldPassword"
-            type="password"
-            show-password
-          ></el-input>
+          <el-input v-model="pwdForm.oldPassword" type="password" show-password></el-input>
         </el-form-item>
         <el-form-item label="新密码" prop="newPassword">
-          <el-input
-            v-model="pwdForm.newPassword"
-            type="password"
-            show-password
-          ></el-input>
+          <el-input v-model="pwdForm.newPassword" type="password" show-password></el-input>
         </el-form-item>
         <el-form-item label="确认新密码" prop="confirmPassword">
-          <el-input
-            v-model="pwdForm.confirmPassword"
-            type="password"
-            show-password
-          ></el-input>
+          <el-input v-model="pwdForm.confirmPassword" type="password" show-password></el-input>
         </el-form-item>
       </el-form>
 
@@ -122,7 +92,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormItemRule } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getUserInfo, updateUserInfo, changePassword, cancelAccount } from '@/api/user'
-import type { UserInfo, UpdateUserInfoRequest, ChangePasswordRequest, CancelAccountRequest } from '@/api/model/userModel'
+import type {
+  UserInfo,
+  UpdateUserInfoRequest,
+  ChangePasswordRequest,
+  CancelAccountRequest,
+} from '@/api/model/userModel'
 
 // 表单引用
 const formRef = ref()
@@ -138,41 +113,39 @@ const showChangePwdDialog = ref(false)
 const pwdForm = reactive<ChangePasswordRequest & { confirmPassword: string }>({
   oldPassword: '',
   newPassword: '',
-  confirmPassword: ''
+  confirmPassword: '',
 })
 
 // 验证规则
 const rules = reactive({
-  gender: [
-    { required: true, message: '请选择性别', trigger: 'change' }
-  ],
-  birthday: [
-    { required: true, message: '请选择出生日期', trigger: 'change' }
-  ]
+  gender: [{ required: true, message: '请选择性别', trigger: 'change' }],
+  birthday: [{ required: true, message: '请选择出生日期', trigger: 'change' }],
 })
 
 // 密码验证规则
 const pwdRules = reactive({
-  oldPassword: [
-    { required: true, message: '请输入原密码', trigger: 'blur' }
-  ],
+  oldPassword: [{ required: true, message: '请输入原密码', trigger: 'blur' }],
   newPassword: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' },
   ],
   confirmPassword: [
     { required: true, message: '请确认新密码', trigger: 'blur' },
     {
-      validator: (rule: FormItemRule, value: string, callback: (error?: string | Error) => void) => {
+      validator: (
+        rule: FormItemRule,
+        value: string,
+        callback: (error?: string | Error) => void,
+      ) => {
         if (value !== pwdForm.newPassword) {
           callback(new Error('两次输入的密码不一致'))
         } else {
           callback()
         }
       },
-      trigger: 'blur'
-    }
-  ]
+      trigger: 'blur',
+    },
+  ],
 })
 
 // 获取用户信息
@@ -220,7 +193,7 @@ const handleSubmit = async () => {
     const updateData: UpdateUserInfoRequest = {
       avatar: userInfo.avatar,
       gender: userInfo.gender,
-      birthday: userInfo.birthday
+      birthday: userInfo.birthday,
     }
 
     // 调用更新接口
@@ -242,7 +215,7 @@ const handleChangePassword = async () => {
     // 调用修改密码接口
     await changePassword({
       oldPassword: pwdForm.oldPassword,
-      newPassword: pwdForm.newPassword
+      newPassword: pwdForm.newPassword,
     })
 
     ElMessage.success('密码修改成功，请重新登录')
@@ -259,20 +232,16 @@ const handleChangePassword = async () => {
 // 注销账号
 const handleCancelAccount = async () => {
   try {
-    const password = await ElMessageBox.prompt(
-      '请输入密码确认注销账号',
-      '注销账号',
-      {
-        inputType: 'password',
-        confirmButtonText: '确认注销',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
+    const password = await ElMessageBox.prompt('请输入密码确认注销账号', '注销账号', {
+      inputType: 'password',
+      confirmButtonText: '确认注销',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
 
     // 调用注销接口
     const cancelData: CancelAccountRequest = {
-      password: password.value
+      password: password.value,
     }
     await cancelAccount(cancelData)
 
