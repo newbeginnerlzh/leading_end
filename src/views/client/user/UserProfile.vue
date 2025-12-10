@@ -3,74 +3,120 @@
     <div class="profile-title">个人信息</div>
 
     <el-card>
-      <el-form
-        :model="userInfo"
-        :rules="rules"
-        ref="formRef"
-        label-width="120px"
-      >
+      <!-- 展示模式（默认） -->
+      <div v-if="!isEditing">
         <el-row :gutter="20">
           <el-col :span="8">
-            <!-- 头像上传 -->
-            <el-form-item label="用户头像">
-              <el-upload
-                class="avatar-uploader"
-                action="/api/upload/avatar"
-                :show-file-list="false"
-                :on-success="handleAvatarSuccess"
-                :before-upload="beforeAvatarUpload"
-              >
-                <img v-if="userInfo.avatar" :src="userInfo.avatar" class="avatar" />
-                <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
-              </el-upload>
-            </el-form-item>
+            <div class="avatar-display">
+              <img v-if="userInfo.avatar" :src="userInfo.avatar" class="avatar" />
+              <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
+            </div>
           </el-col>
 
           <el-col :span="16">
-            <el-form-item label="用户名">
-              <el-input v-model="userInfo.username"></el-input>
-            </el-form-item>
+            <el-form label-width="120px">
+              <el-form-item label="用户名">
+                <div>{{ userInfo.username || '-' }}</div>
+              </el-form-item>
 
-            <el-form-item label="手机号">
-              <el-input v-model="userInfo.phone"></el-input>
-            </el-form-item>
+              <el-form-item label="手机号">
+                <div>{{ userInfo.phone || '-' }}</div>
+              </el-form-item>
+
+              <el-form-item label="性别">
+                <div>{{ userInfo.gender || '-' }}</div>
+              </el-form-item>
+
+              <el-form-item label="出生日期">
+                <div>{{ userInfo.birthday || '-' }}</div>
+              </el-form-item>
+
+              <el-form-item label="邮箱">
+                <div>{{ userInfo.email || '-' }}</div>
+              </el-form-item>
+
+              <div style="margin-top:10px">
+                <el-button type="primary" @click="startEdit">编辑资料</el-button>
+                <el-button type="warning" @click="showChangePwdDialog = true" style="margin-left:10px">修改密码</el-button>
+                <el-button type="danger" @click="handleCancelAccount" style="margin-left: 10px">注销账号</el-button>
+              </div>
+            </el-form>
           </el-col>
         </el-row>
+      </div>
 
-        <el-form-item label="性别" prop="gender">
-          <el-radio-group v-model="userInfo.gender">
-            <el-radio label="男">男</el-radio>
-            <el-radio label="女">女</el-radio>
-            <el-radio label="保密">保密</el-radio>
-          </el-radio-group>
-        </el-form-item>
+      <!-- 编辑模式（原有表单，绑定到 editUserInfo） -->
+      <div v-else>
+        <el-form
+          :model="editUserInfo"
+          :rules="rules"
+          ref="formRef"
+          label-width="120px"
+        >
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <!-- 头像上传 -->
+              <el-form-item label="用户头像">
+                <el-upload
+                  class="avatar-uploader"
+                  action="/api/upload/avatar"
+                  :show-file-list="false"
+                  :on-success="handleAvatarSuccess"
+                  :before-upload="beforeAvatarUpload"
+                >
+                  <img v-if="editUserInfo.avatar" :src="editUserInfo.avatar" class="avatar" />
+                  <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
+                </el-upload>
+              </el-form-item>
+            </el-col>
 
-        <el-form-item label="出生日期" prop="birthday">
-          <el-date-picker
-            v-model="userInfo.birthday"
-            type="date"
-            placeholder="请选择出生日期"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
-          ></el-date-picker>
-        </el-form-item>
+            <el-col :span="16">
+              <el-form-item label="用户名">
+                <el-input v-model="editUserInfo.username"></el-input>
+              </el-form-item>
 
-        <el-form-item label="邮箱">
-          <el-input v-model="userInfo.email" placeholder="选填"></el-input>
-        </el-form-item>
+              <el-form-item label="手机号">
+                <el-input v-model="editUserInfo.phone"></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
 
-        <el-form-item>
-          <el-button type="primary" @click="handleSubmit">保存修改</el-button>
-          <el-button type="warning" @click="showChangePwdDialog = true">修改密码</el-button>
-          <el-button
-            type="danger"
-            @click="handleCancelAccount"
-            style="margin-left: 10px"
-          >
-            注销账号
-          </el-button>
-        </el-form-item>
-      </el-form>
+          <el-form-item label="性别" prop="gender">
+            <el-radio-group v-model="editUserInfo.gender">
+              <el-radio label="男">男</el-radio>
+              <el-radio label="女">女</el-radio>
+              <el-radio label="保密">保密</el-radio>
+            </el-radio-group>
+          </el-form-item>
+
+          <el-form-item label="出生日期" prop="birthday">
+            <el-date-picker
+              v-model="editUserInfo.birthday"
+              type="date"
+              placeholder="请选择出生日期"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+            ></el-date-picker>
+          </el-form-item>
+
+          <el-form-item label="邮箱">
+            <el-input v-model="editUserInfo.email" placeholder="选填"></el-input>
+          </el-form-item>
+
+          <el-form-item>
+            <el-button type="primary" @click="handleSubmit">保存修改</el-button>
+            <el-button @click="handleCancelEdit">取消</el-button>
+            <el-button type="warning" @click="showChangePwdDialog = true">修改密码</el-button>
+            <el-button
+              type="danger"
+              @click="handleCancelAccount"
+              style="margin-left: 10px"
+            >
+              注销账号
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </div>
     </el-card>
 
     <!-- 修改密码弹窗 -->
@@ -128,6 +174,12 @@ import type { UserInfo, UpdateUserInfoRequest, ChangePasswordRequest, CancelAcco
 const formRef = ref()
 const pwdFormRef = ref()
 
+// 编辑状态：默认只读，点击编辑后进入编辑表单
+const isEditing = ref(false)
+
+// 编辑用的副本，防止取消时修改到已展示的数据
+const editUserInfo = reactive<UserInfo>({})
+
 // 用户信息
 const userInfo = reactive<UserInfo>({})
 
@@ -179,7 +231,10 @@ const pwdRules = reactive({
 const fetchUserInfo = async () => {
   try {
     const res = await getUserInfo()
-    Object.assign(userInfo, res.data)
+    const data = res.data
+    // 主数据用于展示，编辑副本用于编辑操作
+    Object.assign(userInfo, data)
+    Object.assign(editUserInfo, data)
   } catch (error) {
     console.error('获取用户信息失败:', error)
   }
@@ -187,26 +242,114 @@ const fetchUserInfo = async () => {
 
 // 头像上传成功
 const handleAvatarSuccess = (response: { data: { url: string } }) => {
-  // 更新头像URL
-  userInfo.avatar = response.data.url
-  // 立即保存头像信息
-  updateUserInfo({ avatar: response.data.url })
+  const url = response.data.url
+  // 如果处于编辑模式，更新编辑副本；否则直接更新展示数据并保存
+  if (isEditing.value) {
+    editUserInfo.avatar = url
+  } else {
+    userInfo.avatar = url
+    // 立即保存头像信息
+    updateUserInfo({ avatar: url }).catch((e) => console.error(e))
+  }
   ElMessage.success('头像上传成功')
 }
 
 // 头像上传前校验
-const beforeAvatarUpload = (file: File) => {
-  const isImage = file.type === 'image/jpeg' || file.type === 'image/png'
-  const isLt2M = file.size / 1024 / 1024 < 2
+// 客户端图片压缩：保持清晰度同时减小体积
+const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.85): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    try {
+      // 如果文件已经很小则跳过压缩（例如小于100KB）
+      const sizeKB = file.size / 1024
+      if (sizeKB < 100) {
+        console.debug('[compressImage] skip compress, small file', file.name, `${Math.round(sizeKB)}KB`)
+        resolve(file)
+        return
+      }
 
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        const { width, height } = img
+
+        // 等比例缩放到 maxWidth/maxHeight
+        const ratio = Math.min(1, maxWidth / width, maxHeight / height)
+        const destWidth = Math.round(width * ratio)
+        const destHeight = Math.round(height * ratio)
+
+        // 如果尺寸没变化且原来就是 jpeg，则直接返回原文件
+        if (destWidth === width && destHeight === height && file.type === 'image/jpeg') {
+          resolve(file)
+          return
+        }
+
+        const canvas = document.createElement('canvas')
+        canvas.width = destWidth
+        canvas.height = destHeight
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          reject(new Error('无法获取 canvas 上下文'))
+          return
+        }
+
+        // 填充白底以避免 png 转 jpeg 失去透明背景导致黑色问题
+        ctx.fillStyle = '#fff'
+        ctx.fillRect(0, 0, destWidth, destHeight)
+        ctx.drawImage(img, 0, 0, destWidth, destHeight)
+
+        // 输出为 jpeg 以取得更好的压缩比，保持较高质量
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('图片压缩失败'))
+              return
+            }
+            const ext = '.jpg'
+            const baseName = file.name.replace(/\.[^.]+$/, '')
+            const newName = baseName + ext
+            const newFile = new File([blob], newName, { type: 'image/jpeg' })
+            console.debug('[compressImage] compressed', file.name, '->', newFile.name, `${Math.round(file.size/1024)}KB -> ${Math.round(newFile.size/1024)}KB`)
+            resolve(newFile)
+          },
+          'image/jpeg',
+          quality
+        )
+      }
+
+      img.onerror = (e) => {
+        URL.revokeObjectURL(url)
+        reject(e)
+      }
+
+      img.src = url
+    } catch (err) {
+      reject(err)
+    }
+  })
+}
+
+// 图片上传前处理：验证类型并做压缩处理，返回 Promise<File|boolean>
+const beforeAvatarUpload = async (file: File) => {
+  const isImage = file.type === 'image/jpeg' || file.type === 'image/png'
   if (!isImage) {
     ElMessage.error('上传头像只能是 JPG/PNG 格式!')
-  }
-  if (!isLt2M) {
-    ElMessage.error('上传头像大小不能超过 2MB!')
+    return false
   }
 
-  return isImage && isLt2M
+  try {
+    console.debug('[beforeAvatarUpload] original', file.name, `${Math.round(file.size/1024)}KB`)
+    const compressed = await compressImage(file, 1200, 1200, 0.85)
+    // 如果压缩返回的是原文件，直接返回原文件
+    console.debug('[beforeAvatarUpload] returning file', compressed.name, `${Math.round(compressed.size/1024)}KB`)
+    return compressed
+  } catch (err) {
+    console.error('图片压缩失败，回退到原文件上传', err)
+    ElMessage.error('图片处理失败，使用原文件上传')
+    // 出错时回退为原文件，避免阻塞上传流程
+    return file
+  }
 }
 
 // 保存用户信息
@@ -216,20 +359,41 @@ const handleSubmit = async () => {
   try {
     await formRef.value.validate()
 
-    // 构造更新参数
+    // 构造更新参数（使用编辑副本）
     const updateData: UpdateUserInfoRequest = {
-      avatar: userInfo.avatar,
-      gender: userInfo.gender,
-      birthday: userInfo.birthday
+      avatar: editUserInfo.avatar,
+      gender: editUserInfo.gender,
+      birthday: editUserInfo.birthday,
+      // 额外同步用户名/手机号/邮箱等可选字段
+      // 以防后端支持这些字段一起更新
+      ...(editUserInfo.username ? { username: editUserInfo.username } : {}),
+      ...(editUserInfo.phone ? { phone: editUserInfo.phone } : {}),
+      ...(editUserInfo.email ? { email: editUserInfo.email } : {})
     }
 
     // 调用更新接口
     await updateUserInfo(updateData)
 
+    // 保存成功后把编辑副本同步到展示数据并退出编辑模式
+    Object.assign(userInfo, editUserInfo)
+    isEditing.value = false
+
     ElMessage.success('信息修改成功')
   } catch (error) {
     console.error('修改信息失败:', error)
   }
+}
+
+// 开始编辑：把当前展示数据拷贝到编辑副本并切换模式
+const startEdit = () => {
+  Object.assign(editUserInfo, userInfo)
+  isEditing.value = true
+}
+
+// 取消编辑：恢复编辑副本为展示数据并退出编辑模式
+const handleCancelEdit = () => {
+  Object.assign(editUserInfo, userInfo)
+  isEditing.value = false
 }
 
 // 修改密码
@@ -340,9 +504,17 @@ onMounted(() => {
 }
 
 .avatar {
-  width: 150px;
-  height: 150px;
   display: block;
   object-fit: cover;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.avatar-display {
+  width: 100%;
+  height: 33vh; /* 占据竖向约三分之一 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>
