@@ -153,7 +153,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormItemRule } from 'element-plus'
 import { login, register, findPassword } from '@/api/user'
-import type { LoginRequest, RegisterRequest, FindPasswordRequest } from '@/api/model/userModel'
+import type { LoginRequest, RegisterRequest, FindPasswordRequest, AuthResponse } from '@/api/model/userModel'
 
 const route = useRoute()
 const router = useRouter()
@@ -316,9 +316,11 @@ const handleLogin = async () => {
     // 调用登录接口
     const res = await login(loginForm)
 
-    // 保存Token和用户信息
-    localStorage.setItem('token', res.data.data.token)
-    localStorage.setItem('userInfo', JSON.stringify(res.data.data.userInfo))
+    // 保存Token和用户信息（兼容后端返回 `{ data: {...} }` 或直接返回 `{ token, userInfo }`）
+    const r = res as unknown
+    const auth = (r && (r as { data?: AuthResponse }).data) ? (r as { data?: AuthResponse }).data as AuthResponse : r as AuthResponse
+    localStorage.setItem('token', auth.token)
+    localStorage.setItem('userInfo', JSON.stringify(auth.userInfo))
 
     ElMessage.success('登录成功')
 
@@ -340,9 +342,11 @@ const handleRegister = async () => {
     // 调用注册接口
     const res = await register(registerForm)
 
-    // 保存Token和用户信息
-    localStorage.setItem('token', res.data.data.token)
-    localStorage.setItem('userInfo', JSON.stringify(res.data.data.userInfo))
+    // 保存Token和用户信息（兼容后端返回 `{ data: {...} }` 或直接返回 `{ token, userInfo }`）
+    const r = res as unknown
+    const auth = (r && (r as { data?: AuthResponse }).data) ? (r as { data?: AuthResponse }).data as AuthResponse : r as AuthResponse
+    localStorage.setItem('token', auth.token)
+    localStorage.setItem('userInfo', JSON.stringify(auth.userInfo))
 
     ElMessage.success('注册成功')
 
