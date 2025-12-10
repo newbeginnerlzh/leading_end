@@ -23,11 +23,11 @@
 
           <el-col :span="16">
             <el-form-item label="用户名">
-              <el-input v-model="userInfo.username" disabled></el-input>
+              <el-input v-model="userInfo.username"></el-input>
             </el-form-item>
 
             <el-form-item label="手机号">
-              <el-input v-model="userInfo.phone" disabled></el-input>
+              <el-input v-model="userInfo.phone"></el-input>
             </el-form-item>
           </el-col>
         </el-row>
