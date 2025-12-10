@@ -25,7 +25,7 @@ const loadData = async () => {
   loading.value = true
   try {
     const id = Number(route.params.id) || 1001
-    const data = await getProductDetail(id)
+    const data = (await getProductDetail(id)).data
     product.value = data
     document.title = `${data.name} - 联想商城`
 
@@ -149,7 +149,8 @@ const handleBuyNow = () => {
     ]
     try {
       localStorage.setItem('direct_purchase', JSON.stringify(direct))
-    } catch (e) {
+    } catch (error) {
+      console.error('Failed to purchase:', error)
       // ignore
     }
     router.push('/checkout')

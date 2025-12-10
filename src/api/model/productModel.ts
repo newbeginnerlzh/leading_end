@@ -1,5 +1,11 @@
 // src/api/model/productModel.ts
 
+export interface BaseResponse<T> {
+  status: number
+  message: string
+  data: T // 这里才是真正的具体数据
+}
+
 // 商品列表用的精简信息，根据需要修改
 export interface ProductSimple {
   id: number
@@ -95,4 +101,31 @@ export interface ComputerParams {
 
   // --- 其他 ---
   software: string // 附带软件，例如 "正版Office家庭版"
+}
+
+// ==================== 1. 后端原始数据类型 (DTO) ====================
+export interface RawSkuSpec {
+  name: string
+  values: string[]
+}
+
+export interface RawSku {
+  id: number
+  specs: Record<string, string> // 后端返回的是扁平对象，键为英文如 "os", "cpu", "storage", "gpu", "ram"
+  price: number
+  stock: number
+  diffParams?: Partial<ComputerParams>
+}
+
+export interface RawProductDetail {
+  id: number
+  name: string
+  desc: string
+  priceRange: string
+  mainImages: string[]
+  detailHtml: string
+  // 外层的 specs (可选，如果前端不怎么用可以简化)
+  specs: RawSkuSpec[]
+  skus: RawSku[]
+  params: Partial<ComputerParams>
 }
