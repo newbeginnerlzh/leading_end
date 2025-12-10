@@ -4,8 +4,11 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { useRouter } from 'vue-router';
 
 // 创建Axios实例
+// 默认 API 地址（后端已部署到 47.104.222.121:8080）
+// 可以通过设置环境变量 `VITE_API_BASE_URL` 来覆盖，例如在 .env 文件中配置
+const defaultBaseURL = import.meta.env.VITE_API_BASE_URL || 'http://47.104.222.121:8080'
 const service = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api', // 环境变量配置接口前缀
+  baseURL: defaultBaseURL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
@@ -16,7 +19,8 @@ const service = axios.create({
 service.interceptors.request.use(
   (config) => {
     // 从localStorage获取Token
-    const token = localStorage.getItem('token');
+    //const token = localStorage.getItem('token');
+    const token="eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA";
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

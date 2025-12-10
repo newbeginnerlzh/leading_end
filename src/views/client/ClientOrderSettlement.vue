@@ -57,9 +57,22 @@
           <div v-else>
             <el-form :model="address" label-width="80px" size="small">
               <el-form-item label="选择地址">
-                <el-select v-model="selectedAddressId" placeholder="请选择收货地址" style="width:100%" @change="onAddressChange">
-                  <el-option v-for="a in addresses" :key="a.id" :label="a.name + ' - ' + a.phone + ' - ' + a.address" :value="a.id" />
-                </el-select>
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <div style="flex:1">
+                    <div v-if="selectedAddressId !== null">{{ address.name }} - {{ address.phone }} - {{ address.address }}</div>
+                    <div v-else style="color:#999">未选择地址</div>
+                  </div>
+                  <div style="min-width:160px">
+                    <div v-if="showAddressSelector">
+                      <el-select v-model="selectedAddressId" placeholder="请选择收货地址" style="width:100%" @change="(id) => { onAddressChange(id); showAddressSelector = false }">
+                        <el-option v-for="a in addresses" :key="a.id" :label="a.name + ' - ' + a.phone + ' - ' + a.address" :value="a.id" />
+                      </el-select>
+                    </div>
+                    <div v-else>
+                      <el-button type="text" @click="showAddressSelector = true">选择其他地址</el-button>
+                    </div>
+                  </div>
+                </div>
               </el-form-item>
               <el-form-item label="收件人">
                 <el-input v-model="address.name" placeholder="姓名" />
@@ -69,6 +82,11 @@
               </el-form-item>
               <el-form-item label="地址">
                 <el-input v-model="address.address" placeholder="详细地址" />
+              </el-form-item>
+              <el-form-item>
+                <div style="text-align:right">
+                  <el-button type="primary" size="small" @click="noop" v-if="isAddressModified">保存为新地址</el-button>
+                </div>
               </el-form-item>
             </el-form>
           </div>
@@ -140,6 +158,8 @@ const items = computed(() => {
 const addresses = ref<{ id: number; name: string; phone: string; address: string }[]>([])
 const selectedAddressId = ref<number | null>(null)
 const address = ref({ name: '', phone: '', address: '' })
+// 控制是否显示地址下拉选择（用户可以点击“选择其他地址”切换）
+const showAddressSelector = ref(false)
 
 const shipping = ref<number>(10)
 const payment = ref<string>('alipay')
@@ -170,32 +190,49 @@ onMounted(() => {
     const rawAddr = localStorage.getItem('mock_addresses')
     const addr = rawAddr ? JSON.parse(rawAddr) : []
 
-    //begin:if (Array.isArray(addr) && addr.length > 0) {
-
-    if (!Array.isArray(addr) || addr.length === 0) {
-      // 如果没有地址，写入一个虚拟地址便于测试
-      const demo = [{ id: 1, name: '测试用户', phone: '13800138000', address: '北京市朝阳区示例路1号' }]
+    // 清理历史遗留的 Demo 地址（如果存在），不再自动写入虚拟地址
+    let cleaned = Array.isArray(addr) ? (addr as any[]).filter(a => !(a && a.name === '测试用户' && a.phone === '13800138000')) : []
+    if (Array.isArray(addr) && cleaned.length !== (addr as any[]).length) {
       try {
-        localStorage.setItem('mock_addresses', JSON.stringify(demo))
+        localStorage.setItem('mock_addresses', JSON.stringify(cleaned))
       } catch (e) {
         // ignore
       }
-      addresses.value = demo
-      const first = demo[0]!
-      selectedAddressId.value = first.id
-      address.value = { name: first.name, phone: first.phone, address: first.address }
+    }
+
+    if (Array.isArray(cleaned) && cleaned.length > 0) {
+      addresses.value = cleaned
+      // 默认选中第一个地址以便用户能看到已保存的数据
+      selectedAddressId.value = cleaned[0].id
+      address.value = { name: cleaned[0].name || '', phone: cleaned[0].phone || '', address: cleaned[0].address || '' }
     } else {
-
-      //end:if (Array.isArray(addr) && addr.length > 0) {
-
-      addresses.value = addr
-      selectedAddressId.value = addr[0].id
-      address.value = { name: addr[0].name || '', phone: addr[0].phone || '', address: addr[0].address || '' }
+      addresses.value = []
+      selectedAddressId.value = null
+      address.value = { name: '', phone: '', address: '' }
     }
   } catch (e) {
     // ignore
   }
 })
+
+// 判断当前表单与选中地址是否不同（用于显示“保存为新地址”按钮）
+const isAddressModified = computed(() => {
+  if (!selectedAddressId.value) {
+    // 没有选中地址，但表单有值时视为修改
+    return !!(address.value.name || address.value.phone || address.value.address)
+  }
+  const found = addresses.value.find((a) => a.id === selectedAddressId.value)
+  if (!found) return !!(address.value.name || address.value.phone || address.value.address)
+  return (
+    (address.value.name || '') !== (found.name || '') ||
+    (address.value.phone || '') !== (found.phone || '') ||
+    (address.value.address || '') !== (found.address || '')
+  )
+})
+
+function noop() {
+  // 占位：按钮样式用，暂不实现保存逻辑
+}
 
 function decreaseQuantity(item: any) {
   if (!item) return
