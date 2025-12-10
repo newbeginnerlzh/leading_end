@@ -8,28 +8,38 @@ const cartStore = useCartStore()
 const router = useRouter()
 
 // 跳转到商品详情
-const goToDetail = (productId: number) => {
-  router.push(`/product/${productId}`)
+const goToDetail = (productId: number, skuId: number) => {
+  router.push({
+    path: `/product/${productId}`,
+    query: { skuId: String(skuId) },
+  })
 }
 
 // 删除商品
-const handleDelete = (skuId: number) => {
-  cartStore.removeFromCart(skuId)
-  ElMessage.success('商品已删除')
+const handleDelete = async (skuId: number) => {
+  try {
+    await cartStore.removeFromCart(skuId)
+    ElMessage.success('商品已删除')
+  } catch {
+    ElMessage.error('删除失败，请重试')
+  }
 }
 
 // 清空购物车
 const handleClear = async () => {
   try {
-    await ElMessageBox.confirm('确定要清空购物车吗？', '提示', {
+    await ElMessageBox.confirm('清空后无法恢复', '确定要清空购物车吗', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning',
     })
-    cartStore.clearCart()
+    await cartStore.clearCart()
     ElMessage.success('购物车已清空')
-  } catch {
-    // 取消操作
+  } catch (error: unknown) {
+    // 如果 error.message 存在，说明是 API 错误，而非用户取消
+    if (error && typeof error === 'object' && 'message' in error) {
+      ElMessage.error('清空失败，请重试')
+    }
   }
 }
 
@@ -43,28 +53,44 @@ const handleCheckout = () => {
 }
 
 // 数量变更逻辑
-const decreaseQuantity = (item: CartItem) => {
+const decreaseQuantity = async (item: CartItem) => {
   if (item.count <= 1) {
     ElMessage.warning('最低限购一件！')
     return
   }
-  cartStore.updateQuantity(item.skuId, item.count - 1)
+  try {
+    await cartStore.updateQuantity(item.skuId, item.count - 1)
+  } catch {
+    ElMessage.error('更新数量失败，请重试')
+  }
 }
 
-const increaseQuantity = (item: CartItem) => {
-  cartStore.updateQuantity(item.skuId, item.count + 1)
+const increaseQuantity = async (item: CartItem) => {
+  try {
+    await cartStore.updateQuantity(item.skuId, item.count + 1)
+  } catch {
+    ElMessage.error('更新数量失败，请重试')
+  }
 }
 
 // 全选/取消全选
-const handleSelectAllChange = (val: boolean | string | number) => {
-  cartStore.toggleSelectAll(val as boolean)
+const handleSelectAllChange = async (val: boolean | string | number) => {
+  try {
+    await cartStore.toggleSelectAll(val as boolean)
+  } catch {
+    ElMessage.error('操作失败，请重试')
+  }
+}
+// 格式化价格：整数时不显示小数
+const formatPrice = (price: number) => {
+  return Number.isInteger(price) ? price.toString() : price.toFixed(2)
 }
 </script>
 
 <template>
   <div class="cart-page">
     <div class="page-header">
-      <h2>我的购物车</h2>
+      <h2>购物车</h2>
       <span class="item-count">共 {{ cartStore.totalCount }} 件商品</span>
     </div>
 
@@ -86,9 +112,9 @@ const handleSelectAllChange = (val: boolean | string | number) => {
             </template>
           </el-table-column>
 
-          <el-table-column label="商品信息" min-width="400">
+          <el-table-column label="商品信息" min-width="400" align="center">
             <template #default="{ row }">
-              <div class="product-info" @click="goToDetail(row.productId)">
+              <div class="product-info" @click="goToDetail(row.productId, row.skuId)">
                 <img :src="row.imgUrl" class="product-img" alt="Product" />
                 <div class="product-detail">
                   <div class="product-name">{{ row.name }}</div>
@@ -126,7 +152,7 @@ const handleSelectAllChange = (val: boolean | string | number) => {
 
           <el-table-column label="小计" width="150" align="center">
             <template #default="{ row }">
-              <span class="subtotal">¥{{ (row.price * row.count).toFixed(2) }}</span>
+              <span class="subtotal">¥{{ formatPrice(row.price * row.count) }}</span>
             </template>
           </el-table-column>
 
@@ -160,8 +186,17 @@ const handleSelectAllChange = (val: boolean | string | number) => {
             </el-button>
           </div>
           <div class="footer-right">
-            <span class="total-label">已选 {{ cartStore.selectedTotalCount }} 件，总价：</span>
-            <span class="total-price">¥{{ cartStore.selectedTotalPrice.toFixed(2) }}</span>
+            <div class="price-info">
+              <div class="total-price-row">
+                总计：<span class="total-price"
+                  >￥{{ formatPrice(cartStore.selectedTotalPrice) }}</span
+                >
+              </div>
+              <div class="selected-count-row">
+                已选择<span class="count-highlight">{{ cartStore.selectedTotalCount }}</span
+                >件商品
+              </div>
+            </div>
             <el-button
               type="primary"
               size="large"
@@ -212,6 +247,8 @@ const handleSelectAllChange = (val: boolean | string | number) => {
   gap: 15px;
   cursor: pointer;
   transition: opacity 0.2s;
+  text-align: left; /* product-name靠左显示 */
+  align-items: center; /* 图片垂直居中 */
 }
 
 .product-info:hover {
@@ -219,11 +256,12 @@ const handleSelectAllChange = (val: boolean | string | number) => {
 }
 
 .product-img {
-  width: 80px;
-  height: 80px;
+  width: 120px;
+  height: 120px;
   object-fit: cover;
   border-radius: 4px;
   border: 1px solid #eee;
+  flex-shrink: 0; /* 防止图片被压缩 */
 }
 
 .product-detail {
@@ -234,7 +272,7 @@ const handleSelectAllChange = (val: boolean | string | number) => {
 }
 
 .product-name {
-  font-size: 14px;
+  font-size: 16px; /* 已经是16px */
   font-weight: 500;
   color: #333;
   line-height: 1.4;
@@ -247,15 +285,17 @@ const handleSelectAllChange = (val: boolean | string | number) => {
 }
 
 .spec-tag {
-  font-size: 12px;
+  font-size: 12px; /* 调大 2px */
 }
 
 .price {
+  font-size: 16px; /* 调大 2px */
   color: #333;
   font-weight: 500;
 }
 
 .subtotal {
+  font-size: 16px; /* 调大 2px */
   color: #e4393c;
   font-weight: bold;
 }
@@ -269,10 +309,39 @@ const handleSelectAllChange = (val: boolean | string | number) => {
   border-top: 1px solid #eee;
 }
 
+.footer-left {
+  display: flex;
+  align-items: center;
+  padding-left: 20px; /* 与表格选择框列左侧padding对齐 */
+}
+
 .footer-right {
   display: flex;
   align-items: center;
   gap: 20px;
+}
+
+.price-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* 右对齐 */
+}
+
+.total-price-row {
+  font-size: 16px;
+  color: #333;
+  font-weight: 500;
+}
+
+.selected-count-row {
+  font-size: 14px;
+  color: #666;
+}
+
+.count-highlight {
+  color: #e4393c; /* 数字着色为红色 */
+  font-weight: bold;
+  margin: 0 2px;
 }
 
 .total-label {
@@ -281,15 +350,17 @@ const handleSelectAllChange = (val: boolean | string | number) => {
 }
 
 .total-price {
-  font-size: 24px;
+  font-size: 20px; /* 调大 */
   color: #e4393c;
   font-weight: bold;
 }
 
 .checkout-btn {
-  width: 120px;
+  width: 150px; /* 增大宽度 */
+  height: 48px; /* 增加高度 */
   background-color: #e4393c;
   border-color: #e4393c;
+  font-size: 18px; /* 去结算按钮字体调大 */
 }
 
 .quantity-control {

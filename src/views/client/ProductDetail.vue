@@ -29,7 +29,20 @@ const loadData = async () => {
     product.value = data
     document.title = `${data.name} - 联想商城`
 
-    // 自动选中只有一个选项的规格
+    // 从 URL 查询参数中读取 skuId（从购物车跳转时会带上）
+    const urlSkuId = route.query.skuId ? Number(route.query.skuId) : null
+
+    if (urlSkuId) {
+      // 查找对应的 SKU
+      const targetSku = data.skus.find((sku) => sku.id === urlSkuId)
+      if (targetSku) {
+        // 自动填充该 SKU 的规格选择
+        selectedSpecs.value = { ...targetSku.specs }
+        return // 已完成预选，无需后续自动选择逻辑
+      }
+    }
+
+    // 自动选中只有一个选项的规格（原有逻辑）
     data.specs.forEach((spec) => {
       if (spec.values.length === 1 && spec.values[0]) {
         selectedSpecs.value[spec.name] = spec.values[0]
@@ -119,8 +132,26 @@ const handleBuyNow = () => {
     return
   }
   // 先加购，再跳转（或者直接带参数跳转，这里简化为先加购）
+  // 为了实现“立即购买”不影响购物车的行为：
+  // 不将商品加入购物车，而是将临时的购买数据写入 localStorage（key: direct_purchase），
+  // 结算页会优先读取该数据进行结算。
   if (product.value) {
-    cartStore.addToCart(product.value, currentSku.value.id, count.value)
+    const direct = [
+      {
+        skuId: currentSku.value.id,
+        productId: product.value.id,
+        name: product.value.name,
+        imgUrl: product.value.mainImages?.[0] || '',
+        specs: selectedSpecs.value,
+        price: currentSku.value.price,
+        count: count.value,
+      },
+    ]
+    try {
+      localStorage.setItem('direct_purchase', JSON.stringify(direct))
+    } catch (e) {
+      // ignore
+    }
     router.push('/checkout')
   }
 }
