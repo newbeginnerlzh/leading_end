@@ -49,6 +49,15 @@ service.interceptors.response.use(
   (error) => {
     console.error('响应错误:', error)
 
+    const backendData = error.response?.data as { status?: number | string; message?: unknown } | undefined
+    const backendStatus = backendData?.status
+    const backendMessage = typeof backendData?.message === 'string' ? backendData.message : undefined
+
+    // 手机号已注册（后端状态1003）等业务错误交给调用方自行处理，避免重复弹窗
+    if (backendStatus === 1003 || backendStatus === '1003') {
+      return Promise.reject(backendData)
+    }
+
     // Token过期处理
     if (error.response?.status === 401) {
       ElMessageBox.confirm('登录状态已过期，请重新登录', '提示', {
@@ -63,7 +72,8 @@ service.interceptors.response.use(
       })
     }
 
-    ElMessage.error(error.message || '服务器错误')
+    // 其他错误展示后端消息或兜底提示
+    ElMessage.error(backendMessage || error.message || '服务器错误')
     return Promise.reject(error)
   },
 )

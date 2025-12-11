@@ -153,7 +153,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormItemRule } from 'element-plus'
 import { login, register, findPassword } from '@/api/user'
-import type { LoginRequest, RegisterRequest, FindPasswordRequest, AuthResponse } from '@/api/model/userModel'
+import type { LoginRequest, RegisterRequest, FindPasswordRequest } from '@/api/model/userModel'
+import { useCartStore } from '@/stores/cart'
 
 const route = useRoute()
 const router = useRouter()
@@ -314,19 +315,33 @@ const handleLogin = async () => {
     await loginFormRef.value.validate()
 
     // 调用登录接口
-    const res = await login(loginForm)
+    const { data: payload } = await login(loginForm)
 
-    // 保存Token和用户信息（兼容后端返回 `{ data: {...} }` 或直接返回 `{ token, userInfo }`）
-    const r = res as unknown
-    const auth = (r && (r as { data?: AuthResponse }).data) ? (r as { data?: AuthResponse }).data as AuthResponse : r as AuthResponse
-    localStorage.setItem('token', auth.token)
-    localStorage.setItem('userInfo', JSON.stringify(auth.userInfo))
+    // 保存Token和用户信息
+    localStorage.setItem('token', payload.token)
+    localStorage.setItem('userInfo', JSON.stringify(payload.userInfo))
 
     ElMessage.success('登录成功')
-
+    // 设置购物车用户ID（优先 uid，回退到 id）
+    const cartStore = useCartStore()
+    const userInfoRecord = payload.userInfo as unknown as Record<string, unknown>
+    const uidNum = (userInfoRecord['uid'] ?? userInfoRecord['id']) as number | string | undefined
+    if (uidNum != null) {
+      const idArg = typeof uidNum === 'number' ? String(uidNum) : (uidNum as string)
+      ;(cartStore as unknown as { setUser: (id: string) => void }).setUser(idArg)
+    }
     // 跳转到首页
     router.push('/')
   } catch (error) {
+    // 如果是后端返回的 BaseResponse 错误对象，优雅展示错误信息
+    if (error && typeof error === 'object' && 'message' in error) {
+      const m = (error as { message?: unknown }).message
+      if (typeof m === 'string' && m.length > 0) {
+        ElMessage.error(m)
+        return
+      }
+    }
+
     console.error('登录失败:', error)
     // 登录失败不重复提示（接口拦截器已处理）
   }
@@ -339,20 +354,53 @@ const handleRegister = async () => {
   try {
     await registerFormRef.value.validate()
 
-    // 调用注册接口
-    const res = await register(registerForm)
+    // 构造严格的注册请求体以满足后端 OpenAPI 要求
+    const reqBody = {
+      phone: String(registerForm.phone),
+      password: String(registerForm.password),
+      code: String(registerForm.code),
+      agreeProtocol: Boolean(registerForm.agreeProtocol),
+    }
 
-    // 保存Token和用户信息（兼容后端返回 `{ data: {...} }` 或直接返回 `{ token, userInfo }`）
-    const r = res as unknown
-    const auth = (r && (r as { data?: AuthResponse }).data) ? (r as { data?: AuthResponse }).data as AuthResponse : r as AuthResponse
-    localStorage.setItem('token', auth.token)
-    localStorage.setItem('userInfo', JSON.stringify(auth.userInfo))
+    // 调用注册接口
+    const { data: payload } = await register(reqBody)
+
+    // 保存Token和用户信息
+    localStorage.setItem('token', payload.token)
+    localStorage.setItem('userInfo', JSON.stringify(payload.userInfo))
 
     ElMessage.success('注册成功')
+
+    // 设置购物车用户ID（优先 uid，回退到 id）
+    const cartStore = useCartStore()
+    const regUserInfoRecord = payload.userInfo as unknown as Record<string, unknown>
+    const regUidNum = (regUserInfoRecord['uid'] ?? regUserInfoRecord['id']) as number | string | undefined
+    if (regUidNum != null) {
+      const idArg = typeof regUidNum === 'number' ? String(regUidNum) : (regUidNum as string)
+      ;(cartStore as unknown as { setUser: (id: string) => void }).setUser(idArg)
+    }
 
     // 跳转到首页
     router.push('/')
   } catch (error) {
+    // 如果是后端返回的 BaseResponse 错误对象，区分手机号重复与其他错误
+    if (error && typeof error === 'object') {
+      const statusValue = 'status' in error ? (error as { status?: unknown }).status : undefined
+      const messageValue = 'message' in error ? (error as { message?: unknown }).message : undefined
+
+      if (statusValue === '1003') {
+        // 手机号已注册，提示但不当作错误
+        const msg = typeof messageValue === 'string' && messageValue.length > 0 ? messageValue : '该手机号已注册'
+        ElMessage.warning(msg)
+        return
+      }
+
+      if (typeof messageValue === 'string' && messageValue.length > 0) {
+        ElMessage.error(messageValue)
+        return
+      }
+    }
+
     console.error('注册失败:', error)
   }
 }
