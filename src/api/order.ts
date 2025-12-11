@@ -58,7 +58,9 @@ function genId() {
 }
 
 export function createOrder(data: {
-  addressId: number
+  addressId?: number
+  // 可选：直接传入临时地址对象（未保存到地址列表）
+  address?: { name?: string; phone?: string; address?: string; province?: string; city?: string; district?: string; detail?: string }
   couponId?: number
   remark?: string
   // items 可以包含更多字段（name/price/imgUrl/productId），用于 direct purchase 场景
@@ -100,7 +102,13 @@ export function createOrder(data: {
     }
 
     const id = genId()
-    const addr = readAddresses().find((a: any) => a.id === data.addressId) || {}
+    let addr: any = {}
+    if (typeof data.addressId !== 'undefined') {
+      addr = readAddresses().find((a: any) => a.id === data.addressId) || {}
+    } else if (data.address) {
+      // 使用临时地址对象
+      addr = { name: data.address.name || '', phone: data.address.phone || '', address: data.address.address || data.address.detail || '' }
+    }
     const order: Order = {
       id,
       status: 10, // 待支付

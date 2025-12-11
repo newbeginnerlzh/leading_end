@@ -3,8 +3,9 @@
   <div>
     <el-card>
       <div style="display:flex;align-items:center;justify-content:space-between;">
+        <el-button type="text" :icon="ArrowLeft" @click="router.back()">返回</el-button>
         <div style="display:flex;align-items:center;gap:8px;">
-          <el-button type="text" :icon="ArrowLeft" @click="router.back()">返回</el-button>
+          
           <h3 style="margin:0">订单详情</h3>
         </div>
         <div>
