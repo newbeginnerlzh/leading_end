@@ -23,6 +23,16 @@ export default defineConfig({
     }),
   ],
 
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://47.104.222.121:8080',
+        changeOrigin: true,
+        // rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
+
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
