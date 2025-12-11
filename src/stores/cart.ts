@@ -26,9 +26,9 @@ export const useCartStore = defineStore(
   'cart',
   () => {
     const items = ref<CartItem[]>([])
-    const userId = ref<string | null>(null)
+    const userId = ref<number | null>(null)
 
-    function setUser(id: string) {
+    function setUser(id: number) {
       userId.value = id
       mergeCloudCart()
     }
@@ -257,13 +257,8 @@ export const useCartStore = defineStore(
       // 3. 调用后端 API（仅在登录时）
       if (userId.value) {
         try {
-          // 获取所有购物车项的 id
-          const ids = oldItems.filter((item) => item.id).map((item) => item.id!)
-
-          if (ids.length > 0) {
-            const { deleteCartItem } = await import('@/api/cart')
-            await deleteCartItem(ids)
-          }
+          const { clearCart } = await import('@/api/cart')
+          await clearCart()
         } catch (error) {
           // 4. API 失败，恢复购物车
           console.error('清空购物车失败', error)
@@ -322,5 +317,5 @@ export const useCartStore = defineStore(
   },
   {
     persist: true, // 开启持久化
-  } as any,
+  },
 )
