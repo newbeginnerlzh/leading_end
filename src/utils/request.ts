@@ -1,75 +1,72 @@
 // src/utils/request.ts
-import axios, { type AxiosResponse } from 'axios';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { useRouter } from 'vue-router';
+import axios, { type AxiosResponse } from 'axios'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
 
 // 创建Axios实例
 // 默认 API 地址（后端已部署到 47.104.222.121:8080）
 // 可以通过设置环境变量 `VITE_API_BASE_URL` 来覆盖，例如在 .env 文件中配置
-const defaultBaseURL = import.meta.env.VITE_API_BASE_URL || 'http://47.104.222.121:8080'
+const defaultBaseURL = ''
 const service = axios.create({
   baseURL: defaultBaseURL,
   timeout: 10000,
   headers: {
-    'Content-Type': 'application/json'
-  }
-});
+    'Content-Type': 'application/json',
+  },
+})
 
 // 请求拦截器：添加Token
 service.interceptors.request.use(
   (config) => {
     // 从localStorage获取Token
-    const token = localStorage.getItem('token');
+    // const token = localStorage.getItem('token')
+    const token =
+      'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`
     }
-    return config;
+    return config
   },
   (error) => {
-    console.error('请求错误:', error);
-    return Promise.reject(error);
-  }
-);
+    console.error('请求错误:', error)
+    return Promise.reject(error)
+  },
+)
 
 // 响应拦截器：统一处理响应
 service.interceptors.response.use(
   (response: AxiosResponse) => {
-    const res = response.data;
+    const res = response.data
 
     // 业务状态码非200时，提示错误
     if (res.status !== 200) {
-      ElMessage.error(res.message || '请求失败');
-      return Promise.reject(res);
+      ElMessage.error(res.message || '请求失败')
+      return Promise.reject(res)
     }
 
-    return res;
+    return res
   },
   (error) => {
-    console.error('响应错误:', error);
+    console.error('响应错误:', error)
 
     // Token过期处理
     if (error.response?.status === 401) {
-      ElMessageBox.confirm(
-        '登录状态已过期，请重新登录',
-        '提示',
-        {
-          confirmButtonText: '重新登录',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }
-      ).then(() => {
+      ElMessageBox.confirm('登录状态已过期，请重新登录', '提示', {
+        confirmButtonText: '重新登录',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }).then(() => {
         // 清除Token并跳转到登录页
-        localStorage.removeItem('token');
-        const router = useRouter();
-        router.push('/login');
-      });
+        localStorage.removeItem('token')
+        const router = useRouter()
+        router.push('/login')
+      })
     }
 
-    ElMessage.error(error.message || '服务器错误');
-    return Promise.reject(error);
-  }
-);
-
+    ElMessage.error(error.message || '服务器错误')
+    return Promise.reject(error)
+  },
+)
 
 // 通用 GET 请求
 export function get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
