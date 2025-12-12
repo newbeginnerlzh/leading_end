@@ -255,6 +255,15 @@ onMounted(() => {
   if (type === 'findPassword') activeTab.value = 'findPassword'
 })
 
+const navigateAfterAuth = () => {
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : undefined
+  if (redirect) {
+    router.replace(redirect)
+    return
+  }
+  router.push('/')
+}
+
 // 获取注册验证码
 const getCode = () => {
   if (!registerForm.phone) {
@@ -330,8 +339,7 @@ const handleLogin = async () => {
       const idArg = typeof uidNum === 'number' ? String(uidNum) : (uidNum as string)
       ;(cartStore as unknown as { setUser: (id: string) => void }).setUser(idArg)
     }
-    // 跳转到首页
-    router.push('/')
+    navigateAfterAuth()
   } catch (error) {
     // 如果是后端返回的 BaseResponse 错误对象，优雅展示错误信息
     if (error && typeof error === 'object' && 'message' in error) {
@@ -380,8 +388,7 @@ const handleRegister = async () => {
       ;(cartStore as unknown as { setUser: (id: string) => void }).setUser(idArg)
     }
 
-    // 跳转到首页
-    router.push('/')
+    navigateAfterAuth()
   } catch (error) {
     // 如果是后端返回的 BaseResponse 错误对象，区分手机号重复与其他错误
     if (error && typeof error === 'object') {
