@@ -1,6 +1,6 @@
 // src/api/cart.ts
 // import { get, post } from '@/utils/request'
-import { get, post, put } from '@/utils/request'
+import { get, post, put, del } from '@/utils/request'
 import type { CartItem, BaseResponse } from './model/cartModel'
 
 /**
@@ -40,11 +40,10 @@ import type { CartItem, BaseResponse } from './model/cartModel'
  * ]
  */
 export async function getCartList() {
-  // 参考实现：
-  // return get<CartItem[]>('/cart/list')
-  // return Promise.resolve([] as CartItem[])
-  const response = await get<BaseResponse<CartItem[]>>(`/api/cart/list`)
-  return response.data
+  // 正常
+  const response = await get<BaseResponse<{ cartItems: CartItem[] }>>(`/api/cart/list`)
+  // console.log(response.status, response.message)
+  return response.data.cartItems || []
 }
 
 /**
@@ -80,9 +79,7 @@ export async function getCartList() {
  * }
  */
 export async function addToCart(data: { productId: number; skuId: number; count: number }) {
-  // 参考实现：
-  // return post<CartItem>('/cart/add', data)
-  // return Promise.resolve(null)
+  // 正常
   const response = await post<BaseResponse<CartItem>>('/api/cart/add', data)
   // console.log(response.status, response.message)
   return response.data
@@ -120,13 +117,11 @@ export async function addToCart(data: { productId: number; skuId: number; count:
  *   selected: true
  * }
  */
-export async function updateCartItem(data: { id: number; count?: number; checked?: boolean }) {
-  void data
-  // 参考实现：
-  // return post<CartItem>('/cart/update', data)
-  return Promise.resolve(null)
-  // const response = await put<BaseResponse<CartItem>>('/api/cart/update', data)
-  // return response.data
+export async function updateCartItem(data: { id: number; count?: number; selected?: boolean }) {
+  // 正常
+  const response = await put<BaseResponse<CartItem>>('/api/cart/update', data)
+  // console.log(response.status, response.message)
+  return response.data
 }
 
 /**
@@ -150,13 +145,11 @@ export async function updateCartItem(data: { id: number; count?: number; checked
  * }
  * 或直接返回成功状态码 200
  */
-export async function deleteCartItem(ids: number[]) {
-  void ids
-  // 参考实现：
-  // return post<void>('/cart/delete', { ids })
-  return Promise.resolve(null)
-  // const response = await delete (<number[]>('api/cart/delete', ids))
-  // return response.data
+export async function deleteCartItem(data: { ids: number[] }) {
+  // 正常
+  const response = await del<BaseResponse<number>>('api/cart/delete', data)
+  // console.log(response.status, response.message)
+  return response.data
 }
 
 /**
@@ -179,11 +172,19 @@ export async function deleteCartItem(ids: number[]) {
  * 返回: 8  // (2 + 1 + 5)
  */
 export async function getCartCount() {
-  // 参考实现：
-  // return get<number>('/cart/count')
-  return Promise.resolve(0)
-  // const response = await get<BaseResponse<number>>('api/cart/count')
-  // return response.data
+  // 正常
+  try {
+    const response = await get<BaseResponse<{ totalCount: number }>>('/api/cart/count')
+    // 假设成功时 code === 200，且 data 是数字
+    if (response.status === 200) {
+      return response.data.totalCount ?? 0
+    }
+    console.warn('获取购物车数量失败:', response.message)
+    return 0
+  } catch (error) {
+    console.error('请求购物车数量出错:', error)
+    return 0
+  }
 }
 
 /**
@@ -212,12 +213,10 @@ export async function getCartCount() {
  * 或直接返回成功状态码 200
  */
 export async function batchUpdateSelected(data: { ids: number[]; selected: boolean }) {
-  void data
-  // 参考实现：
-  // return post<void>('/cart/batch-select', data)
-  return Promise.resolve(null)
-  // const response = await get<BaseResponse<number>>('api/cart/batch-select', data)
-  // return response.data
+  // 正常
+  const response = await put<BaseResponse<number>>('api/cart/batch-select', data)
+  // console.log(response.status, response.message)
+  return response.data
 }
 
 /**
@@ -240,11 +239,13 @@ export async function batchUpdateSelected(data: { ids: number[]; selected: boole
  * 请求: deleteCartItemBySku(201)
  * 返回: 成功状态码 200
  */
-export function deleteCartItemBySku(skuId: number) {
-  void skuId
-  // 参考实现：
-  // return post<void>('/cart/delete-by-sku', { skuId })
-  // return Promise.resolve(null)
+export async function deleteCartItemBySku(skuId: number) {
+  // 正常
+  const response = await del<BaseResponse<void>>(`api/cart/delete-by-sku/${skuId}`)
+  // console.log(response.status, response.message)
+  if (response.status !== 200) {
+    throw new Error(response.message)
+  }
 }
 
 /**
@@ -268,11 +269,10 @@ export function deleteCartItemBySku(skuId: number) {
  * 返回: 成功状态码 200，data 为 null
  */
 export async function clearCart() {
-  // 参考实现：
-  // return post<void>('/cart/delete-by-sku', { skuId })
-  return Promise.resolve(null)
-  // const response = await get<BaseResponse<null>>('api/cart/clear')
-  //   if (response.data.code !== 200) {
-  //   throw new Error(response.data.message)
-  // }
+  // 正常
+  const response = await del<BaseResponse<null>>('api/cart/clear')
+  // console.log(response.status, response.message)
+  if (response.status !== 200) {
+    throw new Error(response.message)
+  }
 }

@@ -214,6 +214,23 @@ export function getCategoryList() {
 const adaptProductDetail = (rawData: RawProductDetail): ProductDetail => {
   if (!rawData) return {} as ProductDetail
 
+  // detailHtml 格式转换：去除转义字符和多余空格，恢复为正常 HTML
+  let detailHtml = rawData.detailHtml || ''
+
+  // 1. 替换 \" 为 " (处理转义的引号)
+  detailHtml = detailHtml.replace(/\\"/g, '"')
+
+  // 2. 去除 < img 前的空格（有些后端会多加空格）
+  detailHtml = detailHtml.replace(/<\s*img/g, '<img')
+
+  // 3. 去除所有多余的反斜杠
+  detailHtml = detailHtml.replace(/\\/g, '')
+
+  // 4. 格式化：确保标签之间有适当的换行
+  detailHtml = detailHtml
+    .replace(/>\s*</g, '>\n      <') // 在标签之间添加换行和缩进
+    .trim()
+
   // 英文键到中文键的映射（根据实际后端返回的键名）
   const keyMapping: Record<string, string> = {
     os: '操作系统',
@@ -230,7 +247,7 @@ const adaptProductDetail = (rawData: RawProductDetail): ProductDetail => {
     desc: rawData.desc,
     priceRange: rawData.priceRange,
     mainImages: rawData.mainImages,
-    detailHtml: rawData.detailHtml,
+    detailHtml: detailHtml,
     specs: rawData.specs, // 外层的 specs 结构不需要变
     params: rawData.params,
 

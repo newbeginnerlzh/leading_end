@@ -49,7 +49,9 @@
                 <el-dropdown-item command="center">个人中心</el-dropdown-item>
                 <el-dropdown-item command="orders">我的订单</el-dropdown-item>
                 <el-dropdown-item command="address">地址管理</el-dropdown-item>
-                <el-dropdown-item divided command="logout" style="color: red">退出登录</el-dropdown-item>
+                <el-dropdown-item divided command="logout" style="color: red"
+                  >退出登录</el-dropdown-item
+                >
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -101,10 +103,18 @@ const handleSearch = () => {
 
 const handleUserCommand = (command: string) => {
   switch (command) {
-    case 'center': router.push('/user/profile'); break
-    case 'orders': router.push('/user/orders'); break
-    case 'address': router.push('/user/address'); break
-    case 'logout': isLogin.value = false; break
+    case 'center':
+      router.push('/user/profile')
+      break
+    case 'orders':
+      router.push('/user/orders')
+      break
+    case 'address':
+      router.push('/user/address')
+      break
+    case 'logout':
+      isLogin.value = false
+      break
   }
 }
 </script>
@@ -120,33 +130,142 @@ const handleUserCommand = (command: string) => {
   top: 0;
   z-index: 999;
 }
-.content-wrapper { max-width: 1240px; margin: 0 auto; height: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
-.left-section { display: flex; align-items: center; gap: 40px; }
-.logo { font-size: 24px; font-weight: 900; color: #333; cursor: pointer; letter-spacing: 1px; }
-.nav-links { display: flex; gap: 25px; margin-right: 40px; }
-.nav-item { text-decoration: none; font-size: 16px; color: #666; font-weight: 500; transition: color 0.3s; }
-.nav-item:hover, .nav-item.router-link-active { color: #409eff; }
-.center-section { flex: 1; display: flex; justify-content: center; }
-.search-box { width: 100%; max-width: 500px; }
-:deep(.round-input .el-input__wrapper) { border-radius: 100px; padding-left: 20px; background-color: #f5f5f5; box-shadow: none !important; transition: all 0.3s; }
-:deep(.round-input .el-input__wrapper.is-focus) { background-color: #fff; box-shadow: 0 0 0 1px #409eff !important; }
-.search-icon { cursor: pointer; color: #666; }
-.search-icon:hover { color: #409eff; }
-.right-section { display: flex; align-items: center; min-width: 180px; justify-content: flex-end; gap: 20px; }
-.login-auth { font-weight: 900; font-size: 14px; color: #666; }
-.auth-btn { cursor: pointer; padding: 0 5px; transition: color 0.2s; }
-.auth-btn:hover { color: #409eff; }
-.divider { color: #ddd; margin: 0 5px; }
-.action-item { display: flex; align-items: center; height: 40px; line-height: 1; cursor: pointer; color: #666; transition: color 0.2s; margin-left: 20px; }
-.action-item:hover { color: #409eff; }
-.action-item .text { font-weight: 700; font-size: 14px; }
-.el-icon { vertical-align: middle; }
-.cart-badge { display: flex; align-items: center; }
-.user-profile { display: flex; align-items: center; gap: 4px; }
-.username { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-:deep(.el-badge__content) { height: 16px; line-height: 16px; padding: 0 5px; font-size: 10px; border: none; }
-:deep(.el-dropdown :focus-visible) { outline: none !important; }
-:deep(.el-tooltip__trigger:focus-visible) { outline: none !important; }
+.content-wrapper {
+  max-width: 1240px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+}
+.left-section {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+.logo {
+  font-size: 24px;
+  font-weight: 900;
+  color: #333;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+.nav-links {
+  display: flex;
+  gap: 25px;
+  margin-right: 40px;
+}
+.nav-item {
+  text-decoration: none;
+  font-size: 16px;
+  color: #666;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+.nav-item:hover,
+.nav-item.router-link-active {
+  color: #409eff;
+}
+.center-section {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+.search-box {
+  width: 100%;
+  max-width: 500px;
+}
+:deep(.round-input .el-input__wrapper) {
+  border-radius: 100px;
+  padding-left: 20px;
+  background-color: #f5f5f5;
+  box-shadow: none !important;
+  transition: all 0.3s;
+}
+:deep(.round-input .el-input__wrapper.is-focus) {
+  background-color: #fff;
+  box-shadow: 0 0 0 1px #409eff !important;
+}
+.search-icon {
+  cursor: pointer;
+  color: #666;
+}
+.search-icon:hover {
+  color: #409eff;
+}
+.right-section {
+  display: flex;
+  align-items: center;
+  min-width: 180px;
+  justify-content: flex-end;
+  gap: 20px;
+}
+.login-auth {
+  font-weight: 900;
+  font-size: 14px;
+  color: #666;
+}
+.auth-btn {
+  cursor: pointer;
+  padding: 0 5px;
+  transition: color 0.2s;
+}
+.auth-btn:hover {
+  color: #409eff;
+}
+.divider {
+  color: #ddd;
+  margin: 0 5px;
+}
+.action-item {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  line-height: 1;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.2s;
+  margin-left: 20px;
+}
+.action-item:hover {
+  color: #409eff;
+}
+.action-item .text {
+  font-weight: 700;
+  font-size: 14px;
+}
+.el-icon {
+  vertical-align: middle;
+}
+.cart-badge {
+  display: flex;
+  align-items: center;
+}
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.username {
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:deep(.el-badge__content) {
+  height: 16px;
+  line-height: 16px;
+  padding: 0 5px;
+  font-size: 10px;
+  border: none;
+}
+:deep(.el-dropdown :focus-visible) {
+  outline: none !important;
+}
+:deep(.el-tooltip__trigger:focus-visible) {
+  outline: none !important;
+}
 
 /* ✨ 新增：悬浮按钮样式 ✨ */
 .floating-service-btn {
