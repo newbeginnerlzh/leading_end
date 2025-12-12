@@ -212,9 +212,7 @@ const addressRules = reactive({
 const fetchAddressList = async () => {
   try {
     const res = await getAddressList()
-    const r = res as unknown
-    const data = (r && (r as { data?: AddressInfo[] }).data) ? (r as { data?: AddressInfo[] }).data as AddressInfo[] : r as AddressInfo[]
-    addressList.value = data
+    addressList.value = res.data || []
   } catch (error) {
     console.error('获取地址列表失败:', error)
     ElMessage.error('获取地址列表失败')
