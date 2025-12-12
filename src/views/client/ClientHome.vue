@@ -56,7 +56,7 @@ const fetchHomeData = () => {
       themeColor: 'linear-gradient(135deg, #ff4e50 0%, #f9d423 100%)', // 激情红橙
       products: [
         createProduct(
-          101,
+          1001,
           '小新 Pro 14 2024 AI超能本',
           4999,
           '限时秒杀',
