@@ -96,7 +96,7 @@ export const useCartStore = defineStore(
           if (cloudMap.has(localItem.skuId)) {
             // 相同 SKU，累加数量
             const cloudItem = cloudMap.get(localItem.skuId)!
-            cloudItem.count += localItem.count
+            localItem.count = cloudItem.count
 
             // 同步到后端
             await updateCartItem({
