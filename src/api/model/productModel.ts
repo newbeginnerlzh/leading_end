@@ -1,5 +1,11 @@
 // src/api/model/productModel.ts
 
+export interface BaseResponse<T> {
+  status: number
+  message: string
+  data: T // 这里才是真正的具体数据
+}
+
 // 商品列表用的精简信息，根据需要修改
 export interface ProductSimple {
   id: number
@@ -20,7 +26,9 @@ export interface ProductDetail {
   detailHtml: string // 详情页长图富文本
   specs: SpecItem[] // 规格项，用于前端渲染选择按钮
   skus: SkuItem[] // SKU 组合，包含具体价格和库存
-  params: ComputerParams // 详细参数，用于"规格参数"tab显示
+  // 这里放所有 SKU 共用的参数(如屏幕尺寸、接口)
+  // 使用 Partial 表示这里的字段也是可选的,因为可能会被 SKU 里的覆盖
+  params: Partial<ComputerParams> // 详细参数,用于"规格参数"tab显示
 }
 
 export interface SpecItem {
@@ -33,6 +41,10 @@ export interface SkuItem {
   specs: Record<string, string> // 规格组合，例如 { "CPU": "i7", "内存": "16G" }
   price: number // 该配置的具体价格
   stock: number // 库存
+
+  // 【关键修改】:每个 SKU 可以拥有自己独特的参数
+  // 当用户切换 SKU 时,前端需要用这里的参数覆盖 ProductDetail.params
+  diffParams?: Partial<ComputerParams>
 }
 
 // 电脑详细参数接口
@@ -89,4 +101,31 @@ export interface ComputerParams {
 
   // --- 其他 ---
   software: string // 附带软件，例如 "正版Office家庭版"
+}
+
+// ==================== 1. 后端原始数据类型 (DTO) ====================
+export interface RawSkuSpec {
+  name: string
+  values: string[]
+}
+
+export interface RawSku {
+  id: number
+  specs: Record<string, string> // 后端返回的是扁平对象，键为英文如 "os", "cpu", "storage", "gpu", "ram"
+  price: number
+  stock: number
+  diffParams?: Partial<ComputerParams>
+}
+
+export interface RawProductDetail {
+  id: number
+  name: string
+  desc: string
+  priceRange: string
+  mainImages: string[]
+  detailHtml: string
+  // 外层的 specs (可选，如果前端不怎么用可以简化)
+  specs: RawSkuSpec[]
+  skus: RawSku[]
+  params: Partial<ComputerParams>
 }

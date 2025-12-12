@@ -1,83 +1,112 @@
-// import { get, post, put } from '@/utils/request'
-import type { UserInfo, Address } from './model/userModel'
+// src/api/user.ts
+import request from '@/utils/request';
+import type {
+  RegisterRequest,
+  LoginRequest,
+  BaseResponse,
+  AuthResponse,
+  UserInfo,
+  FindPasswordRequest,
+  CancelAccountRequest,
+  ChangePasswordRequest,
+  UpdateUserInfoRequest,
+  AddressInfo,
+  AddressListResponse
+} from './model/userModel';
 
-/**
- * 用户登录
- * @param data { username, password }
- * @example
- * login({ username: "admin", password: "123" })
- */
-export function login(data: { username: string; password: string }) {
-  void data
-  // 参考实现：
-  // return post<{ token: string; userInfo: UserInfo }>('/user/login', data)
-  return Promise.resolve({} as { token: string; userInfo: UserInfo })
-}
+type ApiResult<T = unknown> = Promise<BaseResponse<T>>;
+const asApiResult = <T>(promise: unknown) => promise as unknown as ApiResult<T>;
 
 /**
  * 用户注册
- * @param data { username, password, phone, code }
+ * @param data 注册参数
  */
-export function register(data: {
-  username: string
-  password: string
-  phone: string
-  code?: string
-}) {
-  void data
-  // 参考实现：
-  // return post('/user/register', data)
-  return Promise.resolve(null)
+export function register(data: RegisterRequest) {
+  return asApiResult<AuthResponse>(request.post<BaseResponse<AuthResponse>>('/api/auth/register', data));
 }
 
 /**
- * 获取当前用户信息
- * 需要 Header 携带 Token
+ * 用户登录
+ * @param data 登录参数
+ */
+export function login(data: LoginRequest) {
+  return asApiResult<AuthResponse>(request.post<BaseResponse<AuthResponse>>('/api/auth/login', data));
+}
+
+/**
+ * 退出登录
+ */
+export function logout() {
+  return asApiResult(request.post<BaseResponse>('/api/user/signout'));
+}
+
+/**
+ * 获取用户信息
  */
 export function getUserInfo() {
-  // 参考实现：
-  // return get<UserInfo>('/user/info')
-  return Promise.resolve({} as UserInfo)
+  return asApiResult<UserInfo>(request.get<BaseResponse<UserInfo>>('/api/user/info'));
 }
 
 /**
- * 修改用户信息
- * @param data { nickname, avatar, ... }
+ * 更新用户信息
+ * @param data 用户信息
  */
-export function updateUserInfo(data: Partial<UserInfo>) {
-  void data
-  // 参考实现：
-  // return put('/user/info', data)
-  return Promise.resolve(null)
+export function updateUserInfo(data: UpdateUserInfoRequest) {
+  return asApiResult(request.put<BaseResponse>('/api/user/update', data));
 }
 
 /**
- * 获取收货地址列表
+ * 找回密码
+ * @param data 找回密码参数
+ */
+export function findPassword(data: FindPasswordRequest) {
+  return asApiResult(request.post<BaseResponse>('/api/auth/reset-password', data));
+}
+
+/**
+ * 注销账号
+ * @param data 注销参数
+ */
+export function cancelAccount(data: CancelAccountRequest) {
+  // DELETE with body
+  return asApiResult(request.delete<BaseResponse>('/api/auth/delete-account', { data }));
+}
+
+/**
+ * 修改密码
+ * @param data 修改密码参数
+ */
+export function changePassword(data: ChangePasswordRequest) {
+  return asApiResult(request.put<BaseResponse>('/api/user/change-password', data));
+}
+
+/**
+ * 获取地址列表
  */
 export function getAddressList() {
-  // 参考实现：
-  // return get<Address[]>('/user/address/list')
-  return Promise.resolve([] as Address[])
+  return asApiResult<AddressListResponse>(request.get<BaseResponse<AddressListResponse>>('/api/address/list'));
 }
 
 /**
- * 保存收货地址（新增或修改）
- * @param data Address 对象，有 id 则为修改，无 id 为新增
+ * 添加地址
+ * @param data 地址信息
  */
-export function saveAddress(data: Partial<Address>) {
-  void data
-  // 参考实现：
-  // return post('/user/address/save', data)
-  return Promise.resolve(null)
+export function addAddress(data: AddressInfo) {
+  return asApiResult(request.post<BaseResponse>('/api/address/add', data));
 }
 
 /**
- * 删除收货地址
- * @param id 地址ID
+ * 修改地址
+ * @param data 地址信息
  */
-export function deleteAddress(id: number) {
-  void id
-  // 参考实现：
-  // return post(`/user/address/delete/${id}`)
-  return Promise.resolve(null)
+export function updateAddress(data: AddressInfo) {
+  return asApiResult(request.put<BaseResponse>('/api/address/update', data));
+}
+
+/**
+ * 删除地址
+ * @param addressId 地址ID
+ */
+export function deleteAddress(addressId: number) {
+  return asApiResult(request.delete<BaseResponse>(`/api/address/delete/${addressId}`));
 }

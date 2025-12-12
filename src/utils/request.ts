@@ -1,47 +1,78 @@
-import axios, { type AxiosInstance, type AxiosResponse } from 'axios'
-import { ElMessage } from 'element-plus'
-import type { ApiResponse } from '@/api/model/common'
+// src/utils/request.ts
+import axios, { type AxiosResponse } from 'axios'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
 
-// 1. 创建 axios 实例
-const service: AxiosInstance = axios.create({
-  // 这里填后端的地址。如果后端还没好，先随便填，或者填 '/api' 配合代理
-  // 等后端好了，只需要改这一行
-  baseURL: 'http://localhost:8080/api',
-  timeout: 10000, // 请求超时时间
+// 创建Axios实例
+// 默认 API 地址（后端已部署到 47.104.222.121:8080）
+// 可以通过设置环境变量 `VITE_API_BASE_URL` 来覆盖，例如在 .env 文件中配置
+const defaultBaseURL = ''
+const service = axios.create({
+  baseURL: defaultBaseURL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 })
 
-// 2. 请求拦截器：每次发请求前自动执行
+// 请求拦截器：添加Token
 service.interceptors.request.use(
   (config) => {
-    // 从 LocalStorage 获取 Token
+    // 从localStorage获取Token
     const token = localStorage.getItem('token')
+    //const token ='eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
     if (token) {
-      // 如果有 token，把它加到请求头里发给后端
-      config.headers['Authorization'] = `Bearer ${token}`
+      config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
   (error) => {
+    console.error('请求错误:', error)
     return Promise.reject(error)
   },
 )
 
-// 3. 响应拦截器：后端回消息后自动执行
+// 响应拦截器：统一处理响应
 service.interceptors.response.use(
-  (response) => {
-    const res = response.data as ApiResponse
-    // 假设后端返回格式是：{ code: 200, data: {...}, msg: '成功' }
-    if (res.code !== 200) {
-      // 如果 code 不是 200，说明业务出错（比如密码错误），弹窗提示
-      ElMessage.error(res.msg || '系统错误')
-      return Promise.reject(new Error(res.msg || 'Error'))
-    } else {
-      return res.data as unknown as AxiosResponse
+  (response: AxiosResponse) => {
+    const res = response.data
+
+    // 业务状态码非200时，提示错误
+    if (res.status !== 200) {
+      ElMessage.error(res.message || '请求失败')
+      return Promise.reject(res)
     }
+
+    return res
   },
   (error) => {
-    // 处理网络错误（比如 404, 500）
-    ElMessage.error(error.message || '网络异常')
+    console.error('响应错误:', error)
+
+    const backendData = error.response?.data as { status?: number | string; message?: unknown } | undefined
+    const backendStatus = backendData?.status
+    const backendMessage = typeof backendData?.message === 'string' ? backendData.message : undefined
+
+    // 手机号已注册（后端状态1003）等业务错误交给调用方自行处理，避免重复弹窗
+    if (backendStatus === 1003 || backendStatus === '1003') {
+      return Promise.reject(backendData)
+    }
+
+    // Token过期处理
+    if (error.response?.status === 401) {
+      ElMessageBox.confirm('登录状态已过期，请重新登录', '提示', {
+        confirmButtonText: '重新登录',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }).then(() => {
+        // 清除Token并跳转到登录页
+        localStorage.removeItem('token')
+        const router = useRouter()
+        router.push('/login')
+      })
+    }
+
+    // 其他错误展示后端消息或兜底提示
+    ElMessage.error(backendMessage || error.message || '服务器错误')
     return Promise.reject(error)
   },
 )
@@ -62,8 +93,9 @@ export function put<T>(url: string, data?: Record<string, unknown> | unknown[]):
 }
 
 // 通用 DELETE 请求
-export function del<T>(url: string, params?: Record<string, unknown>): Promise<T> {
-  return service.delete(url, { params }) as Promise<T>
+// 支持 DELETE 请求带 body（data）
+export function del<T>(url: string, data?: Record<string, unknown>): Promise<T> {
+  return service.delete(url, { data }) as Promise<T>
 }
 
 export default service
