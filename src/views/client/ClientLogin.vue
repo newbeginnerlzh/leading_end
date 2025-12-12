@@ -153,8 +153,7 @@ import { login, register, findPassword } from '@/api/user'
 import type {
   LoginRequest,
   RegisterRequest,
-  FindPasswordRequest,
-  AuthResponse,
+  FindPasswordRequest
 } from '@/api/model/userModel'
 import { useCartStore } from '@/stores/cart'
 
@@ -195,7 +194,6 @@ const codeDisabled = ref(false)
 const codeText = ref('获取验证码')
 const findPwdCodeDisabled = ref(false)
 const findPwdCodeText = ref('获取验证码')
-const cartStore = useCartStore()
 
 // 登录验证规则
 const loginRules = reactive({
@@ -340,12 +338,16 @@ const handleLogin = async () => {
     localStorage.setItem('token', payload.token)
     localStorage.setItem('userInfo', JSON.stringify(payload.userInfo))
 
-    if (localStorage.userInfo.id !== undefined) {
-      cartStore.setUser(localStorage.userInfo.id)
-    }
+
     ElMessage.success('登录成功')
     // 设置购物车用户ID（优先 uid，回退到 id）
     const cartStore = useCartStore()
+
+    if (localStorage.userInfo.id !== undefined) {
+      cartStore.setUser(localStorage.userInfo.id)
+      console.log('cartStore userId set to:', localStorage.userInfo.id)
+    }
+
     const userInfoRecord = payload.userInfo as unknown as Record<string, unknown>
     const uidNum = (userInfoRecord['uid'] ?? userInfoRecord['id']) as number | string | undefined
     if (uidNum != null) {
