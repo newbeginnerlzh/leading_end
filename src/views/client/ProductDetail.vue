@@ -119,6 +119,10 @@ const selectSpec = (specName: string, specValue: string) => {
   }
 }
 
+const redirectToLogin = () => {
+  router.push({ path: '/login', query: { redirect: route.fullPath } })
+}
+
 // 价格显示
 const displayPrice = computed(() => {
   if (currentSku.value) {
@@ -136,6 +140,11 @@ const isSkuSelected = computed(() => {
 // --- 交互逻辑 ---
 
 const handleAddToCart = () => {
+  if (!cartStore.userId) {
+    ElMessage.warning('请先登录')
+    redirectToLogin()
+    return
+  }
   if (!product.value) return
   if (!isSkuSelected.value || !currentSku.value) {
     ElMessage.warning('请选择完整的商品规格')
@@ -149,6 +158,11 @@ const handleAddToCart = () => {
 }
 
 const handleBuyNow = () => {
+  if (!cartStore.userId) {
+    ElMessage.warning('请先登录')
+    redirectToLogin()
+    return
+  }
   if (!isSkuSelected.value || !currentSku.value) {
     ElMessage.warning('请选择完整的商品规格')
     return

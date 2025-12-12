@@ -110,10 +110,11 @@ const handleUserCommand = (command: string) => {
     case 'logout':
       // 清理本地用户信息和 Token，重置购物车用户，并跳回首页
       try {
+        localStorage.removeItem('cart')
         localStorage.removeItem('token')
         localStorage.removeItem('userInfo')
       } catch {
-        // ignore
+        console.warn('Failed to clear localStorage on logout')
       }
       // reset cart store userId
       try {
