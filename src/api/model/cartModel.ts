@@ -1,4 +1,11 @@
 // src/api/model/cartModel.ts
+
+export interface BaseResponse<T> {
+  status: number
+  message: string
+  data: T // 这里才是真正的具体数据
+}
+
 /**
  * 购物车条目（统一前后端定义）
  */

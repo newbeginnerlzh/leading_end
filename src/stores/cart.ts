@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { ProductDetail } from '@/api/model/productModel'
 import {
   getCartList,
@@ -7,6 +7,7 @@ import {
   updateCartItem,
   deleteCartItemBySku,
   batchUpdateSelected,
+  getCartCount,
 } from '@/api/cart'
 
 export interface CartItem {
@@ -26,7 +27,32 @@ export const useCartStore = defineStore(
   'cart',
   () => {
     const items = ref<CartItem[]>([])
+
+    // 修复持久化可能导致的数据格式错误
+    watch(
+      items,
+      (val) => {
+        if (!Array.isArray(val)) {
+          items.value = []
+        }
+      },
+      { immediate: true },
+    )
     const userId = ref<number | null>(null)
+    const serverCartCount = ref(0)
+
+    // 监听 userId 变化，自动更新 serverCartCount
+    watch(
+      userId,
+      async (newUserId) => {
+        if (newUserId) {
+          serverCartCount.value = await getCartCount()
+        } else {
+          serverCartCount.value = 0 // 退出登录时清零（可选）
+        }
+      },
+      { immediate: true },
+    ) // 立即执行一次
 
     function setUser(id: number) {
       userId.value = id
@@ -36,6 +62,9 @@ export const useCartStore = defineStore(
     async function mergeCloudCart() {
       try {
         // 1.保存本地购物车
+        if (!Array.isArray(items.value)) {
+          items.value = []
+        }
         const localCart = [...items.value]
 
         // 2. 获取云端购物车
@@ -94,10 +123,15 @@ export const useCartStore = defineStore(
 
     // Getters
     const totalCount = computed(() => {
+      if (userId.value) {
+        return serverCartCount.value
+      }
+      if (!Array.isArray(items.value)) return 0
       return items.value.reduce((sum, item) => sum + item.count, 0)
     })
 
     const totalPrice = computed(() => {
+      if (!Array.isArray(items.value)) return 0
       // 解决浮点数精度问题：先转整数计算，再转回小数
       const totalCent = items.value.reduce((sum, item) => {
         return sum + Math.round(item.price * 100) * item.count
@@ -107,11 +141,13 @@ export const useCartStore = defineStore(
 
     // 选中的总数量
     const selectedTotalCount = computed(() => {
+      if (!Array.isArray(items.value)) return 0
       return items.value.filter((item) => item.selected).reduce((sum, item) => sum + item.count, 0)
     })
 
     // 选中的总价
     const selectedTotalPrice = computed(() => {
+      if (!Array.isArray(items.value)) return 0
       const totalCent = items.value
         .filter((item) => item.selected)
         .reduce((sum, item) => {
@@ -122,11 +158,13 @@ export const useCartStore = defineStore(
 
     // 全选状态
     const isAllSelected = computed(() => {
+      if (!Array.isArray(items.value)) return false
       return items.value.length > 0 && items.value.every((item) => item.selected)
     })
 
     // 选中的购物车项
     const selectedItems = computed(() => {
+      if (!Array.isArray(items.value)) return []
       return items.value.filter((item) => item.selected)
     })
 
@@ -180,6 +218,7 @@ export const useCartStore = defineStore(
               item.stock = result.stock
             }
           }
+          serverCartCount.value = await getCartCount()
         } catch (error) {
           // 6. API 失败，回滚本地状态
           console.error('添加到购物车失败', error)
@@ -212,10 +251,41 @@ export const useCartStore = defineStore(
       if (userId.value) {
         try {
           await deleteCartItemBySku(skuId)
+          serverCartCount.value = await getCartCount()
         } catch (error) {
           // 4. API 失败，恢复删除的项
           console.error('删除购物车商品失败', error)
           items.value.splice(index, 0, removedItem)
+          throw error
+        }
+      }
+    }
+
+    async function batchRemoveFromCart() {
+      if (!Array.isArray(items.value)) return
+
+      // 找到所有被选中的项
+      const selectedIds = items.value
+        .filter((item) => item.selected && typeof item.id === 'number')
+        .map((item) => item.id as number)
+      if (selectedIds.length === 0) return
+
+      // 保存旧状态（用于回滚）
+      const oldItems = [...items.value]
+
+      // 乐观更新：先从本地移除选中的项
+      items.value = items.value.filter((item) => !item.selected)
+
+      // 调用后端 API（仅在登录时）
+      if (userId.value) {
+        try {
+          const { deleteCartItem } = await import('@/api/cart')
+          await deleteCartItem({ ids: selectedIds }) // 保证格式为 { ids: [...] }
+          serverCartCount.value = await getCartCount()
+        } catch (error) {
+          // API 失败，回滚本地状态
+          console.error('批量删除购物车项失败', error)
+          items.value = oldItems
           throw error
         }
       }
@@ -230,7 +300,6 @@ export const useCartStore = defineStore(
 
       // 2. 乐观更新：先立即更新本地
       item.count = count
-
       // 3. 调用后端 API（仅在登录且有 id 时）
       if (userId.value && item.id) {
         try {
@@ -238,10 +307,38 @@ export const useCartStore = defineStore(
             id: item.id,
             count: count,
           })
+          serverCartCount.value = await getCartCount()
         } catch (error) {
           // 4. API 失败，回滚数量
           console.error('更新数量失败', error)
           item.count = oldCount
+          throw error
+        }
+      }
+    }
+
+    async function updateSelection(skuId: number, selected: boolean) {
+      const item = items.value.find((item) => item.skuId === skuId)
+      if (!item) return
+
+      // 1. 保存旧状态（用于回滚）
+      const oldSelected = item.selected
+
+      // 2. 乐观更新：先立即更新本地
+      item.selected = selected
+
+      console.log(skuId, selected)
+      // 3. 调用后端 API（仅在登录且有 id 时）
+      if (userId.value && item.id) {
+        try {
+          await updateCartItem({
+            id: item.id,
+            selected: selected,
+          })
+        } catch (error) {
+          // 4. API 失败，回滚状态
+          console.error('更新选中状态失败', error)
+          item.selected = oldSelected
           throw error
         }
       }
@@ -257,13 +354,9 @@ export const useCartStore = defineStore(
       // 3. 调用后端 API（仅在登录时）
       if (userId.value) {
         try {
-          // 获取所有购物车项的 id
-          const ids = oldItems.filter((item) => item.id).map((item) => item.id!)
-
-          if (ids.length > 0) {
-            const { deleteCartItem } = await import('@/api/cart')
-            await deleteCartItem(ids)
-          }
+          const { clearCart } = await import('@/api/cart')
+          await clearCart()
+          serverCartCount.value = await getCartCount()
         } catch (error) {
           // 4. API 失败，恢复购物车
           console.error('清空购物车失败', error)
@@ -318,9 +411,11 @@ export const useCartStore = defineStore(
       setUser,
       userId,
       toggleSelectAll,
+      updateSelection,
+      batchRemoveFromCart,
     }
   },
   {
     persist: true, // 开启持久化
-  }
+  },
 )

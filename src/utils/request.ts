@@ -94,8 +94,9 @@ export function put<T>(url: string, data?: Record<string, unknown> | unknown[]):
 }
 
 // 通用 DELETE 请求
-export function del<T>(url: string, params?: Record<string, unknown>): Promise<T> {
-  return service.delete(url, { params }) as Promise<T>
+// 支持 DELETE 请求带 body（data）
+export function del<T>(url: string, data?: Record<string, unknown>): Promise<T> {
+  return service.delete(url, { data }) as Promise<T>
 }
 
 export default service
