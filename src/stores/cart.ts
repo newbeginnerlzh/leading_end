@@ -26,9 +26,9 @@ export const useCartStore = defineStore(
   'cart',
   () => {
     const items = ref<CartItem[]>([])
-    const userId = ref<string | null>(null)
+    const userId = ref<number | null>(null)
 
-    function setUser(id: string) {
+    function setUser(id: number) {
       userId.value = id
       mergeCloudCart()
     }
@@ -322,5 +322,5 @@ export const useCartStore = defineStore(
   },
   {
     persist: true, // 开启持久化
-  } as any,
+  }
 )

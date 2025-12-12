@@ -41,7 +41,7 @@
           <el-dropdown trigger="hover" @command="handleUserCommand" popper-class="custom-dropdown">
             <div class="action-item user-profile">
               <el-icon :size="25"><User /></el-icon>
-              <span class="text username">GeekUser</span>
+              <span class="text username">{{ username }}</span>
               <el-icon><ArrowDown /></el-icon>
             </div>
             <template #dropdown>
@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 // 引入图标，新增 Headset 图标
 import { Search, ShoppingCart, User, ArrowDown, Headset } from '@element-plus/icons-vue'
@@ -84,7 +84,8 @@ const router = useRouter()
 const cartStore = useCartStore()
 
 const keyword = ref('')
-const isLogin = ref(true)
+const isLogin = ref(false)
+const username = ref('')
 
 const goHome = () => router.push('/')
 const goLogin = (type: 'login' | 'register') => router.push({ path: '/login', query: { type } })
@@ -104,9 +105,51 @@ const handleUserCommand = (command: string) => {
     case 'center': router.push('/user/profile'); break
     case 'orders': router.push('/user/orders'); break
     case 'address': router.push('/user/address'); break
-    case 'logout': isLogin.value = false; break
+    case 'logout':
+      // 清理本地用户信息和 Token，重置购物车用户，并跳回首页
+      try {
+        localStorage.removeItem('token')
+        localStorage.removeItem('userInfo')
+      } catch {
+        // ignore
+      }
+      // reset cart store userId
+      try {
+        ;(cartStore as unknown as { userId: unknown }).userId = null
+      } catch {
+        // ignore
+      }
+      isLogin.value = false
+      username.value = ''
+      router.push('/')
+      break
   }
 }
+
+// 从 localStorage 初始化用户名，并监听 storage 事件以响应其他标签页的变动
+const updateUsernameFromStorage = () => {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    if (!raw) {
+      username.value = ''
+      return
+    }
+    const info = JSON.parse(raw) as Record<string, unknown>
+    username.value = (info.nickname as string) || (info.username as string) || ''
+    if (username.value) isLogin.value = true
+  } catch {
+    username.value = ''
+  }
+}
+
+onMounted(() => {
+  updateUsernameFromStorage()
+  window.addEventListener('storage', updateUsernameFromStorage)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('storage', updateUsernameFromStorage)
+})
 </script>
 
 <style scoped>
