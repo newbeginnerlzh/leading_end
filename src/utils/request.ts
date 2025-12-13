@@ -6,7 +6,7 @@ import { useRouter } from 'vue-router';
 // 创建Axios实例
 // 默认 API 地址（后端已部署到 47.104.222.121:8080）
 // 可以通过设置环境变量 `VITE_API_BASE_URL` 来覆盖，例如在 .env 文件中配置
-const defaultBaseURL = import.meta.env.VITE_API_BASE_URL || 'http://47.104.222.121:8080'
+const defaultBaseURL = ''
 const service = axios.create({
   baseURL: defaultBaseURL,
   timeout: 10000,
