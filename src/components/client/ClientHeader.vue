@@ -104,9 +104,15 @@ const handleSearch = () => {
 
 const handleUserCommand = (command: string) => {
   switch (command) {
-    case 'center': router.push('/user/profile'); break
-    case 'orders': router.push('/user/orders'); break
-    case 'address': router.push('/user/address'); break
+    case 'center':
+      router.push('/user/profile')
+      break
+    case 'orders':
+      router.push('/user/orders')
+      break
+    case 'address':
+      router.push('/user/address')
+      break
     case 'logout':
       // 清理本地用户信息和 Token，重置购物车用户，并跳回首页
       try {
@@ -118,7 +124,8 @@ const handleUserCommand = (command: string) => {
       }
       // reset cart store userId
       try {
-        ;(cartStore as unknown as { userId: unknown }).userId = null
+        cartStore.userId = null
+        console.log('Cart Store Updated:', cartStore.userId)
       } catch {
         // ignore
       }
