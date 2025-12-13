@@ -25,20 +25,30 @@ const handleDelete = async (skuId: number) => {
   }
 }
 
-// 清空购物车
+// 删除所选项
 const handleClear = async () => {
   try {
-    await ElMessageBox.confirm('清空后无法恢复', '确定要清空购物车吗', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
-    })
-    await cartStore.clearCart()
-    ElMessage.success('购物车已清空')
+    if (cartStore.isAllSelected == true) {
+      await ElMessageBox.confirm('清空后无法恢复', '确定要清空购物车吗', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+      await cartStore.clearCart()
+      ElMessage.success('购物车已清空')
+    } else {
+      await ElMessageBox.confirm('清空后无法恢复', '确定要删除这几项吗', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+      await cartStore.batchRemoveFromCart()
+      ElMessage.success('已删除所选项')
+    }
   } catch (error: unknown) {
     // 如果 error.message 存在，说明是 API 错误，而非用户取消
     if (error && typeof error === 'object' && 'message' in error) {
-      ElMessage.error('清空失败，请重试')
+      ElMessage.error('删除失败，请重试')
     }
   }
 }
@@ -70,6 +80,15 @@ const increaseQuantity = async (item: CartItem) => {
     await cartStore.updateQuantity(item.skuId, item.count + 1)
   } catch {
     ElMessage.error('更新数量失败，请重试')
+  }
+}
+
+// 单个商品选中状态变更
+const handleSelectionChange = async (skuId: number, val: boolean) => {
+  try {
+    await cartStore.updateSelection(skuId, val)
+  } catch {
+    ElMessage.error('更新选中状态失败，请重试')
   }
 }
 
@@ -108,7 +127,10 @@ const formatPrice = (price: number) => {
           <!-- 选择框 -->
           <el-table-column width="55" align="center">
             <template #default="{ row }">
-              <el-checkbox v-model="row.selected" />
+              <el-checkbox
+                :model-value="row.selected"
+                @change="(val: boolean) => handleSelectionChange(row.skuId, val as boolean)"
+              />
             </template>
           </el-table-column>
 
@@ -181,8 +203,14 @@ const formatPrice = (price: number) => {
             <el-checkbox :model-value="cartStore.isAllSelected" @change="handleSelectAllChange">
               全选
             </el-checkbox>
-            <el-button link type="danger" @click="handleClear" style="margin-left: 20px">
-              清空购物车
+            <el-button
+              link
+              type="danger"
+              @click="handleClear"
+              style="margin-left: 20px"
+              :disabled="cartStore.selectedTotalCount === 0"
+            >
+              删除所选项
             </el-button>
           </div>
           <div class="footer-right">

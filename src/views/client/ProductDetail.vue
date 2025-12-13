@@ -49,7 +49,8 @@ const loadData = async () => {
       }
     })
   } catch (error) {
-    console.error('Failed to load product:', error)
+    void error
+    // console.error('Failed to load product:', error)
     ElMessage.error('商品加载失败')
   } finally {
     loading.value = false
@@ -79,22 +80,47 @@ const currentSku = computed<SkuItem | undefined>(() => {
 
 // 检查某个规格值是否可选（简单处理：假设所有组合都存在，或者根据 SKU 列表反推）
 // 在复杂场景下，这里需要用邻接矩阵或图算法。这里简化为：只要该规格值存在于 SKU 列表中即可。
-const isSpecDisabled = (specName: string, specValue: string) => {
-  void specName
-  void specValue
-  // 暂时不禁用，因为 Mock 数据是完全组合。
-  // 如果需要严格校验，可以检查：在当前已选其他规格的基础上，选这个值是否有对应的 SKU。
-  return false
+const isSpecDisabled = (specName: string, specValue: string): boolean => {
+  // 如果该规格已经被选中且值相同，则不禁用（允许点击取消，但通常不取消）
+  if (selectedSpecs.value[specName] === specValue) {
+    return false
+  }
+
+  // 构造“假设选中该值”后的新规格组合
+  const hypotheticalSelection = {
+    ...selectedSpecs.value,
+    [specName]: specValue,
+  }
+
+  // 检查是否存在至少一个 SKU 能匹配这个假设组合
+  const hasMatchingSku = product.value?.skus.some((sku) => {
+    // 遍历所有已选规格（包括刚假设的）
+    for (const key in hypotheticalSelection) {
+      const selectedValue = hypotheticalSelection[key]
+      if (selectedValue === undefined) continue // 跳过未选规格
+      if (sku.specs[key] !== selectedValue) {
+        return false // 任一不匹配即排除
+      }
+    }
+    return true // 所有已选规格都匹配
+  })
+
+  // 如果没有匹配的 SKU，则禁用该选项
+  return !hasMatchingSku
 }
 
 // 选择规格
 const selectSpec = (specName: string, specValue: string) => {
   if (selectedSpecs.value[specName] === specValue) {
     // 取消选中
-    // delete selectedSpecs.value[specName] // 视需求而定，通常不允许取消必选项
+    delete selectedSpecs.value[specName] // 视需求而定，通常不允许取消必选项
   } else {
     selectedSpecs.value[specName] = specValue
   }
+}
+
+const redirectToLogin = () => {
+  router.push({ path: '/login', query: { redirect: route.fullPath } })
 }
 
 // 价格显示
@@ -114,6 +140,11 @@ const isSkuSelected = computed(() => {
 // --- 交互逻辑 ---
 
 const handleAddToCart = () => {
+  if (!cartStore.userId) {
+    ElMessage.warning('请先登录')
+    redirectToLogin()
+    return
+  }
   if (!product.value) return
   if (!isSkuSelected.value || !currentSku.value) {
     ElMessage.warning('请选择完整的商品规格')
@@ -122,11 +153,16 @@ const handleAddToCart = () => {
 
   cartStore.addToCart(product.value, currentSku.value.id, count.value)
 
-  ElMessage.success(`已加入购物车，当前购物车共 ${cartStore.totalCount} 件商品`)
+  ElMessage.success(`已加入购物车`)
   console.log('Cart Store Updated:', cartStore.items)
 }
 
 const handleBuyNow = () => {
+  if (!cartStore.userId) {
+    ElMessage.warning('请先登录')
+    redirectToLogin()
+    return
+  }
   if (!isSkuSelected.value || !currentSku.value) {
     ElMessage.warning('请选择完整的商品规格')
     return

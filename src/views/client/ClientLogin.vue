@@ -5,12 +5,7 @@
       <el-tabs v-model="activeTab" stretch>
         <!-- 登录标签页 -->
         <el-tab-pane label="用户登录" name="login">
-          <el-form
-            :model="loginForm"
-            :rules="loginRules"
-            ref="loginFormRef"
-            class="login-form"
-          >
+          <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" class="login-form">
             <el-form-item prop="account">
               <el-input
                 v-model="loginForm.account"
@@ -138,7 +133,9 @@
               ></el-input>
             </el-form-item>
             <el-form-item class="form-actions">
-              <el-button type="primary" @click="handleFindPassword" class="login-btn">重置密码</el-button>
+              <el-button type="primary" @click="handleFindPassword" class="login-btn"
+                >重置密码</el-button
+              >
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -153,7 +150,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormItemRule } from 'element-plus'
 import { login, register, findPassword } from '@/api/user'
-import type { LoginRequest, RegisterRequest, FindPasswordRequest, AuthResponse } from '@/api/model/userModel'
+import type {
+  LoginRequest,
+  RegisterRequest,
+  FindPasswordRequest
+} from '@/api/model/userModel'
+import { useCartStore } from '@/stores/cart'
 
 const route = useRoute()
 const router = useRouter()
@@ -169,7 +171,7 @@ const findPwdFormRef = ref()
 // 登录表单
 const loginForm = reactive<LoginRequest>({
   account: '',
-  password: ''
+  password: '',
 })
 
 // 注册表单
@@ -177,14 +179,14 @@ const registerForm = reactive<RegisterRequest>({
   phone: '',
   password: '',
   code: '',
-  agreeProtocol: false
+  agreeProtocol: false,
 })
 
 // 找回密码表单
 const findPwdForm = reactive<FindPasswordRequest>({
   phone: '',
   code: '',
-  newPassword: ''
+  newPassword: '',
 })
 
 // 验证码倒计时
@@ -197,53 +199,60 @@ const findPwdCodeText = ref('获取验证码')
 const loginRules = reactive({
   account: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' },
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
-  ]
+    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' },
+  ],
 })
 
 // 注册验证规则
 const registerRules = reactive({
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' },
   ],
   code: [
     { required: true, message: '请输入验证码', trigger: 'blur' },
-    { len: 6, message: '验证码长度为6位', trigger: 'blur' }
+    { len: 6, message: '验证码长度为6位', trigger: 'blur' },
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' },
   ],
   agreeProtocol: [
-    { validator: (_rule: FormItemRule, value: boolean, callback: (error?: string | Error) => void) => {
-      if (value) {
-        callback()
-      } else {
-        callback(new Error('请同意用户协议'))
-      }
-    }, trigger: 'change' }
-  ]
+    {
+      validator: (
+        _rule: FormItemRule,
+        value: boolean,
+        callback: (error?: string | Error) => void,
+      ) => {
+        if (value) {
+          callback()
+        } else {
+          callback(new Error('请同意用户协议'))
+        }
+      },
+      trigger: 'change',
+    },
+  ],
 })
 
 // 找回密码验证规则
 const findPwdRules = reactive({
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' },
   ],
   code: [
     { required: true, message: '请输入验证码', trigger: 'blur' },
-    { len: 6, message: '验证码长度为6位', trigger: 'blur' }
+    { len: 6, message: '验证码长度为6位', trigger: 'blur' },
   ],
   newPassword: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
-  ]
+    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' },
+  ],
 })
 
 // 初始化
@@ -253,6 +262,15 @@ onMounted(() => {
   if (type === 'register') activeTab.value = 'register'
   if (type === 'findPassword') activeTab.value = 'findPassword'
 })
+
+const navigateAfterAuth = () => {
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : undefined
+  if (redirect) {
+    router.replace(redirect)
+    return
+  }
+  router.push('/')
+}
 
 // 获取注册验证码
 const getCode = () => {
@@ -314,19 +332,39 @@ const handleLogin = async () => {
     await loginFormRef.value.validate()
 
     // 调用登录接口
-    const res = await login(loginForm)
+    const { data: payload } = await login(loginForm)
 
-    // 保存Token和用户信息（兼容后端返回 `{ data: {...} }` 或直接返回 `{ token, userInfo }`）
-    const r = res as unknown
-    const auth = (r && (r as { data?: AuthResponse }).data) ? (r as { data?: AuthResponse }).data as AuthResponse : r as AuthResponse
-    localStorage.setItem('token', auth.token)
-    localStorage.setItem('userInfo', JSON.stringify(auth.userInfo))
+    // 保存Token和用户信息
+    localStorage.setItem('token', payload.token)
+    localStorage.setItem('userInfo', JSON.stringify(payload.userInfo))
+
 
     ElMessage.success('登录成功')
+    // 设置购物车用户ID（优先 uid，回退到 id）
+    const cartStore = useCartStore()
 
-    // 跳转到首页
-    router.push('/')
+    if (localStorage.userInfo.id !== undefined) {
+      cartStore.setUser(localStorage.userInfo.id)
+      console.log('cartStore userId set to:', localStorage.userInfo.id)
+    }
+
+    const userInfoRecord = payload.userInfo as unknown as Record<string, unknown>
+    const uidNum = (userInfoRecord['uid'] ?? userInfoRecord['id']) as number | string | undefined
+    if (uidNum != null) {
+      const idArg = typeof uidNum === 'number' ? String(uidNum) : (uidNum as string)
+      ;(cartStore as unknown as { setUser: (id: string) => void }).setUser(idArg)
+    }
+    navigateAfterAuth()
   } catch (error) {
+    // 如果是后端返回的 BaseResponse 错误对象，优雅展示错误信息
+    if (error && typeof error === 'object' && 'message' in error) {
+      const m = (error as { message?: unknown }).message
+      if (typeof m === 'string' && m.length > 0) {
+        ElMessage.error(m)
+        return
+      }
+    }
+
     console.error('登录失败:', error)
     // 登录失败不重复提示（接口拦截器已处理）
   }
@@ -339,20 +377,42 @@ const handleRegister = async () => {
   try {
     await registerFormRef.value.validate()
 
+    // 构造严格的注册请求体以满足后端 OpenAPI 要求
+    const reqBody = {
+      phone: String(registerForm.phone),
+      password: String(registerForm.password),
+      code: String(registerForm.code),
+      agreeProtocol: Boolean(registerForm.agreeProtocol),
+    }
+
     // 调用注册接口
-    const res = await register(registerForm)
+    await register(reqBody)
 
-    // 保存Token和用户信息（兼容后端返回 `{ data: {...} }` 或直接返回 `{ token, userInfo }`）
-    const r = res as unknown
-    const auth = (r && (r as { data?: AuthResponse }).data) ? (r as { data?: AuthResponse }).data as AuthResponse : r as AuthResponse
-    localStorage.setItem('token', auth.token)
-    localStorage.setItem('userInfo', JSON.stringify(auth.userInfo))
+    ElMessage.success('注册成功，请使用账号登录')
 
-    ElMessage.success('注册成功')
-
-    // 跳转到首页
-    router.push('/')
+    // 完成注册后引导用户回到登录页
+    activeTab.value = 'login'
+    loginForm.account = String(registerForm.phone)
+    loginForm.password = ''
   } catch (error) {
+    // 如果是后端返回的 BaseResponse 错误对象，区分手机号重复与其他错误
+    if (error && typeof error === 'object') {
+      const statusValue = 'status' in error ? (error as { status?: unknown }).status : undefined
+      const messageValue = 'message' in error ? (error as { message?: unknown }).message : undefined
+
+      if (statusValue === '1003') {
+        // 手机号已注册，提示但不当作错误
+        const msg = typeof messageValue === 'string' && messageValue.length > 0 ? messageValue : '该手机号已注册'
+        ElMessage.warning(msg)
+        return
+      }
+
+      if (typeof messageValue === 'string' && messageValue.length > 0) {
+        ElMessage.error(messageValue)
+        return
+      }
+    }
+
     console.error('注册失败:', error)
   }
 }
