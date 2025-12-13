@@ -386,24 +386,14 @@ const handleRegister = async () => {
     }
 
     // 调用注册接口
-    const { data: payload } = await register(reqBody)
+    await register(reqBody)
 
-    // 保存Token和用户信息
-    localStorage.setItem('token', payload.token)
-    localStorage.setItem('userInfo', JSON.stringify(payload.userInfo))
+    ElMessage.success('注册成功，请使用账号登录')
 
-    ElMessage.success('注册成功')
-
-    // 设置购物车用户ID（优先 uid，回退到 id）
-    const cartStore = useCartStore()
-    const regUserInfoRecord = payload.userInfo as unknown as Record<string, unknown>
-    const regUidNum = (regUserInfoRecord['uid'] ?? regUserInfoRecord['id']) as number | string | undefined
-    if (regUidNum != null) {
-      const idArg = typeof regUidNum === 'number' ? String(regUidNum) : (regUidNum as string)
-      ;(cartStore as unknown as { setUser: (id: string) => void }).setUser(idArg)
-    }
-
-    navigateAfterAuth()
+    // 完成注册后引导用户回到登录页
+    activeTab.value = 'login'
+    loginForm.account = String(registerForm.phone)
+    loginForm.password = ''
   } catch (error) {
     // 如果是后端返回的 BaseResponse 错误对象，区分手机号重复与其他错误
     if (error && typeof error === 'object') {
