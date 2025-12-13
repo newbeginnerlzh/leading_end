@@ -2,7 +2,6 @@
 import { ref, onMounted } from 'vue'
 import { ArrowRight } from '@element-plus/icons-vue'
 import type { ProductSimple } from '@/api/model/productModel'
-import { useCartStore } from '@/stores/cart'
 
 // --- 1. 顶部轮播图数据 ---
 const bannerList = [
@@ -268,11 +267,8 @@ const fetchHomeData = () => {
   ]
 }
 
-const cartStore = useCartStore()
-
 onMounted(() => {
   fetchHomeData()
-  cartStore.setUser(1)
 })
 
 const handleCategoryClick = (name: string) => {
