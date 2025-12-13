@@ -61,7 +61,7 @@
               </div>
             </div>
 
-            <!-- 地址编辑弹窗（外观与 UserAddress.vue 一致） -->
+            <!-- 地址编辑弹窗 -->
             <el-dialog v-model="modalVisible" title="修改地址" width="600px" :close-on-click-modal="false" :modal-append-to-body="true" :destroy-on-close="false" center>
               <el-form 
               :model="modalAddressForm" 
@@ -109,10 +109,14 @@
 
           <el-form label-width="90px" size="small">
             <el-form-item label="运费">
-              <el-select v-model="shipping" placeholder="请选择" style="width:100%">
-                <el-option label="快递 10.00 元" :value="10" />
-                <el-option label="包邮（满 199）" :value="0" />
-              </el-select>
+              <div style="color:#333">
+                <template v-if="shipping === 0">
+                  包邮（订单满 ¥199 已免运费）
+                </template>
+                <template v-else>
+                  运费 ¥{{ shipping.toFixed(2) }}（满 ¥199 包邮）
+                </template>
+              </div>
             </el-form-item>
 
             <el-form-item label="支付方式">
@@ -480,13 +484,25 @@ async function openModal() {
   }
 }
 
-const shipping = ref<number>(10)
+// 订单总额：支持直接购买（directItems）或购物车结算
+const total = computed(() => {
+  try {
+    if (directItems.value && Array.isArray(directItems.value) && directItems.value.length > 0) {
+      return directItems.value.reduce((sum: number, it: any) => sum + ((it.price || 0) * (it.count || 1)), 0)
+    }
+  } catch (e) {
+    // ignore and fallback
+  }
+  return cart.selectedTotalPrice
+})
+
+// 运费：满 ¥199 包邮，否则固定 ¥10
+const shipping = computed(() => (total.value >= 199 ? 0 : 10))
 const payment = ref<string>('alipay')
 
 // 不在结算页展示订单详情；创建后跳转到支付页
 const router = useRouter()
 
-const total = computed(() => cart.selectedTotalPrice)
 const selectedCount = computed(() => cart.selectedTotalCount)
 
 onMounted(async () => {
@@ -616,6 +632,21 @@ async function createOrder() {
   }
 
     try {
+    // 如果选中了已保存地址但 address 显示为空或不完整，尝试从原始地址列表中补全（防止用户未点击“确定”导致信息未应用）
+    if (selectedAddressId.value && (!(address.value.name && address.value.phone && address.value.address))) {
+      try {
+        if (!rawAddresses.value || rawAddresses.value.length === 0) {
+          await fetchAndMapAddresses()
+        }
+        const foundRaw = rawAddresses.value.find((a) => (a.id ?? a.addressId) === selectedAddressId.value)
+        if (foundRaw) {
+          const addrStr = foundRaw.detail ? `${foundRaw.province || ''} ${foundRaw.city || ''} ${foundRaw.district || ''} ${foundRaw.detail || ''}`.trim() : (foundRaw.address || '')
+          address.value = { name: foundRaw.name || '', phone: foundRaw.phone || '', address: addrStr }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
     // 支持未保存的临时地址：如果没有 selectedAddressId，就把当前 address 表单作为临时地址传入 API
     if (!selectedAddressId.value && !(address.value.name && address.value.phone && address.value.address)) {
       ElMessage.warning('请填写完整收货信息或选择已保存地址')

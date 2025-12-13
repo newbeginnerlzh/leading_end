@@ -26,8 +26,9 @@
 
         <div style="margin-top:12px">应付金额：<strong>¥{{ (order.totalPrice || 0).toFixed(2) }}</strong></div>
 
-        <div style="margin-top:12px">
+        <div style="margin-top:12px; display: flex; gap: 10px;">
           <el-button type="primary" @click="pay" :disabled="order.status !== 10 || remainingSeconds <= 0">立即支付（模拟）</el-button>
+          <el-button @click="cancelAndAbandon" :disabled="order.status !== 10 || remainingSeconds <= 0">放弃支付</el-button>
         </div>
       </div>
     </el-card>
@@ -37,9 +38,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { getOrderDetail, payOrder } from '@/api/order'
-import { cancelOrder } from '@/api/order'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getOrderDetail, payOrder, cancelOrder } from '@/api/order'
+import { useCartStore } from '@/stores/cart'
 
 const route = useRoute()
 const router = useRouter()
@@ -67,6 +68,30 @@ async function load() {
   }
   const res = await getOrderDetail(id)
   order.value = res && Object.keys(res).length ? res : null
+  // 如果订单已处于已支付状态，显示短暂提示并返回商城首页（防止用户通过浏览器返回看到已完成的支付页）
+  if (order.value && order.value.status === 20) {
+    try {
+      ElMessage.success({ message: '此订单已支付，已跳转到商城首页', duration: 2000 })
+    } catch (e) {
+      // ignore
+    }
+    router.replace({ path: '/' })
+    loading.value = false
+    return
+  }
+  
+  // 如果订单已被取消（状态为0），则直接跳转到首页
+  if (order.value && order.value.status === 0) {
+    try {
+      ElMessage.info({ message: '订单已取消，已跳转到商城首页', duration: 2000 })
+    } catch (e) {
+      // ignore
+    }
+    router.replace({ path: '/' })
+    loading.value = false
+    return
+  }
+  
   // 计算倒计时：10 分钟从订单创建时间开始
   if (order.value && order.value.createTime) {
     const createTs = new Date(order.value.createTime).getTime()
@@ -119,9 +144,62 @@ async function pay() {
       clearInterval(timer)
       timer = null
     }
+    // 支付成功后，如果订单记录了购物车 sku 列表，则从 Pinia 购物车中物理删除对应条目
+    try {
+      const cartStore = useCartStore()
+      const skuIds: number[] | undefined = (order.value as any).cartSkuIds
+      if (Array.isArray(skuIds) && skuIds.length > 0) {
+        for (const sku of skuIds) {
+          // 串行删除以保持顺序；removeFromCart 会在登录时调用后端接口
+          // 忽略单项删除错误，不阻塞导航
+          // eslint-disable-next-line no-await-in-loop
+          await cartStore.removeFromCart(sku)
+        }
+      }
+    } catch (err) {
+      console.error('清理购物车失败', err)
+    }
     router.push({ path: '/user/orders' })
   } catch (e) {
     ElMessage.error('支付失败：' + (e as Error).message)
+  }
+}
+
+// 新增：放弃支付功能
+async function cancelAndAbandon() {
+  try {
+    await ElMessageBox.confirm(
+      '确定要放弃支付并取消此订单吗？此操作不可撤销。',
+      '确认取消订单',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    // 调用API取消订单
+    await cancelOrder(order.value!.id)
+    
+    // 更新本地状态
+    order.value!.status = 0
+    
+    // 显示成功消息
+    ElMessage.success('订单已取消，已跳转到商城首页')
+    
+    // 清理倒计时
+    if (timer) {
+      clearInterval(timer)
+      timer = null
+    }
+    
+    // 跳转到首页，防止用户通过返回键返回支付页
+    router.replace({ path: '/' })
+  } catch (error) {
+    // 用户取消操作或API调用失败
+    if (error !== 'cancel') {
+      ElMessage.error('取消订单失败：' + (error as Error).message)
+    }
   }
 }
 
