@@ -174,6 +174,38 @@ import type { UserInfo, UpdateUserInfoRequest, ChangePasswordRequest, CancelAcco
 const formRef = ref()
 const pwdFormRef = ref()
 
+// 定义错误响应类型
+interface ErrorResponse {
+  response?: {
+    data?: {
+      message?: string
+      msg?: string
+    }
+  }
+  message?: string
+}
+
+// 从后端错误中提取友好信息
+const getErrorMessage = (err: unknown): string => {
+  try {
+    if (!err) return '操作失败'
+    // 错误可能就是字符串
+    if (typeof err === 'string' && err.length > 0) return err
+    const e = err as ErrorResponse
+    // 常见 axios 错误结构：err.response.data.message
+    if (e.response?.data) {
+      const d = e.response.data
+      if (typeof d.message === 'string' && d.message.length > 0) return d.message
+      if (typeof d.msg === 'string' && d.msg.length > 0) return d.msg
+    }
+    // 有时后端直接抛出 { message }
+    if (typeof e.message === 'string' && e.message.length > 0) return e.message
+    return '操作失败'
+  } catch {
+    return '操作失败'
+  }
+}
+
 // 编辑状态：默认只读，点击编辑后进入编辑表单
 const isEditing = ref(false)
 
@@ -249,7 +281,10 @@ const handleAvatarSuccess = (response: { data: { url: string } }) => {
   } else {
     userInfo.avatar = url
     // 立即保存头像信息
-    updateUserInfo({ avatar: url }).catch((e) => console.error(e))
+    updateUserInfo({ avatar: url }).catch((e) => {
+      console.error(e)
+      ElMessage.error(getErrorMessage(e))
+    })
   }
   ElMessage.success('头像上传成功')
 }
@@ -366,11 +401,11 @@ const handleSubmit = async () => {
       birthday: editUserInfo.birthday,
       // 额外同步用户名/手机号/邮箱等可选字段
       // 以防后端支持这些字段一起更新
-      ...(editUserInfo.username ? { username: editUserInfo.username } : {}),
-      ...(editUserInfo.phone ? { phone: editUserInfo.phone } : {}),
-      ...(editUserInfo.email ? { email: editUserInfo.email } : {})
+      username: editUserInfo.username,
+      phone: editUserInfo.phone,
+      email: editUserInfo.email
     }
-
+    //console.log('更新用户信息参数:', updateData)
     // 调用更新接口
     await updateUserInfo(updateData)
 
@@ -381,6 +416,7 @@ const handleSubmit = async () => {
     ElMessage.success('信息修改成功')
   } catch (error) {
     console.error('修改信息失败:', error)
+    //ElMessage.error(getErrorMessage(error))
   }
 }
 
@@ -417,6 +453,7 @@ const handleChangePassword = async () => {
     window.location.href = '/login'
   } catch (error) {
     console.error('修改密码失败:', error)
+    ElMessage.error(getErrorMessage(error))
   }
 }
 
@@ -448,13 +485,8 @@ const handleCancelAccount = async () => {
   } catch (error) {
     // 取消操作不提示错误
     if (error !== 'cancel') {
-      let msg = '密码错误'
-      const e = error as unknown
-      if (e && typeof e === 'object' && 'message' in e) {
-        const m = (e as { message?: unknown }).message
-        if (typeof m === 'string' && m.length > 0) msg = m
-      }
-      ElMessage.error('注销失败: ' + msg)
+      console.error('注销账号失败:', error)
+      ElMessage.error('注销失败: ' + getErrorMessage(error))
     }
   }
 }
