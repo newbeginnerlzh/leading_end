@@ -80,6 +80,9 @@ export interface UpdateUserInfoRequest {
   avatar?: string;
   birthday?: string;
   gender?: string;
+  username?: string;
+  email?: string;
+  phone?: string;
 }
 
 /**
