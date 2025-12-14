@@ -6,6 +6,7 @@
         <div class="logo" @click="goHome">联想商城</div>
         <nav class="nav-links">
           <router-link to="/" class="nav-item">商城首页</router-link>
+          <!-- 注意：这里的路径是 /products -->
           <router-link to="/products" class="nav-item">商品列表</router-link>
         </nav>
       </div>
@@ -17,8 +18,11 @@
             v-model="keyword"
             placeholder="搜索 ThinkBook 14+ ..."
             class="round-input"
+            clearable
             @keyup.enter="handleSearch"
+            @clear="handleSearch"
           >
+            <!-- 搜索图标按钮 -->
             <template #suffix>
               <el-icon :size="20" class="search-icon" @click="handleSearch"><Search /></el-icon>
             </template>
@@ -67,7 +71,7 @@
       </div>
     </div>
 
-    <!-- ✨ 新增：全局悬浮客服按钮 ✨ -->
+    <!-- 悬浮客服按钮 -->
     <div class="floating-service-btn" @click="goService" title="联系客服">
       <el-icon size="24"><Headset /></el-icon>
       <span class="btn-text">客服</span>
@@ -77,12 +81,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-// 引入图标，新增 Headset 图标
+import { useRouter, useRoute } from 'vue-router'
 import { Search, ShoppingCart, User, ArrowDown, Headset } from '@element-plus/icons-vue'
 import { useCartStore } from '@/stores/cart'
 
 const router = useRouter()
+const route = useRoute() // 如果需要回显搜索词可以引入
 const cartStore = useCartStore()
 
 const keyword = ref('')
@@ -92,14 +96,19 @@ const username = ref('')
 const goHome = () => router.push('/')
 const goLogin = (type: 'login' | 'register') => router.push({ path: '/login', query: { type } })
 const goCart = () => router.push('/cart')
-
-// ✨ 新增：跳转客服页面
 const goService = () => router.push('/service')
 
+// 🔴 核心修改：搜索处理函数
 const handleSearch = () => {
-  if (keyword.value) {
-    router.push(`/list?keyword=${keyword.value}`)
-  }
+  const queryText = keyword.value.trim()
+  
+  // 即使为空也可以跳转（视为搜索全部），或者你可以限制 queryText 不为空才跳转
+  router.push({
+    path: '/products', // 对应你商品列表页的路由路径
+    query: { 
+      keyword: queryText // 将输入框的内容作为参数传递
+    }
+  })
 }
 
 const handleUserCommand = (command: string) => {
@@ -114,7 +123,6 @@ const handleUserCommand = (command: string) => {
       router.push('/user/address')
       break
     case 'logout':
-      // 清理本地用户信息和 Token，重置购物车用户，并跳回首页
       try {
         localStorage.removeItem('cart')
         localStorage.removeItem('token')
@@ -122,13 +130,9 @@ const handleUserCommand = (command: string) => {
       } catch {
         console.warn('Failed to clear localStorage on logout')
       }
-      // reset cart store userId
       try {
         cartStore.userId = null
-        console.log('Cart Store Updated:', cartStore.userId)
-      } catch {
-        // ignore
-      }
+      } catch {}
       isLogin.value = false
       username.value = ''
       router.push('/')
@@ -136,7 +140,6 @@ const handleUserCommand = (command: string) => {
   }
 }
 
-// 从 localStorage 初始化用户名，并监听 storage 事件以响应其他标签页的变动
 const updateUsernameFromStorage = () => {
   try {
     const raw = localStorage.getItem('userInfo')
@@ -163,7 +166,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 原有样式保持不变... */
+/* 保持你的 CSS 样式完全不变 */
 .header-container {
   width: 100%;
   height: 64px;
@@ -310,7 +313,7 @@ onUnmounted(() => {
   outline: none !important;
 }
 
-/* ✨ 新增：悬浮按钮样式 ✨ */
+/* 悬浮按钮 */
 .floating-service-btn {
   position: fixed;
   bottom: 50px;
@@ -326,7 +329,7 @@ onUnmounted(() => {
   justify-content: center;
   color: #fff;
   cursor: pointer;
-  z-index: 9999; /* 确保在最顶层 */
+  z-index: 9999;
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
