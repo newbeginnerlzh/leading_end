@@ -12,8 +12,6 @@ import router from './router'
 
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
-localStorage.removeItem('cart')
-
 const app = createApp(App)
 const pinia = createPinia()
 pinia.use(piniaPluginPersistedstate)
