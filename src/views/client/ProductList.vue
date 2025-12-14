@@ -16,7 +16,8 @@ interface Category {
 const categories: Category[] = [
   { id: 0, name: '全部商品', themeColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', subTitle: '探索联想全系科技产品' },
   { id: 25, name: '拯救者系列', themeColor: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)', subTitle: '为战而生 极致性能' },
-  { id: 26, name: '小新系列', themeColor: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', subTitle: '年轻 就要出色' },
+  // 🔴 修改点：加深小新系列颜色 (改为 vibrant blue/cyan)
+  { id: 26, name: '小新系列', themeColor: 'linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)', subTitle: '年轻 就要出色' },
   { id: 27, name: 'YOGA系列', themeColor: 'linear-gradient(135deg, #cc95c0 0%, #dbd4b4 100%)', subTitle: '品质 匠心 优雅随行' },
   { id: 28, name: 'ThinkBook系列', themeColor: 'linear-gradient(135deg, #bdc2e8 0%, #e6dee9 100%)', subTitle: '新青年 创造力' },
   { id: 29, name: 'ThinkPad系列', themeColor: 'linear-gradient(135deg, #000000 0%, #434343 100%)', subTitle: '思考 进化 商务旗舰' }
@@ -38,7 +39,8 @@ const currentCategoryInfo = computed<Category>(() => {
   if (searchKeyword.value) {
     return {
       id: -1,
-      name: `搜索："${searchKeyword.value}"`,
+      // 🔴 修改点：移除双引号，直接显示 "搜索：XXX"
+      name: `搜索：${searchKeyword.value}`,
       themeColor: 'linear-gradient(135deg, #606c88 0%, #3f4c6b 100%)',
       subTitle: '全站搜索结果'
     }
@@ -63,8 +65,6 @@ const fetchProductList = async () => {
     }
 
     // 如果选了特定分类(非全部)，传 categoryId
-    // 注意：如果是搜索状态，通常建议把 categoryId 置空，以便全站搜索
-    // 这里逻辑是：如果当前选中了分类，就在该分类下搜；如果是“全部商品”，就全站搜
     if (currentCategoryId.value !== 0) {
       params.categoryId = currentCategoryId.value
     }
@@ -115,7 +115,6 @@ const fetchProductList = async () => {
 const handleCategoryChange = (id: number) => {
   currentCategoryId.value = id
   // 切换分类时，通常清空搜索词，回归该分类下的全部商品
-  // 如果你想保留搜索词在不同分类下搜，可以注释掉下面这行
   searchKeyword.value = '' 
   
   // 更新 URL 参数 (不刷新页面)
@@ -265,7 +264,7 @@ onMounted(() => {
               价格 
               <div class="sort-icons">
                 <el-icon :class="{ on: sortType === 'price_asc' }"><ArrowUp /></el-icon>
-                <el-icon :class="{ on: sortType === 'price_desc' }"><ArrowDown /></el-icon>
+                <el-icon :class="{ on: sortType === 'price-desc' }"><ArrowDown /></el-icon>
               </div>
             </span>
           </div>

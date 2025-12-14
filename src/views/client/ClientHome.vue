@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { useRouter } from 'vue-router'
 import { ArrowRight } from '@element-plus/icons-vue' 
 import type { ProductSimple } from '@/api/model/productModel'
+
+const router = useRouter()
 
 // --- 1. 顶部轮播图 (纯图片模式) ---
 const bannerList = [
@@ -11,7 +14,7 @@ const bannerList = [
   'https://p4.lefile.cn/fes/cms/2025/12/04/pqvp2a8gia2eu549qaljn49e9hn0pt791216.jpg'
 ]
 
-// 侧边栏菜单
+// 侧边栏菜单 (ID 与数据库保持一致)
 const categoryList = [
   { id: 1, name: '联想秒杀' },
   { id: 29, name: 'ThinkPad系列' },
@@ -63,7 +66,7 @@ const floorList = ref<FloorSection[]>([
     id: 26, 
     title: '小新系列',
     subTitle: '年轻 就要出色',
-    // 之前调整过的深色
+    // 🔴 修改点：颜色加深，改为 vibrant blue/cyan，解决之前太浅看不清字的问题
     themeColor: 'linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)',
     products: []
   },
@@ -118,7 +121,15 @@ onMounted(() => {
   fetchHomeData()
 })
 
-// 滚动定位
+// 4. 新增：点击跳转到分类列表页 (给楼层左侧使用)
+const goToCategory = (id: number) => {
+  router.push({
+    path: '/products',
+    query: { category: id }
+  })
+}
+
+// 5. 新增：页面内平滑滚动 (给轮播图左侧菜单使用)
 const scrollToFloor = (id: number) => {
   const element = document.getElementById(`floor-${id}`)
   if (element) {
@@ -133,9 +144,10 @@ const scrollToFloor = (id: number) => {
     <!-- 1. 顶部轮播图区域 -->
     <div class="banner-wrapper">
       
-      <!-- 侧边栏菜单 -->
+      <!-- 侧边栏菜单 (悬浮) -->
       <div class="category-sidebar">
         <ul class="category-list">
+          <!-- 🔴 修改点：点击触发 scrollToFloor (滚动到本页对应楼层) -->
           <li v-for="cat in categoryList" :key="cat.id" class="category-item" @click="scrollToFloor(cat.id)">
             <span class="cat-name">{{ cat.name }}</span>
             <el-icon class="arrow-icon"><ArrowRight /></el-icon>
@@ -147,7 +159,9 @@ const scrollToFloor = (id: number) => {
       <el-carousel trigger="click" height="500px" :interval="5000" arrow="hover" class="custom-carousel">
         <el-carousel-item v-for="(img, index) in bannerList" :key="index">
           <div class="carousel-item-content">
+            <!-- 背景模糊层 -->
             <div class="blur-background" :style="{ backgroundImage: `url(${img})` }"></div>
+            <!-- 主图片 -->
             <img :src="img" alt="banner" class="banner-img" />
           </div>
         </el-carousel-item>
@@ -156,21 +170,27 @@ const scrollToFloor = (id: number) => {
 
     <!-- 2. 商品楼层 -->
     <div class="floor-container">
+      <!-- 🔴 修改点：添加 id 属性，用于锚点定位 -->
       <div 
         v-for="floor in floorList" 
         :key="floor.id" 
         :id="`floor-${floor.id}`" 
         class="floor-section"
       >
-        <div class="floor-aside" :style="{ background: floor.themeColor }">
+        <!-- 🔴 修改点：楼层左侧点击跳转到商品列表页 (goToCategory) -->
+        <div 
+          class="floor-aside" 
+          :style="{ background: floor.themeColor }"
+          @click="goToCategory(floor.id)"
+        >
           <div class="aside-content">
             <h2 class="floor-title">{{ floor.title }}</h2>
             <p class="floor-subtitle">{{ floor.subTitle }}</p>
-            <div class="view-more-btn" @click="scrollToFloor(floor.id)">
+            <div class="view-more-btn">
               查看全部 <el-icon><ArrowRight /></el-icon>
             </div>
           </div>
-          <!-- 🔴 修改点：这里添加了 LENOVO 英文标签 -->
+          <!-- 🔴 修改点：已删除 bg-text (背景ID数字)，改为品牌水印 -->
           <div class="brand-tag">LENOVO</div>
         </div>
 
@@ -207,17 +227,14 @@ const scrollToFloor = (id: number) => {
 
 /* 侧边栏 */
 .category-sidebar {
-  /* 🔴 关键：作为 Flex 的一部分，不使用 absolute，防止高度坍塌或溢出 */
-  /* 或者如果使用 absolute，必须确保父容器有 height */
   position: absolute; 
   top: 0;
   left: 0;
   width: 240px;
-  height: 100%; /* 继承父容器的 500px */
-  background: rgba(40, 44, 52, 0.9); /* 加深一点背景，避免半透明导致视觉混乱 */
+  height: 100%;
+  background: rgba(40, 44, 52, 0.9); 
   backdrop-filter: blur(10px);
   z-index: 10;
-  /* 🔴 关键：移除 padding，通过 Flex 布局让子元素自己撑开 */
   padding: 0; 
 }
 
@@ -227,11 +244,13 @@ const scrollToFloor = (id: number) => {
   margin: 0; 
   display: flex; 
   flex-direction: column; 
-  height: 100%; /* 占满侧边栏高度 */
+  height: 100%; /* 确保填满高度 */
 }
 
+/* 
+  🔴 关键修改：flex: 1 强制所有菜单项平分高度 
+*/
 .category-item { 
-  /* 🔴 关键：flex: 1 强制所有菜单项平分高度 */
   flex: 1; 
   display: flex; 
   align-items: center; 
@@ -242,7 +261,7 @@ const scrollToFloor = (id: number) => {
   color: #fff; 
   border-left: 4px solid transparent; 
   border-bottom: 1px solid rgba(255,255,255,0.05);
-  box-sizing: border-box; /* 确保 padding 不会撑破布局 */
+  box-sizing: border-box;
 }
 
 .category-item:last-child {
@@ -270,29 +289,47 @@ const scrollToFloor = (id: number) => {
 
 /* --- 楼层样式 --- */
 .floor-container { max-width: 1240px; margin: 0 auto; padding: 0 20px; display: flex; flex-direction: column; gap: 30px; }
-.floor-section { display: flex; height: 360px; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03); transition: transform 0.3s; scroll-margin-top: 80px; }
+
+/* 🔴 关键修改：增加 scroll-margin-top 防止楼层被吸顶 Header 遮挡 */
+.floor-section { 
+  display: flex; 
+  height: 360px; 
+  background: #fff; 
+  border-radius: 12px; 
+  overflow: hidden; 
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03); 
+  transition: transform 0.3s; 
+  scroll-margin-top: 80px; 
+}
+
 .floor-section:hover { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); }
-.floor-aside { width: 240px; flex-shrink: 0; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; padding: 20px; text-align: center; overflow: hidden; }
+
+/* 🔴 关键修改：楼层左侧样式增加 cursor: pointer */
+.floor-aside { 
+  width: 240px; 
+  flex-shrink: 0; 
+  position: relative; 
+  display: flex; 
+  flex-direction: column; 
+  justify-content: center; 
+  align-items: center; 
+  color: #fff; 
+  padding: 20px; 
+  text-align: center; 
+  overflow: hidden; 
+  cursor: pointer; /* 鼠标手型 */
+  transition: opacity 0.3s;
+}
+.floor-aside:hover { opacity: 0.95; }
+
 .aside-content { position: relative; z-index: 2; }
 .floor-title { font-size: 28px; margin: 0 0 10px; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
 .floor-subtitle { font-size: 16px; margin: 0 0 25px; opacity: 0.9; }
 .view-more-btn { display: inline-flex; align-items: center; gap: 5px; padding: 8px 20px; border: 1px solid rgba(255,255,255,0.6); border-radius: 20px; cursor: pointer; font-size: 14px; transition: all 0.3s; }
 .view-more-btn:hover { background: #fff; color: #333; }
 
-/* 🔴 修改点：新增的 LENOVO 品牌水印样式 */
-.brand-tag {
-  position: absolute;
-  bottom: -15px; /* 稍微下沉 */
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 48px; /* 大字体 */
-  font-weight: 900;
-  color: rgba(255, 255, 255, 0.15); /* 低透明度 */
-  letter-spacing: 2px;
-  font-family: 'Arial Black', sans-serif;
-  pointer-events: none; /* 防止遮挡点击 */
-  z-index: 1;
-}
+/* 品牌水印 */
+.brand-tag { position: absolute; bottom: -15px; left: 50%; transform: translateX(-50%); font-size: 48px; font-weight: 900; color: rgba(255, 255, 255, 0.15); letter-spacing: 2px; font-family: 'Arial Black', sans-serif; pointer-events: none; z-index: 1; }
 
 .floor-grid { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 15px; background-color: #fff; }
 .floor-product-card { height: 100%; box-shadow: none !important; border: 1px solid #f0f0f0; }
