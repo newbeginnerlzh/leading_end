@@ -6,7 +6,6 @@
         <div class="logo" @click="goHome">联想商城</div>
         <nav class="nav-links">
           <router-link to="/" class="nav-item">商城首页</router-link>
-          <!-- 注意：这里的路径是 /products -->
           <router-link to="/products" class="nav-item">商品列表</router-link>
         </nav>
       </div>
@@ -14,16 +13,20 @@
       <!-- 2. 中间：圆角搜索框 -->
       <div class="center-section">
         <div class="search-box">
+          <!-- 
+            修改点说明：
+            1. 移除了 @clear="handleSearch"：这样点击叉号只会清空 v-model，不会触发跳转。
+            2. 保留 @keyup.enter="handleSearch"：回车键依然触发跳转。
+          -->
           <el-input
             v-model="keyword"
             placeholder="搜索 ThinkBook 14+ ..."
             class="round-input"
             clearable
             @keyup.enter="handleSearch"
-            @clear="handleSearch"
           >
-            <!-- 搜索图标按钮 -->
             <template #suffix>
+              <!-- 点击搜索图标依然触发跳转 -->
               <el-icon :size="20" class="search-icon" @click="handleSearch"><Search /></el-icon>
             </template>
           </el-input>
@@ -33,7 +36,6 @@
       <!-- 3. 右侧：用户操作区 -->
       <div class="right-section">
         <template v-if="isLogin">
-          <!-- 购物车 -->
           <div class="action-item" @click="goCart" style="gap: 4px">
             <el-badge :value="cartStore.totalCount" class="cart-badge" :max="99">
               <el-icon :size="25"><ShoppingCart /></el-icon>
@@ -41,7 +43,6 @@
             <span class="text">购物车</span>
           </div>
 
-          <!-- 个人中心 -->
           <el-dropdown trigger="hover" @command="handleUserCommand" popper-class="custom-dropdown">
             <div class="action-item user-profile">
               <el-icon :size="25"><User /></el-icon>
@@ -53,9 +54,7 @@
                 <el-dropdown-item command="center">个人中心</el-dropdown-item>
                 <el-dropdown-item command="orders">我的订单</el-dropdown-item>
                 <el-dropdown-item command="address">地址管理</el-dropdown-item>
-                <el-dropdown-item divided command="logout" style="color: red"
-                  >退出登录</el-dropdown-item
-                >
+                <el-dropdown-item divided command="logout" style="color: red">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -81,12 +80,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { Search, ShoppingCart, User, ArrowDown, Headset } from '@element-plus/icons-vue'
 import { useCartStore } from '@/stores/cart'
 
 const router = useRouter()
-const route = useRoute() // 如果需要回显搜索词可以引入
 const cartStore = useCartStore()
 
 const keyword = ref('')
@@ -98,41 +96,26 @@ const goLogin = (type: 'login' | 'register') => router.push({ path: '/login', qu
 const goCart = () => router.push('/cart')
 const goService = () => router.push('/service')
 
-// 🔴 核心修改：搜索处理函数
 const handleSearch = () => {
   const queryText = keyword.value.trim()
-  
-  // 即使为空也可以跳转（视为搜索全部），或者你可以限制 queryText 不为空才跳转
   router.push({
-    path: '/products', // 对应你商品列表页的路由路径
-    query: { 
-      keyword: queryText // 将输入框的内容作为参数传递
-    }
+    path: '/products',
+    query: { keyword: queryText }
   })
 }
 
 const handleUserCommand = (command: string) => {
   switch (command) {
-    case 'center':
-      router.push('/user/profile')
-      break
-    case 'orders':
-      router.push('/user/orders')
-      break
-    case 'address':
-      router.push('/user/address')
-      break
+    case 'center': router.push('/user/profile'); break
+    case 'orders': router.push('/user/orders'); break
+    case 'address': router.push('/user/address'); break
     case 'logout':
       try {
         localStorage.removeItem('cart')
         localStorage.removeItem('token')
         localStorage.removeItem('userInfo')
-      } catch {
-        console.warn('Failed to clear localStorage on logout')
-      }
-      try {
-        cartStore.userId = null
-      } catch {}
+      } catch { console.warn('Logout cleanup failed') }
+      try { cartStore.userId = null } catch {}
       isLogin.value = false
       username.value = ''
       router.push('/')
@@ -166,7 +149,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 保持你的 CSS 样式完全不变 */
+/* 样式保持不变 */
 .header-container {
   width: 100%;
   height: 64px;
