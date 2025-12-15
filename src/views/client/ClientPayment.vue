@@ -10,10 +10,9 @@
         <div>创建时间：{{ order.createdAt }}</div>
         <div>收货：{{ order.receiverName }} / {{ order.receiverPhone }}</div>
         <div>地址：{{ order.receiverProvince }} {{ order.receiverCity }} {{ order.receiverDistrict }} {{ order.receiverDetail }}</div>
-        <div style="margin-top:8px">
+        <div v-if="remainingSeconds > 0" style="margin-top:8px">
           <strong>支付倒计时：</strong>
-          <span v-if="remainingSeconds > 0">{{ minutes }}:{{ seconds }}</span>
-          <span v-else style="color:#e4393c">已超时（订单已过期）</span>
+          <span>{{ minutes }}:{{ seconds }}</span>
         </div>
 
         <el-table :data="orderItems" style="width:100%;margin-top:12px" size="small">
@@ -29,8 +28,8 @@
         </div>
 
         <div style="margin-top:12px; display: flex; gap: 10px;">
-          <el-button type="primary" @click="pay" :disabled="order.status !== '待付款'">立即支付（占位）</el-button>
-          <el-button @click="cancelAndAbandon" :disabled="order.status !== '待付款'">放弃支付</el-button>
+          <el-button type="primary" @click="pay" :disabled="!isPending">立即支付（占位）</el-button>
+          <el-button @click="cancelAndAbandon" :disabled="!isPending">放弃支付</el-button>
         </div>
       </div>
     </el-card>
@@ -54,6 +53,9 @@ const canceling = ref(false)
 // 后端未提供倒计时/过期时间字段，暂设为 0
 const remainingSeconds = ref<number>(0)
 let timer: number | null = null
+
+const pendingStatuses = new Set(['待付款', '未支付'])
+const isPending = computed(() => pendingStatuses.has(order.value?.status || ''))
 
 const minutes = computed(() => {
   const m = Math.floor(Math.max(0, remainingSeconds.value) / 60)
@@ -82,8 +84,8 @@ async function load() {
     orderItems.value = []
   }
 
-  // 如果订单状态不是“待付款”，直接提示并跳到首页（防止回到支付页）
-  if (order.value && order.value.status && order.value.status !== '待付款') {
+  // 如果订单不处于待支付状态，直接提示并跳到首页（防止回到支付页）
+  if (order.value && order.value.status && !pendingStatuses.has(order.value.status)) {
     ElMessage.success({ message: '订单不在待付款状态，已跳转到商城首页', duration: 1800 })
     router.replace({ path: '/' })
     loading.value = false

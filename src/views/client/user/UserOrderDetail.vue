@@ -42,7 +42,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getOrderDetail, updateOrderStatus, deleteOrder, OrderAction } from '@/api/order'
+import { getOrderDetail, deleteOrder } from '@/api/order'
 import type { Order, OrderItem } from '@/api/model/orderModel'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
@@ -78,11 +78,7 @@ async function goPay() {
   if (!order.value || acting.value) return
   acting.value = true
   try {
-    await updateOrderStatus(order.value.orderSn || '', { action: OrderAction.PAY_ORDER })
-    ElMessage.success('支付成功')
-    await load()
-  } catch (err) {
-    ElMessage.error((err as Error).message || '支付失败')
+    router.push({ path: '/payment', query: { orderId: order.value.orderSn || '' } })
   } finally {
     acting.value = false
   }

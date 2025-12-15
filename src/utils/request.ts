@@ -19,8 +19,8 @@ const service = axios.create({
 service.interceptors.request.use(
   (config) => {
     // 从localStorage获取Token
-    const token = localStorage.getItem('token')
-    //const token ='eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
+    //const token = localStorage.getItem('token')
+    const token ='eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }

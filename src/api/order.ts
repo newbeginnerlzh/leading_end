@@ -83,12 +83,14 @@ export interface UpdateOrderStatusRequest {
  * @returns 订单创建结果
  */
 export async function createOrdersFromCart(params: CreateOrdersFromCartRequest): Promise<BaseResponse<Order>> {
+  
+  const token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
+  
   const response = await fetch('/api/orders/from-cart', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      // 如果需要认证，在这里添加Authorization头部
-      // 'Authorization': `Bearer ${getToken()}`
+      'Authorization': `Bearer ${token}`  // 添加Authorization头
     },
     body: JSON.stringify({
       addressId: params.addressId,
@@ -111,12 +113,14 @@ export async function createOrdersFromCart(params: CreateOrdersFromCartRequest):
  * @returns 订单创建结果
  */
 export async function buyNowOrder(params: BuyNowOrderRequest): Promise<BaseResponse<Order>> {
+
+  const token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
+
   const response = await fetch('/api/orders/buy-now', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      // 如果需要认证，在这里添加Authorization头部
-      // 'Authorization': `Bearer ${getToken()}`
+      'Authorization': `Bearer ${token}`  // 添加Authorization头
     },
     body: JSON.stringify({
       addressId: params.addressId,
@@ -129,18 +133,15 @@ export async function buyNowOrder(params: BuyNowOrderRequest): Promise<BaseRespo
   if (!response.ok) {
     // 根据不同的HTTP状态码抛出相应的错误
     const errorResponse = await response.text();
-    let errorMessage = `HTTP error! status: ${response.status}`;
-    
+    let errorMessage = `HTTP error! status: ${response.status},${response.statusText}`;
     try {
       const errorObj = JSON.parse(errorResponse);
       errorMessage = errorObj.message || errorMessage;
     } catch (e) {
       // 如果无法解析错误响应，则使用默认错误消息
-    }
-    
+    } 
     throw new Error(errorMessage);
   }
-
   const result: BaseResponse<Order> = await response.json();
   return result;
 }
@@ -153,7 +154,7 @@ export async function buyNowOrder(params: BuyNowOrderRequest): Promise<BaseRespo
 export async function getOrderList(params?: GetOrderListParams): Promise<BaseResponse<OrderListData>> {
   // 构建查询参数
   const queryParams = new URLSearchParams();
-  
+  const token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
   if (params?.page !== undefined) queryParams.append('page', params.page.toString());
   if (params?.pageSize !== undefined) queryParams.append('pageSize', params.pageSize.toString());
   if (params?.status!== undefined) queryParams.append('status', params.status.toString());
@@ -167,15 +168,14 @@ export async function getOrderList(params?: GetOrderListParams): Promise<BaseRes
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      // 如果需要认证，在这里添加Authorization头部
-      // 'Authorization': `Bearer ${getToken()}`
+      'Authorization': `Bearer ${token}`  // 添加Authorization头
     }
   });
 
   if (!response.ok) {
     // 根据不同的HTTP状态码抛出相应的错误
     const errorResponse = await response.text();
-    let errorMessage = `HTTP error! status: ${response.status}`;
+    let errorMessage = `HTTP error! status: ${response.status},${response.statusText}`;
     
     try {
       const errorObj = JSON.parse(errorResponse);
@@ -197,12 +197,12 @@ export async function getOrderList(params?: GetOrderListParams): Promise<BaseRes
  * @returns 订单详情
  */
 export async function getOrderDetail(orderSn: number | string): Promise<BaseResponse<OrderDetailData>> {
+  const token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
   const response = await fetch(`/api/orders/${orderSn}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      // 如果需要认证，在这里添加Authorization头部
-      // 'Authorization': `Bearer ${getToken()}`
+      'Authorization': `Bearer ${token}`  // 添加Authorization头
     }
   });
 
@@ -234,12 +234,12 @@ export async function getOrderDetail(orderSn: number | string): Promise<BaseResp
  * @returns 更新结果
  */
 export async function updateOrderStatus(orderSn: string, params: UpdateOrderStatusRequest): Promise<BaseResponse<null>> {
+  const token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
   const response = await fetch(`/api/orders/${orderSn}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      // 如果需要认证，在这里添加Authorization头部
-      // 'Authorization': `Bearer ${getToken()}`
+      'Authorization': `Bearer ${token}`  // 添加Authorization头
     },
     body: JSON.stringify({
       action: params.action,
@@ -281,12 +281,12 @@ export async function updateOrderStatus(orderSn: string, params: UpdateOrderStat
  * @returns 删除结果
  */
 export async function deleteOrder(orderSn: string): Promise<BaseResponse<null>> {
+  const token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
   const response = await fetch(`/api/orders/delete/${orderSn}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',
-      // 如果需要认证，在这里添加Authorization头部
-      // 'Authorization': `Bearer ${getToken()}`
+      'Authorization': `Bearer ${token}`  // 添加Authorization头
     }
   });
 

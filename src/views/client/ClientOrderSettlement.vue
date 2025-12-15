@@ -9,7 +9,6 @@
         <el-card>
           <h3>购物清单</h3>
           <div class="checkout-cart-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <div>我的购物车（已选 {{ selectedCount }} 件）</div>
             <div style="color:#999">共 {{ items.length }} 个条目</div>
           </div>
           <el-table :data="items" style="width:100%">
@@ -143,10 +142,6 @@
           </div>
         </el-card>
 
-        <el-card style="margin-top:16px">
-          <h4>示例操作</h4>
-          <div style="font-size:13px;color:#666">点击“生成订单并支付”会把订单通过封装的 API（mock）创建，并跳转到支付页。</div>
-        </el-card>
       </el-col>
     </el-row>
 
@@ -160,7 +155,7 @@ import { ElMessage } from 'element-plus'
 import { createOrdersFromCart, buyNowOrder } from '@/api/order'
 import type { AddressInfo } from '@/api/model/userModel'
 import { getAddressList, addAddress } from '@/api/user'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { ArrowLeft } from '@element-plus/icons-vue'
 
@@ -519,8 +514,10 @@ const payment = ref<string>('alipay')
 
 // 不在结算页展示订单详情；创建后跳转到支付页
 const router = useRouter()
+const route = useRoute()
 
-const selectedCount = computed(() => cart.selectedTotalCount)
+type CheckoutMode = 'direct' | 'cart'
+const checkoutMode = ref<CheckoutMode>('cart')
 
 onMounted(async () => {
   try {
@@ -537,6 +534,20 @@ onMounted(async () => {
       }
     } catch {
       // ignore parsing errors
+    }
+
+    // 根据路由参数或数据判断结算模式
+    const qMode = (route.query.mode as string | undefined) || undefined
+    if (qMode === 'direct') {
+      checkoutMode.value = 'direct'
+      if (!directItems.value || directItems.value.length === 0) {
+        ElMessage.warning('未检测到直购商品，已切换为购物车结算')
+        checkoutMode.value = 'cart'
+      }
+    } else if (qMode === 'cart') {
+      checkoutMode.value = 'cart'
+    } else {
+      checkoutMode.value = (directItems.value && directItems.value.length > 0) ? 'direct' : 'cart'
     }
 
     // 使用统一的用户地址 API 获取地址列表，保持与 UserAddress.vue 一致
@@ -636,9 +647,16 @@ async function saveModalAsNewAddress() {
 // 已弃用的下拉选择回调（改为弹窗选择），保留逻辑通过弹窗完成
 
 async function createOrder() {
-  if (!items.value || items.value.length === 0) {
-    ElMessage.warning('请选择至少一件商品进行结算')
-    return
+  if (checkoutMode.value === 'cart') {
+    if (!items.value || items.value.length === 0) {
+      ElMessage.warning('请选择至少一件购物车商品进行结算')
+      return
+    }
+  } else {
+    if (!directItems.value || directItems.value.length === 0) {
+      ElMessage.warning('未检测到直购商品，无法创建订单')
+      return
+    }
   }
   if (!address.value.name || !address.value.phone || !address.value.address) {
     ElMessage.warning('请填写完整收货信息')
@@ -674,8 +692,8 @@ async function createOrder() {
     }
 
     let created: unknown = null
-    if (directItems.value && directItems.value.length > 0) {
-      const first = directItems.value[0]
+    if (checkoutMode.value === 'direct') {
+      const first = directItems.value?.[0]
       if (!first) {
         ElMessage.error('直购数据为空')
         return
@@ -699,13 +717,13 @@ async function createOrder() {
       try {
         created = await createOrdersFromCart({ addressId: selectedAddressId.value, cartItemIds, buyerRemark: null })
       } catch (err) {
-        ElMessage.error('创建订单失败：' + (err as Error).message)
+        ElMessage.error('创建购物车订单失败：' + (err as Error).message)
         return
       }
     }
 
     ElMessage.success('订单已创建，跳转支付页')
-    const orderSn = (created as { data?: { order?: { orderSn?: string } } })?.data?.order?.orderSn || ''
+    const orderSn = (created as { data?: { orderSn?: string } })?.data?.orderSn || ''
     router.push({ path: '/payment', query: { orderId: orderSn } })
   } catch (e) {
     ElMessage.error('创建订单失败：' + (e as Error).message)
