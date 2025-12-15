@@ -42,7 +42,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getOrderDetail } from '@/api/order'
+import { getOrderDetail, updateOrderStatus, deleteOrder, OrderAction } from '@/api/order'
 import type { Order, OrderItem } from '@/api/model/orderModel'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
@@ -52,6 +52,8 @@ const router = useRouter()
 const order = ref<Order | null>(null)
 const items = ref<OrderItem[]>([])
 const loading = ref(true)
+const acting = ref(false)
+const deleting = ref(false)
 
 async function load() {
   loading.value = true
@@ -72,18 +74,43 @@ async function load() {
   loading.value = false
 }
 
-function goPay() {
-  if (!order.value) return
-  ElMessage.info('支付接口暂未提供，按钮为占位')
+async function goPay() {
+  if (!order.value || acting.value) return
+  acting.value = true
+  try {
+    await updateOrderStatus(order.value.orderSn || '', { action: OrderAction.PAY_ORDER })
+    ElMessage.success('支付成功')
+    await load()
+  } catch (err) {
+    ElMessage.error((err as Error).message || '支付失败')
+  } finally {
+    acting.value = false
+  }
 }
 
 onMounted(load)
 
 async function onDelete() {
-  // 后端未提供删除接口，这里保留占位提示
-  await ElMessageBox.alert('后端未提供删除订单接口，暂无法在此页面删除订单。', '提示', {
-    confirmButtonText: '我知道了'
-  })
+  if (!order.value || deleting.value) return
+  try {
+    await ElMessageBox.confirm('确认删除该订单？已完成/已取消/退款完成的订单才可删除。', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '再想想'
+    })
+  } catch {
+    return
+  }
+
+  deleting.value = true
+  try {
+    await deleteOrder(order.value.orderSn || '')
+    ElMessage.success('已删除订单')
+    router.replace({ path: '/user/order' })
+  } catch (err) {
+    ElMessage.error((err as Error).message || '删除失败')
+  } finally {
+    deleting.value = false
+  }
 }
 </script>
 

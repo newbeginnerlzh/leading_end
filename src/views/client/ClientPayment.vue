@@ -41,7 +41,7 @@
 import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getOrderDetail } from '@/api/order'
+import { getOrderDetail, updateOrderStatus, OrderAction } from '@/api/order'
 import type { Order, OrderItem } from '@/api/model/orderModel'
 
 const route = useRoute()
@@ -49,6 +49,8 @@ const router = useRouter()
 const order = ref<Order | null>(null)
 const orderItems = ref<OrderItem[]>([])
 const loading = ref(true)
+const paying = ref(false)
+const canceling = ref(false)
 // 后端未提供倒计时/过期时间字段，暂设为 0
 const remainingSeconds = ref<number>(0)
 let timer: number | null = null
@@ -93,16 +95,38 @@ async function load() {
 
 async function pay() {
   if (!order.value) return
-  // 后端尚未提供支付接口，这里仅展示占位提示
-  ElMessage.info('支付接口待后端提供，当前仅为展示状态')
+  if (paying.value) return
+  paying.value = true
+  try {
+    await updateOrderStatus(order.value.orderSn || '', { action: OrderAction.PAY_ORDER })
+    ElMessage.success('支付成功')
+    router.replace({ path: `/user/order/${order.value.orderSn}` })
+  } catch (err) {
+    ElMessage.error((err as Error).message || '支付失败')
+  } finally {
+    paying.value = false
+  }
 }
 
 // 新增：放弃支付功能
 async function cancelAndAbandon() {
-  // 后端未提供取消/废弃订单接口，这里仅提示
-  await ElMessageBox.alert('后端未提供放弃支付接口，暂无法在此页面取消订单。', '提示', {
-    confirmButtonText: '我知道了'
-  })
+  if (!order.value || canceling.value) return
+  try {
+    await ElMessageBox.confirm('确认放弃支付并取消订单吗？', '提示', { confirmButtonText: '确定', cancelButtonText: '再想想' })
+  } catch {
+    return
+  }
+
+  canceling.value = true
+  try {
+    await updateOrderStatus(order.value.orderSn || '', { action: OrderAction.CANCEL_ORDER, reason: '用户放弃支付' })
+    ElMessage.success('已取消订单')
+    router.replace({ path: '/' })
+  } catch (err) {
+    ElMessage.error((err as Error).message || '取消失败')
+  } finally {
+    canceling.value = false
+  }
 }
 
 onBeforeUnmount(() => {
