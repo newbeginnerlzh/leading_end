@@ -4,9 +4,13 @@
   <Header v-if="!$route.meta.hideHeader" />
   <!-- 页面组件会显示在这里 -->
   <router-view></router-view>
+  <!-- 2. 全局页脚 -->
+  <!-- 只有当路由 meta 没有 hideFooter 时才显示（登录、注册、客服页面不显示页脚） -->
+  <Footer v-if="!$route.meta.hideFooter" />
 </template>
 <script setup lang="ts">
 import Header from './components/client/ClientHeader.vue'
+import Footer from './components/client/ClientFooter.vue'
 </script>
 <style>
 /* 全局样式重置 */
