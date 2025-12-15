@@ -1,6 +1,8 @@
 <template>
   <div class="profile-container">
-    <div class="profile-title">个人信息</div>
+    <div class="profile-header">
+      <h2>个人信息</h2>
+    </div>
 
     <el-card>
       <!-- 展示模式（默认） -->
@@ -14,7 +16,7 @@
           </el-col>
 
           <el-col :span="16">
-            <el-form label-width="120px">
+            <el-form label-width="200px">
               <el-form-item label="用户名">
                 <div>{{ userInfo.username || '-' }}</div>
               </el-form-item>
@@ -51,12 +53,12 @@
           :model="editUserInfo"
           :rules="rules"
           ref="formRef"
-          label-width="120px"
+          label-width="200px"
         >
           <el-row :gutter="20">
             <el-col :span="8">
               <!-- 头像上传 -->
-              <el-form-item label="用户头像">
+              <div class="avatar-display">
                 <el-upload
                   class="avatar-uploader"
                   :show-file-list="false"
@@ -69,10 +71,10 @@
                   <img v-if="editUserInfo.avatar" :src="editUserInfo.avatar" class="avatar" />
                   <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
                 </el-upload>
-              </el-form-item>
+              </div>
             </el-col>
 
-            <el-col :span="16">
+            <el-col :span="11">
               <el-form-item label="用户名">
                 <el-input v-model="editUserInfo.username"></el-input>
               </el-form-item>
@@ -80,43 +82,37 @@
               <el-form-item label="手机号">
                 <el-input v-model="editUserInfo.phone"></el-input>
               </el-form-item>
+
+              <el-form-item label="性别" prop="gender">
+                <el-radio-group v-model="editUserInfo.gender">
+                  <el-radio label="男">男</el-radio>
+                  <el-radio label="女">女</el-radio>
+                  <el-radio label="未知">未知</el-radio>
+                </el-radio-group>
+              </el-form-item>
+
+              <el-form-item label="出生日期" prop="birthday">
+                <el-date-picker
+                  v-model="editUserInfo.birthday"
+                  type="date"
+                  placeholder="请选择出生日期"
+                  format="YYYY-MM-DD"
+                  value-format="YYYY-MM-DD"
+                ></el-date-picker>
+              </el-form-item>
+
+              <el-form-item label="邮箱">
+                <el-input v-model="editUserInfo.email" placeholder="选填"></el-input>
+              </el-form-item>
+
+              <div style="margin-top:10px">
+                <el-button type="primary" @click="handleSubmit">保存修改</el-button>
+                <el-button @click="handleCancelEdit">取消</el-button>
+                <el-button type="warning" @click="showChangePwdDialog = true" style="margin-left:10px">修改密码</el-button>
+                <el-button type="danger" @click="handleCancelAccount" style="margin-left: 10px">注销账号</el-button>
+              </div>
             </el-col>
           </el-row>
-
-          <el-form-item label="性别" prop="gender">
-            <el-radio-group v-model="editUserInfo.gender">
-              <el-radio label="男">男</el-radio>
-              <el-radio label="女">女</el-radio>
-              <el-radio label="未知">未知</el-radio>
-            </el-radio-group>
-          </el-form-item>
-
-          <el-form-item label="出生日期" prop="birthday">
-            <el-date-picker
-              v-model="editUserInfo.birthday"
-              type="date"
-              placeholder="请选择出生日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
-            ></el-date-picker>
-          </el-form-item>
-
-          <el-form-item label="邮箱">
-            <el-input v-model="editUserInfo.email" placeholder="选填"></el-input>
-          </el-form-item>
-
-          <el-form-item>
-            <el-button type="primary" @click="handleSubmit">保存修改</el-button>
-            <el-button @click="handleCancelEdit">取消</el-button>
-            <el-button type="warning" @click="showChangePwdDialog = true">修改密码</el-button>
-            <el-button
-              type="danger"
-              @click="handleCancelAccount"
-              style="margin-left: 10px"
-            >
-              注销账号
-            </el-button>
-          </el-form-item>
         </el-form>
       </div>
     </el-card>
@@ -557,10 +553,20 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-.profile-title {
-  font-size: 20px;
-  font-weight: bold;
+.profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 20px;
+  padding: 12px 0;
+  min-height: 50.5px;
+}
+
+.profile-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
   color: #1f2329;
 }
 
