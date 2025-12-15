@@ -3,7 +3,7 @@
   <div>
     <el-card>
       <div style="display:flex;align-items:center;justify-content:space-between;">
-        <el-button type="text" :icon="ArrowLeft" @click="router.back()">返回</el-button>
+        <el-button type="text" :icon="ArrowLeft" @click="onBack">返回</el-button>
         <div style="display:flex;align-items:center;gap:8px;">
           
           <h3 style="margin:0">订单详情</h3>
@@ -20,6 +20,7 @@
         <div>创建时间：{{ order.createdAt }}</div>
         <div>收货人：{{ order.receiverName }} / {{ order.receiverPhone }}</div>
         <div>地址：{{ order.receiverProvince }} {{ order.receiverCity }} {{ order.receiverDistrict }} {{ order.receiverDetail }}</div>
+        <div style="margin-top:8px;color:#333;font-weight:500">备注：{{ order.buyerRemark ? order.buyerRemark : '（无）' }}</div>
 
         <el-table :data="items" style="width:100%;margin-top:12px" size="small">
           <el-table-column prop="productName" label="商品" />
@@ -88,10 +89,21 @@ onMounted(load)
 
 async function onDelete() {
   if (!order.value || deleting.value) return
+  const allowed = new Set(['已完成', '已取消', '退款成功'])
+  const status = order.value.status || ''
+  if (!allowed.has(status)) {
+    await ElMessageBox.alert('仅状态为“已完成/已取消/退款成功”的订单可以删除。当前状态不支持删除。', '无法删除', {
+      confirmButtonText: '我知道了',
+      type: 'info'
+    })
+    return
+  }
+
   try {
-    await ElMessageBox.confirm('确认删除该订单？已完成/已取消/退款完成的订单才可删除。', '提示', {
+    await ElMessageBox.confirm('确认删除该订单？删除后不可恢复。', '提示', {
       confirmButtonText: '确定',
-      cancelButtonText: '再想想'
+      cancelButtonText: '再想想',
+      type: 'warning'
     })
   } catch {
     return
@@ -101,15 +113,20 @@ async function onDelete() {
   try {
     await deleteOrder(order.value.orderSn || '')
     ElMessage.success('已删除订单')
-    router.replace({ path: '/user/order' })
+    router.replace({ path: '/user/orders' })
   } catch (err) {
     ElMessage.error((err as Error).message || '删除失败')
   } finally {
     deleting.value = false
   }
 }
+
+function onBack() {
+  router.push({ path: '/user/orders' })
+}
 </script>
 
 <style scoped>
 h3 { margin: 0 0 12px 0 }
+:deep(.el-table__cell) { font-size: 14px; }
 </style>

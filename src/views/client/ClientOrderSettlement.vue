@@ -1,9 +1,6 @@
 <!-- 结算页：展示购物车条目、收货地址选择、订单概要并创建订单（调用 mock API） -->
 <template>
   <div class="order-settlement">
-    <div style="margin-bottom:12px">
-      <el-button type="text" :icon="ArrowLeft" @click="router.back()">返回</el-button>
-    </div>
     <el-row :gutter="20">
       <el-col :span="16">
         <el-card>
@@ -107,9 +104,21 @@
       </el-col>
 
       <el-col :span="8">
-        <el-card>
+        <el-card class="remark-card">
+          <div class="remark-header">买家留言</div>
+          <el-input
+            v-model="buyerRemark"
+            type="textarea"
+            :autosize="{ minRows: 2, maxRows: 4 }"
+            maxlength="200"
+            show-word-limit
+            placeholder="给卖家的留言（选填）"
+          />
+        </el-card>
+
+        <el-card class="summary-card" style="margin-top:12px">
           <h3>订单概要</h3>
-          <div style="margin-bottom:12px">商品总计： <strong>¥{{ total.toFixed(2) }}</strong></div>
+          <div class="summary-row">商品总计： <span class="price-strong">¥{{ total.toFixed(2) }}</span></div>
 
           <el-form label-width="90px" size="small">
             <el-form-item label="运费">
@@ -132,13 +141,16 @@
             </el-form-item>
 
             <el-form-item>
-              <el-button type="primary" @click="createOrder">生成订单并支付</el-button>
+              <div class="btn-row">
+                <el-button @click="router.back()" class="ghost-btn">返回</el-button>
+                <el-button type="primary" class="full-width-btn" @click="createOrder">生成订单并支付</el-button>
+              </div>
             </el-form-item>
           </el-form>
 
-          <div style="margin-top:12px;color:#666">
-            <div>运费：¥{{ shipping.toFixed(2) }}</div>
-            <div style="margin-top:8px">应付总额：<strong>¥{{ (total + shipping).toFixed(2) }}</strong></div>
+          <div class="total-box">
+            <div>运费：<span class="price-normal">¥{{ shipping.toFixed(2) }}</span></div>
+            <div class="pay-total">应付总额：<span class="price-highlight">¥{{ (total + shipping).toFixed(2) }}</span></div>
           </div>
         </el-card>
 
@@ -157,7 +169,6 @@ import type { AddressInfo } from '@/api/model/userModel'
 import { getAddressList, addAddress } from '@/api/user'
 import { useRouter, useRoute } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
-import { ArrowLeft } from '@element-plus/icons-vue'
 
 const cart = useCartStore()
 // 支持两种结算模式：
@@ -324,22 +335,19 @@ const matchesExisting = computed(() => {
     const rawPhone = (a.phone || '').trim()
     if (rawName !== modalName || rawPhone !== modalPhone) return false
 
-    // 比较 detail
-    if (a.detail && (a.detail || '').trim()) {
-      return (a.detail || '').trim() === modalDetail
+    const sameDetail = (a.detail || '').trim() === modalDetail
+    const sameRegion =
+      (a.province || '') === (modalAddressForm.value.province || '') &&
+      (a.city || '') === (modalAddressForm.value.city || '') &&
+      (a.district || '') === (modalAddressForm.value.district || '')
+
+    // 如果有省市区信息，需同时匹配省市区与详细地址
+    if ((a.province || a.city || a.district)) {
+      return sameDetail && sameRegion
     }
 
-    // 比较省市区 + detail
-    if ((a.province || '') && (a.city || '') && (a.district || '')) {
-      return (a.province || '') === (modalAddressForm.value.province || '') &&
-             (a.city || '') === (modalAddressForm.value.city || '') &&
-             (a.district || '') === (modalAddressForm.value.district || '') &&
-             ((a.detail || '').trim() === modalDetail)
-    }
-
-    // 无平面 address 字段，跳过
-
-    return false
+    // 否则仅按详细地址匹配
+    return sameDetail
   })
 })
 
@@ -511,6 +519,7 @@ const total = computed(() => {
 // 运费：满 ¥199 包邮，否则固定 ¥10
 const shipping = computed(() => (total.value >= 199 ? 0 : 10))
 const payment = ref<string>('alipay')
+const buyerRemark = ref<string>('')
 
 // 不在结算页展示订单详情；创建后跳转到支付页
 const router = useRouter()
@@ -701,7 +710,7 @@ async function createOrder() {
       const specId = (first.skuId ?? first.specId ?? first.id) as number
       const quantity = (first.count ?? first.quantity ?? 1) as number
       try {
-        created = await buyNowOrder({ addressId: selectedAddressId.value!, specId, quantity, buyerRemark: '' })
+        created = await buyNowOrder({ addressId: selectedAddressId.value!, specId, quantity, buyerRemark: buyerRemark.value || '' })
       } catch (err) {
         ElMessage.error('创建直购订单失败：' + (err as Error).message)
         return
@@ -715,7 +724,7 @@ async function createOrder() {
         return
       }
       try {
-        created = await createOrdersFromCart({ addressId: selectedAddressId.value, cartItemIds, buyerRemark: null })
+        created = await createOrdersFromCart({ addressId: selectedAddressId.value, cartItemIds, buyerRemark: buyerRemark.value || null })
       } catch (err) {
         ElMessage.error('创建购物车订单失败：' + (err as Error).message)
         return
@@ -724,7 +733,7 @@ async function createOrder() {
 
     ElMessage.success('订单已创建，跳转支付页')
     const orderSn = (created as { data?: { orderSn?: string } })?.data?.orderSn || ''
-    router.push({ path: '/payment', query: { orderId: orderSn } })
+    router.push({ path: '/payment', query: { orderId: orderSn, fromCheckout: '1' } })
   } catch (e) {
     ElMessage.error('创建订单失败：' + (e as Error).message)
   }
@@ -771,5 +780,17 @@ async function createOrder() {
 }
 
 /* 使用 Element Plus 默认的必填样式，与 UserAddress 弹窗保持一致 */
+
+.summary-card { background: #fffaf7; }
+.summary-row { margin-bottom: 12px; font-size: 15px; }
+.price-strong { font-weight: 700; color: #e53935; font-size: 16px; }
+.price-normal { color: #333; }
+.price-highlight { color: #d32f2f; font-size: 20px; font-weight: 800; }
+.total-box { margin-top: 12px; color: #666; display: flex; flex-direction: column; gap: 8px; }
+.full-width-btn { width: 100%; font-size: 15px; font-weight: 600; }
+.btn-row { display: flex; gap: 8px; }
+.ghost-btn { flex: 0 0 90px; }
+.remark-card { background: #f8fbff; }
+.remark-header { font-weight: 600; margin-bottom: 8px; }
 
 </style>

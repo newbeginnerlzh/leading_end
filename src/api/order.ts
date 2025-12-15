@@ -2,7 +2,6 @@
 
 // 导入现有的模型
 import type { BaseResponse, Order, OrderItem } from './model/orderModel';
-import type { ApiResponse, PageResult } from './model/common';
 
 // 单个商品创建订单请求参数类型定义
 export interface BuyNowOrderRequest {
@@ -51,8 +50,7 @@ export interface OrderListData {
   orders: OrderListItem[];   // 订单列表
 }
 
-export interface OrderDetailResponse extends BaseResponse<OrderDetailData> {}
-export interface OrderListResponse extends BaseResponse<OrderListData> {}
+// 注：如需要更具体的响应类型别名，可在使用处直接引用 BaseResponse<OrderDetailData>/<OrderListData>
 
 // 查询参数类型定义
 export interface GetOrderListParams {
@@ -61,6 +59,8 @@ export interface GetOrderListParams {
   status?: number;           // 通过订单状态进行筛选 0-待付款，1-待发货，2-待收货，3-已完成，4-已取消，5-退款中，6-退款成功，7-退款失败
   startDate?: string;        // 开始日期
   endDate?: string;          // 结束日期
+  orderSn?: string;          // 严格匹配的订单号
+  productName?: string;      // 模糊匹配的商品名
 }
 
 // 操作类型枚举
@@ -137,7 +137,7 @@ export async function buyNowOrder(params: BuyNowOrderRequest): Promise<BaseRespo
     try {
       const errorObj = JSON.parse(errorResponse);
       errorMessage = errorObj.message || errorMessage;
-    } catch (e) {
+    } catch {
       // 如果无法解析错误响应，则使用默认错误消息
     } 
     throw new Error(errorMessage);
@@ -160,6 +160,8 @@ export async function getOrderList(params?: GetOrderListParams): Promise<BaseRes
   if (params?.status!== undefined) queryParams.append('status', params.status.toString());
   if (params?.startDate) queryParams.append('startDate', params.startDate);
   if (params?.endDate) queryParams.append('endDate', params.endDate);
+  if (params?.orderSn) queryParams.append('orderSn', params.orderSn);
+  if (params?.productName) queryParams.append('productName', params.productName);
 
   const queryString = queryParams.toString();
   const url = `/api/orders${queryString ? '?' + queryString : ''}`;
@@ -180,7 +182,7 @@ export async function getOrderList(params?: GetOrderListParams): Promise<BaseRes
     try {
       const errorObj = JSON.parse(errorResponse);
       errorMessage = errorObj.message || errorMessage;
-    } catch (e) {
+    } catch {
       // 如果无法解析错误响应，则使用默认错误消息
     }
     
@@ -214,7 +216,7 @@ export async function getOrderDetail(orderSn: number | string): Promise<BaseResp
     try {
       const errorObj = JSON.parse(errorResponse);
       errorMessage = errorObj.message || errorMessage;
-    } catch (e) {
+    } catch {
       // 如果无法解析错误响应，则使用默认错误消息
     }
     
@@ -255,7 +257,7 @@ export async function updateOrderStatus(orderSn: string, params: UpdateOrderStat
     try {
       const errorObj = JSON.parse(errorResponse);
       errorMessage = errorObj.message || errorMessage;
-    } catch (e) {
+    } catch {
       // 如果无法解析错误响应，则使用默认错误消息
     }
     
@@ -298,7 +300,7 @@ export async function deleteOrder(orderSn: string): Promise<BaseResponse<null>> 
     try {
       const errorObj = JSON.parse(errorResponse);
       errorMessage = errorObj.message || errorMessage;
-    } catch (e) {
+    } catch {
       // 如果无法解析错误响应，则使用默认错误消息
     }
     
