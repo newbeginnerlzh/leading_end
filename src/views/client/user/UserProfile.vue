@@ -59,10 +59,12 @@
               <el-form-item label="用户头像">
                 <el-upload
                   class="avatar-uploader"
-                  action="/api/upload/avatar"
                   :show-file-list="false"
-                  :on-success="handleAvatarSuccess"
-                  :before-upload="beforeAvatarUpload"
+                  :auto-upload="false"
+                  :on-change="handlePickAvatarChange"
+                  accept="image/jpeg,image/png"
+                  name="file"
+                  :limit="1"
                 >
                   <img v-if="editUserInfo.avatar" :src="editUserInfo.avatar" class="avatar" />
                   <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
@@ -165,10 +167,21 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import type { UploadFile } from 'element-plus'
 import type { FormItemRule } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+// import type { UploadRequestOptions } from 'element-plus'
 import { getUserInfo, updateUserInfo, changePassword, cancelAccount } from '@/api/user'
 import type { UserInfo, UpdateUserInfoRequest, ChangePasswordRequest, CancelAccountRequest } from '@/api/model/userModel'
+// 不再走独立头像上传接口，保存时与其他字段一并提交
+
+const AVATAR_TARGET_BYTES = 350
+const AVATAR_MAX_DIMENSION = 80
+const AVATAR_MIN_DIMENSION = 16
+const AVATAR_INITIAL_QUALITY = 0.5
+const AVATAR_MIN_QUALITY = 0.08
+const AVATAR_QUALITY_STEP = 0.08
+const AVATAR_SCALE_STEP = 0.8
 
 // 表单引用
 const formRef = ref()
@@ -273,31 +286,59 @@ const fetchUserInfo = async () => {
 }
 
 // 头像上传成功
-const handleAvatarSuccess = (response: { data: { url: string } }) => {
-  const url = response.data.url
-  // 如果处于编辑模式，更新编辑副本；否则直接更新展示数据并保存
-  if (isEditing.value) {
-    editUserInfo.avatar = url
-  } else {
-    userInfo.avatar = url
-    // 立即保存头像信息
-    updateUserInfo({ avatar: url }).catch((e) => {
-      console.error(e)
-      ElMessage.error(getErrorMessage(e))
-    })
+// 选择头像文件：类型校验 + 可选压缩 + 本地预览（不直接上传）
+const handlePickAvatar = async (file: File) => {
+  const isImage = file.type === 'image/jpeg' || file.type === 'image/png'
+  if (!isImage) {
+    ElMessage.error('上传头像只能是 JPG/PNG 格式!')
+    return false
   }
-  ElMessage.success('头像上传成功')
+
+  try {
+    const processed = await compressImage(file)
+    const compressedBytes = processed.size
+    const readableSize = compressedBytes >= 1024
+      ? `${(compressedBytes / 1024).toFixed(2)}KB`
+      : `${compressedBytes}B`
+    // 将文件转为本地预览 URL；保存时由后端接收为字符串字段
+    const reader = new FileReader()
+    const base64 = await new Promise<string>((resolve, reject) => {
+      reader.onload = () => resolve((reader.result || '') as string)
+      reader.onerror = (e) => reject(e)
+      reader.readAsDataURL(processed)
+    })
+    editUserInfo.avatar = base64
+    if (compressedBytes <= AVATAR_TARGET_BYTES) {
+      ElMessage.success(`头像压缩成功（约 ${readableSize}），请点击保存提交`)
+    } else {
+      ElMessage.warning(`已尽力压缩头像（约 ${readableSize}），仍超 ${AVATAR_TARGET_BYTES}B，建议换更小图片`)
+    }
+    // 阻止 el-upload 继续默认上传流程
+    return false
+  } catch (err) {
+    console.error('处理头像失败:', err)
+    ElMessage.error('图片处理失败，请重试')
+    return false
+  }
+}
+
+// el-upload 在 auto-upload=false 下，选择文件时触发 on-change
+// UploadFile.raw 为原始 File 对象
+const handlePickAvatarChange = async (uploadFile: UploadFile) => {
+  const raw: File | undefined = uploadFile?.raw
+  if (!raw) {
+    ElMessage.error('未获取到文件，请重试')
+    return
+  }
+  await handlePickAvatar(raw)
 }
 
 // 头像上传前校验
 // 客户端图片压缩：保持清晰度同时减小体积
-const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.85): Promise<File> => {
+const compressImage = (file: File): Promise<File> => {
   return new Promise((resolve, reject) => {
     try {
-      // 如果文件已经很小则跳过压缩（例如小于100KB）
-      const sizeKB = file.size / 1024
-      if (sizeKB < 100) {
-        console.debug('[compressImage] skip compress, small file', file.name, `${Math.round(sizeKB)}KB`)
+      if (file.size <= AVATAR_TARGET_BYTES) {
         resolve(file)
         return
       }
@@ -305,52 +346,71 @@ const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 
       const img = new Image()
       const url = URL.createObjectURL(file)
 
-      img.onload = () => {
+      img.onload = async () => {
         URL.revokeObjectURL(url)
-        const { width, height } = img
 
-        // 等比例缩放到 maxWidth/maxHeight
-        const ratio = Math.min(1, maxWidth / width, maxHeight / height)
-        const destWidth = Math.round(width * ratio)
-        const destHeight = Math.round(height * ratio)
-
-        // 如果尺寸没变化且原来就是 jpeg，则直接返回原文件
-        if (destWidth === width && destHeight === height && file.type === 'image/jpeg') {
-          resolve(file)
-          return
-        }
+        const longestEdge = Math.max(img.width, img.height) || 1
+        const minScale = Math.min(1, AVATAR_MIN_DIMENSION / longestEdge)
+        let scale = Math.min(1, AVATAR_MAX_DIMENSION / longestEdge)
+        scale = Math.max(minScale, scale)
+        let currentQuality = AVATAR_INITIAL_QUALITY
 
         const canvas = document.createElement('canvas')
-        canvas.width = destWidth
-        canvas.height = destHeight
         const ctx = canvas.getContext('2d')
         if (!ctx) {
           reject(new Error('无法获取 canvas 上下文'))
           return
         }
 
-        // 填充白底以避免 png 转 jpeg 失去透明背景导致黑色问题
-        ctx.fillStyle = '#fff'
-        ctx.fillRect(0, 0, destWidth, destHeight)
-        ctx.drawImage(img, 0, 0, destWidth, destHeight)
+        const drawAndCompress = (targetWidth: number, targetHeight: number, quality: number): Promise<Blob> => {
+          canvas.width = Math.max(1, targetWidth)
+          canvas.height = Math.max(1, targetHeight)
+          ctx.fillStyle = '#fff'
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+          return new Promise((resolveBlob, rejectBlob) => {
+            canvas.toBlob((blob) => {
+              if (!blob) {
+                rejectBlob(new Error('图片压缩失败'))
+                return
+              }
+              resolveBlob(blob)
+            }, 'image/jpeg', quality)
+          })
+        }
 
-        // 输出为 jpeg 以取得更好的压缩比，保持较高质量
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(new Error('图片压缩失败'))
+        while (true) {
+          const targetWidth = Math.max(1, Math.round(img.width * scale))
+          const targetHeight = Math.max(1, Math.round(img.height * scale))
+          try {
+            const blob = await drawAndCompress(targetWidth, targetHeight, currentQuality)
+            if (blob.size <= AVATAR_TARGET_BYTES || (targetWidth <= AVATAR_MIN_DIMENSION && targetHeight <= AVATAR_MIN_DIMENSION && currentQuality <= AVATAR_MIN_QUALITY)) {
+              const baseName = file.name.replace(/\.[^.]+$/, '')
+              const newFile = new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' })
+              console.debug('[compressImage] compressed', file.name, '->', newFile.name, `${file.size}B -> ${blob.size}B`, `${targetWidth}x${targetHeight}`, `q=${currentQuality.toFixed(2)}`)
+              resolve(newFile)
               return
             }
-            const ext = '.jpg'
+
+            if (currentQuality > AVATAR_MIN_QUALITY + 0.001) {
+              currentQuality = Math.max(AVATAR_MIN_QUALITY, currentQuality - AVATAR_QUALITY_STEP)
+              continue
+            }
+
+            if (scale > minScale + 0.001) {
+              scale = Math.max(minScale, scale * AVATAR_SCALE_STEP)
+              continue
+            }
+
             const baseName = file.name.replace(/\.[^.]+$/, '')
-            const newName = baseName + ext
-            const newFile = new File([blob], newName, { type: 'image/jpeg' })
-            console.debug('[compressImage] compressed', file.name, '->', newFile.name, `${Math.round(file.size/1024)}KB -> ${Math.round(newFile.size/1024)}KB`)
-            resolve(newFile)
-          },
-          'image/jpeg',
-          quality
-        )
+            const fallbackFile = new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' })
+            resolve(fallbackFile)
+            return
+          } catch (loopErr) {
+            reject(loopErr)
+            return
+          }
+        }
       }
 
       img.onerror = (e) => {
@@ -366,26 +426,7 @@ const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 
 }
 
 // 图片上传前处理：验证类型并做压缩处理，返回 Promise<File|boolean>
-const beforeAvatarUpload = async (file: File) => {
-  const isImage = file.type === 'image/jpeg' || file.type === 'image/png'
-  if (!isImage) {
-    ElMessage.error('上传头像只能是 JPG/PNG 格式!')
-    return false
-  }
-
-  try {
-    console.debug('[beforeAvatarUpload] original', file.name, `${Math.round(file.size/1024)}KB`)
-    const compressed = await compressImage(file, 1200, 1200, 0.85)
-    // 如果压缩返回的是原文件，直接返回原文件
-    console.debug('[beforeAvatarUpload] returning file', compressed.name, `${Math.round(compressed.size/1024)}KB`)
-    return compressed
-  } catch (err) {
-    console.error('图片压缩失败，回退到原文件上传', err)
-    ElMessage.error('图片处理失败，使用原文件上传')
-    // 出错时回退为原文件，避免阻塞上传流程
-    return file
-  }
-}
+// 移除未使用的旧钩子，压缩逻辑已在 handlePickAvatar 内处理
 
 // 保存用户信息
 const handleSubmit = async () => {
@@ -412,6 +453,18 @@ const handleSubmit = async () => {
     // 保存成功后把编辑副本同步到展示数据并退出编辑模式
     Object.assign(userInfo, editUserInfo)
     isEditing.value = false
+
+    // 同步更新 localStorage 中的 userInfo，以便 Header 等组件能获取最新用户名
+    try {
+      const stored = localStorage.getItem('userInfo')
+      const oldInfo = stored ? JSON.parse(stored) : {}
+      const newInfo = { ...oldInfo, username: editUserInfo.username, nickname: editUserInfo.username }
+      localStorage.setItem('userInfo', JSON.stringify(newInfo))
+      // 手动触发自定义事件通知其他组件（同一标签页内 storage 事件不会触发）
+      window.dispatchEvent(new CustomEvent('userInfoUpdated'))
+    } catch (e) {
+      console.warn('同步 userInfo 到 localStorage 失败', e)
+    }
 
     ElMessage.success('信息修改成功')
   } catch (error) {
