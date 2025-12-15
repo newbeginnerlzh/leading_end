@@ -1,11 +1,15 @@
 <!-- 结算页：展示购物车条目、收货地址选择、订单概要并创建订单（调用 mock API） -->
 <template>
   <div class="order-settlement">
+    <div style="margin-bottom:12px">
+      <el-button type="text" :icon="ArrowLeft" @click="router.back()">返回</el-button>
+    </div>
     <el-row :gutter="20">
       <el-col :span="16">
         <el-card>
           <h3>购物清单</h3>
           <div class="checkout-cart-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div>我的购物车（已选 {{ selectedCount }} 件）</div>
             <div style="color:#999">共 {{ items.length }} 个条目</div>
           </div>
           <el-table :data="items" style="width:100%">
@@ -57,7 +61,7 @@
               </div>
             </div>
 
-            <!-- 地址编辑弹窗 -->
+            <!-- 地址编辑弹窗（外观与 UserAddress.vue 一致） -->
             <el-dialog v-model="modalVisible" title="修改地址" width="600px" :close-on-click-modal="false" :modal-append-to-body="true" :destroy-on-close="false" center>
               <el-form 
               :model="modalAddressForm" 
@@ -83,12 +87,7 @@
 
                 <el-form-item label="选择其他地址">
                   <el-select v-model="modalSelectedAddressId" placeholder="请选择收货地址" style="width:100%" @change="onModalAddressSelect">
-                    <el-option
-                      v-for="a in rawAddresses"
-                      :key="a.id"
-                      :label="(a.name || '') + ' - ' + (a.phone || '') + ' - ' + ((a.detail && (a.province||a.city||a.district)) ? (a.province + ' ' + a.city + ' ' + a.district + ' ' + a.detail) : '')"
-                      :value="a.id"
-                    />
+                    <el-option v-for="a in rawAddresses" :key="a.id" :label="(a.name || '') + ' - ' + (a.phone || '') + ' - ' + ((a.detail && (a.province||a.city||a.district)) ? (a.province + ' ' + a.city + ' ' + a.district + ' ' + a.detail) : (a.address || ''))" :value="a.id" />
                   </el-select>
                 </el-form-item>
               </el-form>
@@ -104,32 +103,16 @@
       </el-col>
 
       <el-col :span="8">
-        <el-card class="remark-card">
-          <div class="remark-header">买家留言</div>
-          <el-input
-            v-model="buyerRemark"
-            type="textarea"
-            :autosize="{ minRows: 2, maxRows: 4 }"
-            maxlength="200"
-            show-word-limit
-            placeholder="给卖家的留言（选填）"
-          />
-        </el-card>
-
-        <el-card class="summary-card" style="margin-top:12px">
+        <el-card>
           <h3>订单概要</h3>
-          <div class="summary-row">商品总计： <span class="price-strong">¥{{ total.toFixed(2) }}</span></div>
+          <div style="margin-bottom:12px">商品总计： <strong>¥{{ total.toFixed(2) }}</strong></div>
 
           <el-form label-width="90px" size="small">
             <el-form-item label="运费">
-              <div style="color:#333">
-                <template v-if="shipping === 0">
-                  包邮（订单满 ¥199 已免运费）
-                </template>
-                <template v-else>
-                  运费 ¥{{ shipping.toFixed(2) }}（满 ¥199 包邮）
-                </template>
-              </div>
+              <el-select v-model="shipping" placeholder="请选择" style="width:100%">
+                <el-option label="快递 10.00 元" :value="10" />
+                <el-option label="包邮（满 199）" :value="0" />
+              </el-select>
             </el-form-item>
 
             <el-form-item label="支付方式">
@@ -141,19 +124,20 @@
             </el-form-item>
 
             <el-form-item>
-              <div class="btn-row">
-                <el-button @click="router.back()" class="ghost-btn">返回</el-button>
-                <el-button type="primary" class="full-width-btn" @click="createOrder">生成订单并支付</el-button>
-              </div>
+              <el-button type="primary" @click="createOrder">生成订单并支付</el-button>
             </el-form-item>
           </el-form>
 
-          <div class="total-box">
-            <div>运费：<span class="price-normal">¥{{ shipping.toFixed(2) }}</span></div>
-            <div class="pay-total">应付总额：<span class="price-highlight">¥{{ (total + shipping).toFixed(2) }}</span></div>
+          <div style="margin-top:12px;color:#666">
+            <div>运费：¥{{ shipping.toFixed(2) }}</div>
+            <div style="margin-top:8px">应付总额：<strong>¥{{ (total + shipping).toFixed(2) }}</strong></div>
           </div>
         </el-card>
 
+        <el-card style="margin-top:16px">
+          <h4>示例操作</h4>
+          <div style="font-size:13px;color:#666">点击“生成订单并支付”会把订单通过封装的 API（mock）创建，并跳转到支付页。</div>
+        </el-card>
       </el-col>
     </el-row>
 
@@ -164,58 +148,42 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { createOrdersFromCart, buyNowOrder } from '@/api/order'
-import type { AddressInfo } from '@/api/model/userModel'
+import { createOrder as apiCreateOrder } from '@/api/order'
 import { getAddressList, addAddress } from '@/api/user'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
+import { ArrowLeft } from '@element-plus/icons-vue'
 
 const cart = useCartStore()
 // 支持两种结算模式：
 // - 直接购买（direct_purchase 存在于 localStorage）：使用临时项，不影响购物车
 // - 购物车结算：使用 cart.selectedItems
 import { ref as _ref } from 'vue'
-// 直购临时项的最小结构定义，替代 any
-interface DirectPurchaseItem {
-  specId?: number
-  skuId?: number
-  id?: number
-  price?: number
-  count?: number
-  quantity?: number
-  productName?: string
-  name?: string
-  mainImage?: string
-  imgUrl?: string
-}
-const directItems = _ref<DirectPurchaseItem[] | null>(null)
-const items = computed<unknown[]>(() => {
-  return (directItems.value && directItems.value.length > 0) ? directItems.value : (cart.selectedItems as unknown[])
+const directItems = _ref<any[] | null>(null)
+const items = computed(() => {
+  return (directItems.value && directItems.value.length > 0) ? directItems.value : cart.selectedItems
 })
 
 // 地址管理：从 localStorage 中读取 mock_addresses（示例格式：[{ id, name, phone, address }])
-type SimpleAddress = { id: number; name: string; phone: string; address: string }
-const addresses = ref<SimpleAddress[]>([])
+const addresses = ref<{ id: number; name: string; phone: string; address: string }[]>([])
 const selectedAddressId = ref<number | null>(null)
-const address = ref<{ name: string; phone: string; address: string }>({ name: '', phone: '', address: '' })
+const address = ref({ name: '', phone: '', address: '' })
 // 控制是否显示地址下拉选择（已改为弹窗管理）
 
 // 弹窗相关
 const modalVisible = ref(false)
-const rawAddresses = ref<AddressInfo[]>([])
+const rawAddresses = ref<any[]>([])
 const modalSelectedAddressId = ref<number | null>(null)
-const modalAddressForm = ref<{ name: string; phone: string; province: string; city: string; district: string; detail: string; postal_code: string | null; isDefault: boolean }>({ name: '', phone: '', province: '', city: '', district: '', detail: '', postal_code: null, isDefault: false })
-const modalOriginal = ref<{ name?: string; phone?: string; province?: string; city?: string; district?: string; detail?: string } | null>(null)
+const modalAddressForm = ref({ name: '', phone: '', province: '', city: '', district: '', detail: '', postal_code: null, isDefault: false })
+const modalOriginal = ref<any>(null)
 // 临时结构化地址（用于在未保存地址时保留 province/city/district/detail）
-const tempAddress = ref<{ name?: string; phone?: string; province?: string; city?: string; district?: string; detail?: string } | null>(null)
+const tempAddress = ref<any>(null)
 const regionValue = ref<string[]>([])
-interface RegionNode { code: string; name: string; children?: RegionNode[] }
-const regionOptions = ref<RegionNode[]>([])
+const regionOptions = ref<any[]>([])
 
 // modal 表单引用与校验规则
 const modalFormRef = ref()
-import type { FormItemRule } from 'element-plus'
-const modalRules: Record<string, FormItemRule[]> = {
+const modalRules = {
   name: [{ required: true, message: '请输入收件人', trigger: 'blur' }],
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
@@ -223,7 +191,7 @@ const modalRules: Record<string, FormItemRule[]> = {
   ],
   province: [
     {
-      validator: (_rule, _value, callback) => {
+      validator: (_rule: any, _value: any, callback: any) => {
         if (Array.isArray(regionValue.value) && regionValue.value.length === 3) {
           callback()
         } else {
@@ -240,19 +208,20 @@ const modalRules: Record<string, FormItemRule[]> = {
 }
 
 // 提取：刷新并映射地址列表为通用函数，返回原始 list
-async function fetchAndMapAddresses(): Promise<AddressInfo[]> {
+async function fetchAndMapAddresses() {
   try {
     const res = await getAddressList()
-    const data = (res as { data?: AddressInfo[] }).data || []
-    const list: AddressInfo[] = Array.isArray(data) ? data : []
+    const r = res as unknown
+    const data = (r && (r as { data?: any }).data) ? (r as { data?: any }).data : (r as any)
+    const list = Array.isArray(data) ? data as any[] : []
     rawAddresses.value = list
     const mapped = list.map((a) => {
-      const addrStr = a.detail ? `${a.province || ''} ${a.city || ''} ${a.district || ''} ${a.detail || ''}`.trim() : ''
-      return { id: a.id!, name: a.name || '', phone: a.phone || '', address: addrStr }
-    }).filter(x => typeof x.id === 'number')
+      const addrStr = a.detail ? `${a.province || ''} ${a.city || ''} ${a.district || ''} ${a.detail || ''}`.trim() : (a.address || '')
+      return { id: a.id ?? a.addressId ?? null, name: a.name || '', phone: a.phone || '', address: addrStr }
+    }).filter(x => x.id !== null)
     addresses.value = mapped
     return list
-  } catch {
+  } catch (e) {
     rawAddresses.value = []
     addresses.value = []
     return []
@@ -264,7 +233,7 @@ import areaData from 'china-area-data/data.json'
 type RawArea = Record<string, Record<string, string>>
 const rawArea = areaData as unknown as RawArea
 
-function buildNodes(parentCode: string): RegionNode[] {
+function buildNodes(parentCode: string) {
   const map = rawArea[parentCode] || {}
   return Object.entries(map).map(([code, name]) => {
     const children = buildNodes(code)
@@ -275,9 +244,9 @@ regionOptions.value = buildNodes('86')
 
 function handleModalRegionChange(value: string[]) {
   if (value.length === 3) {
-    const provNode = regionOptions.value.find((item) => item.code === value[0])
-    const cityNode = provNode?.children?.find((item) => item.code === value[1])
-    const distNode = cityNode?.children?.find((item) => item.code === value[2])
+    const provNode = regionOptions.value.find((item: any) => item.code === value[0])
+    const cityNode = provNode?.children?.find((item: any) => item.code === value[1])
+    const distNode = cityNode?.children?.find((item: any) => item.code === value[2])
 
     const province = provNode?.name || ''
     const city = cityNode?.name || ''
@@ -294,7 +263,7 @@ function onModalAddressSelect(id: number) {
   if (!found) return
   modalAddressForm.value.name = found.name || ''
   modalAddressForm.value.phone = found.phone || ''
-  modalAddressForm.value.detail = found.detail || ''
+  modalAddressForm.value.detail = found.detail || found.address || ''
   modalAddressForm.value.province = found.province || ''
   modalAddressForm.value.city = found.city || ''
   modalAddressForm.value.district = found.district || ''
@@ -330,24 +299,30 @@ const matchesExisting = computed(() => {
   const modalPhone = (modalAddressForm.value.phone || '').trim()
   const modalDetail = (modalAddressForm.value.detail || '').trim()
 
-  return rawAddresses.value.some((a) => {
+  return rawAddresses.value.some((a: any) => {
     const rawName = (a.name || '').trim()
     const rawPhone = (a.phone || '').trim()
     if (rawName !== modalName || rawPhone !== modalPhone) return false
 
-    const sameDetail = (a.detail || '').trim() === modalDetail
-    const sameRegion =
-      (a.province || '') === (modalAddressForm.value.province || '') &&
-      (a.city || '') === (modalAddressForm.value.city || '') &&
-      (a.district || '') === (modalAddressForm.value.district || '')
-
-    // 如果有省市区信息，需同时匹配省市区与详细地址
-    if ((a.province || a.city || a.district)) {
-      return sameDetail && sameRegion
+    // 比较 detail
+    if (a.detail && (a.detail || '').trim()) {
+      return (a.detail || '').trim() === modalDetail
     }
 
-    // 否则仅按详细地址匹配
-    return sameDetail
+    // 比较省市区 + detail
+    if ((a.province || '') && (a.city || '') && (a.district || '')) {
+      return (a.province || '') === (modalAddressForm.value.province || '') &&
+             (a.city || '') === (modalAddressForm.value.city || '') &&
+             (a.district || '') === (modalAddressForm.value.district || '') &&
+             ((a.detail || '').trim() === modalDetail)
+    }
+
+    // 平面 address 字段对比
+    if (a.address && (a.address || '').trim()) {
+      return (a.address || '').trim() === modalDetail
+    }
+
+    return false
   })
 })
 
@@ -373,7 +348,7 @@ async function applyModalAddress() {
     if (modalFormRef.value) {
       await modalFormRef.value.validate()
     }
-  } catch {
+  } catch (e) {
     // 验证失败，不关闭弹窗
     return
   }
@@ -381,10 +356,10 @@ async function applyModalAddress() {
   // 将弹窗当前显示的地址应用到结算页（不一定保存为新地址）
   if (modalSelectedAddressId.value && !isModalModified.value) {
     // 选中了已有地址并且未修改，直接以该 id 为准
-    const found = rawAddresses.value.find((a) => a.id === modalSelectedAddressId.value)
+    const found = rawAddresses.value.find((a) => (a.id ?? a.addressId) === modalSelectedAddressId.value)
     if (found) {
-      selectedAddressId.value = found.id ?? null
-      const addrStr = found.detail ? `${found.province || ''} ${found.city || ''} ${found.district || ''} ${found.detail || ''}`.trim() : ''
+      selectedAddressId.value = found.id ?? found.addressId ?? null
+      const addrStr = found.detail ? `${found.province || ''} ${found.city || ''} ${found.district || ''} ${found.detail || ''}`.trim() : (found.address || '')
       address.value = { name: found.name || '', phone: found.phone || '', address: addrStr }
     }
   } else {
@@ -433,9 +408,10 @@ async function openModal() {
   if (!rawAddresses.value || rawAddresses.value.length === 0) {
     try {
       const res = await getAddressList()
-      const data = (res as { data?: AddressInfo[] }).data || []
-      rawAddresses.value = Array.isArray(data) ? data : []
-    } catch {
+      const r = res as unknown
+      const data = (r && (r as { data?: any }).data) ? (r as { data?: any }).data : (r as any)
+      rawAddresses.value = Array.isArray(data) ? data as any[] : []
+    } catch (e) {
       rawAddresses.value = []
     }
   }
@@ -444,11 +420,11 @@ async function openModal() {
 
   // 如果当前有选中地址，优先用 rawAddresses 的细粒度数据回填 modal 表单
   if (selectedAddressId.value) {
-    const found = rawAddresses.value.find((a) => a.id === selectedAddressId.value)
+    const found = rawAddresses.value.find((a) => (a.id ?? a.addressId) === selectedAddressId.value)
     if (found) {
       modalAddressForm.value.name = found.name || ''
       modalAddressForm.value.phone = found.phone || ''
-      modalAddressForm.value.detail = found.detail || ''
+      modalAddressForm.value.detail = found.detail || found.address || ''
       modalAddressForm.value.province = found.province || ''
       modalAddressForm.value.city = found.city || ''
       modalAddressForm.value.district = found.district || ''
@@ -498,35 +474,20 @@ async function openModal() {
   // 等待 DOM 更新后清除表单的历史验证信息（避免打开时显示旧的错误）
   await nextTick()
   try {
-    if (modalFormRef.value) { modalFormRef.value.clearValidate() }
-  } catch {
+    modalFormRef.value && modalFormRef.value.clearValidate()
+  } catch (e) {
     // ignore
   }
 }
 
-// 订单总额：支持直接购买（directItems）或购物车结算
-const total = computed(() => {
-  try {
-    if (directItems.value && Array.isArray(directItems.value) && directItems.value.length > 0) {
-      return directItems.value.reduce((sum: number, it: DirectPurchaseItem) => sum + ((it.price || 0) * (it.count || 1)), 0)
-    }
-  } catch {
-    // ignore and fallback
-  }
-  return cart.selectedTotalPrice
-})
-
-// 运费：满 ¥199 包邮，否则固定 ¥10
-const shipping = computed(() => (total.value >= 199 ? 0 : 10))
+const shipping = ref<number>(10)
 const payment = ref<string>('alipay')
-const buyerRemark = ref<string>('')
 
 // 不在结算页展示订单详情；创建后跳转到支付页
 const router = useRouter()
-const route = useRoute()
 
-type CheckoutMode = 'direct' | 'cart'
-const checkoutMode = ref<CheckoutMode>('cart')
+const total = computed(() => cart.selectedTotalPrice)
+const selectedCount = computed(() => cart.selectedTotalCount)
 
 onMounted(async () => {
   try {
@@ -541,49 +502,33 @@ onMounted(async () => {
         // 读取后移除，避免重复使用
         localStorage.removeItem('direct_purchase')
       }
-    } catch {
+    } catch (err) {
       // ignore parsing errors
-    }
-
-    // 根据路由参数或数据判断结算模式
-    const qMode = (route.query.mode as string | undefined) || undefined
-    if (qMode === 'direct') {
-      checkoutMode.value = 'direct'
-      if (!directItems.value || directItems.value.length === 0) {
-        ElMessage.warning('未检测到直购商品，已切换为购物车结算')
-        checkoutMode.value = 'cart'
-      }
-    } else if (qMode === 'cart') {
-      checkoutMode.value = 'cart'
-    } else {
-      checkoutMode.value = (directItems.value && directItems.value.length > 0) ? 'direct' : 'cart'
     }
 
     // 使用统一的用户地址 API 获取地址列表，保持与 UserAddress.vue 一致
     try {
       const list = await fetchAndMapAddresses()
       // 优先使用用户地址列表中标记为默认的地址
-      const defaultRaw = list.find((a) => a.isDefault)
+      const defaultRaw = list.find((a: any) => a.isDefault)
       if (defaultRaw) {
-        const addrStr = defaultRaw.detail ? `${defaultRaw.province || ''} ${defaultRaw.city || ''} ${defaultRaw.district || ''} ${defaultRaw.detail || ''}`.trim() : ''
-        selectedAddressId.value = defaultRaw.id ?? null
+        const addrStr = defaultRaw.detail ? `${defaultRaw.province || ''} ${defaultRaw.city || ''} ${defaultRaw.district || ''} ${defaultRaw.detail || ''}`.trim() : (defaultRaw.address || '')
+        selectedAddressId.value = defaultRaw.id ?? defaultRaw.addressId ?? null
         address.value = { name: defaultRaw.name || '', phone: defaultRaw.phone || '', address: addrStr }
       } else if (addresses.value.length > 0) {
+        selectedAddressId.value = addresses.value[0].id
         const first = addresses.value[0]
-        if (first) {
-          selectedAddressId.value = first.id
-          address.value = { name: first.name, phone: first.phone, address: first.address }
-        }
+        address.value = { name: first.name, phone: first.phone, address: first.address }
       } else {
         selectedAddressId.value = null
         address.value = { name: '', phone: '', address: '' }
       }
-    } catch {
+    } catch (e) {
       addresses.value = []
       selectedAddressId.value = null
       address.value = { name: '', phone: '', address: '' }
     }
-  } catch {
+  } catch (e) {
     // ignore
   }
 })
@@ -608,21 +553,21 @@ async function saveModalAsNewAddress() {
     }
 
     const res = await addAddress(payload)
-    const saved = (res as { data?: AddressInfo }).data
+    const saved = (res && (res as any).data) ? (res as any).data : res
     ElMessage.success('地址已保存')
 
     // 刷新地址列表并选择新保存的地址
     try {
-      await fetchAndMapAddresses()
+      const list = await fetchAndMapAddresses()
       if (saved && saved.id) {
         selectedAddressId.value = saved.id
-        const addrStr = saved?.detail ? `${saved.province || ''} ${saved.city || ''} ${saved.district || ''} ${saved.detail || ''}`.trim() : ''
+        const addrStr = saved.detail ? `${saved.province || ''} ${saved.city || ''} ${saved.district || ''} ${saved.detail || ''}`.trim() : (saved.address || '')
         address.value = { name: saved.name || '', phone: saved.phone || '', address: addrStr }
         modalSelectedAddressId.value = saved.id
         // 用结构化字段回填 modal 表单
         modalAddressForm.value.name = saved.name || ''
         modalAddressForm.value.phone = saved.phone || ''
-        modalAddressForm.value.detail = saved?.detail || ''
+        modalAddressForm.value.detail = saved.detail || saved.address || ''
         modalAddressForm.value.province = saved.province || ''
         modalAddressForm.value.city = saved.city || ''
         modalAddressForm.value.district = saved.district || ''
@@ -638,13 +583,13 @@ async function saveModalAsNewAddress() {
         }
         tempAddress.value = null
       }
-    } catch {
-      console.error('刷新地址列表失败')
+    } catch (e) {
+      console.error('刷新地址列表失败', e)
     }
 
     modalVisible.value = false
-  } catch {
-    console.error('保存地址失败')
+  } catch (e) {
+    console.error('保存地址失败', e)
     ElMessage.error('保存地址失败')
   }
 }
@@ -653,87 +598,54 @@ async function saveModalAsNewAddress() {
 
 // 数量在结算页为只读展示，相关修改操作在购物车页处理
 
-// 已弃用的下拉选择回调（改为弹窗选择），保留逻辑通过弹窗完成
+function onAddressChange(id: number) {
+  const found = addresses.value.find((a) => a.id === id)
+  if (found) {
+    address.value = { name: found.name, phone: found.phone, address: found.address }
+  }
+}
 
 async function createOrder() {
-  if (checkoutMode.value === 'cart') {
-    if (!items.value || items.value.length === 0) {
-      ElMessage.warning('请选择至少一件购物车商品进行结算')
-      return
-    }
-  } else {
-    if (!directItems.value || directItems.value.length === 0) {
-      ElMessage.warning('未检测到直购商品，无法创建订单')
-      return
-    }
+  if (!items.value || items.value.length === 0) {
+    ElMessage.warning('请选择至少一件商品进行结算')
+    return
   }
   if (!address.value.name || !address.value.phone || !address.value.address) {
     ElMessage.warning('请填写完整收货信息')
     return
   }
 
-  try {
-    // 如果选中了已保存地址但 address 显示为空或不完整，尝试从原始地址列表中补全（防止用户未点击“确定”导致信息未应用）
-    if (selectedAddressId.value && (!(address.value.name && address.value.phone && address.value.address))) {
-      try {
-        if (!rawAddresses.value || rawAddresses.value.length === 0) {
-          await fetchAndMapAddresses()
-        }
-        const foundRaw = rawAddresses.value.find((a) => a.id === selectedAddressId.value)
-        if (foundRaw) {
-          const addrStr = foundRaw.detail ? `${foundRaw.province || ''} ${foundRaw.city || ''} ${foundRaw.district || ''} ${foundRaw.detail || ''}`.trim() : ''
-          address.value = { name: foundRaw.name || '', phone: foundRaw.phone || '', address: addrStr }
-        }
-      } catch {
-        // ignore
-      }
-    }
+    try {
     // 支持未保存的临时地址：如果没有 selectedAddressId，就把当前 address 表单作为临时地址传入 API
     if (!selectedAddressId.value && !(address.value.name && address.value.phone && address.value.address)) {
       ElMessage.warning('请填写完整收货信息或选择已保存地址')
       return
     }
 
-    // 必须有选中地址（后端创建订单需要 addressId）
-    if (!selectedAddressId.value) {
-      ElMessage.error('请选择收货地址')
-      return
+    const payload: any = {
+      // 传递完整的 item 信息（回退字段 name/price/imgUrl/productId），保证 createOrder 能保存正确的数据
+      items: items.value.map((it: any) => ({
+        skuId: it.skuId,
+        count: it.count,
+        name: it.name,
+        price: it.price,
+        imgUrl: it.imgUrl,
+        productId: it.productId,
+      })),
+      remark: '',
     }
 
-    let created: unknown = null
-    if (checkoutMode.value === 'direct') {
-      const first = directItems.value?.[0]
-      if (!first) {
-        ElMessage.error('直购数据为空')
-        return
-      }
-      const specId = (first.skuId ?? first.specId ?? first.id) as number
-      const quantity = (first.count ?? first.quantity ?? 1) as number
-      try {
-        created = await buyNowOrder({ addressId: selectedAddressId.value!, specId, quantity, buyerRemark: buyerRemark.value || '' })
-      } catch (err) {
-        ElMessage.error('创建直购订单失败：' + (err as Error).message)
-        return
-      }
+    if (selectedAddressId.value) {
+      payload.addressId = selectedAddressId.value
     } else {
-      const cartItemIds = (items.value as Array<{ id: number }>)
-        .map((it) => it.id)
-        .filter((id) => typeof id === 'number')
-      if (!cartItemIds.length) {
-        ElMessage.error('缺少购物车条目ID，无法创建订单')
-        return
-      }
-      try {
-        created = await createOrdersFromCart({ addressId: selectedAddressId.value, cartItemIds, buyerRemark: buyerRemark.value || null })
-      } catch (err) {
-        ElMessage.error('创建购物车订单失败：' + (err as Error).message)
-        return
-      }
+      // 临时地址（不保存）
+      payload.address = { name: address.value.name, phone: address.value.phone, address: address.value.address }
     }
 
-    ElMessage.success('订单已创建，跳转支付页')
-    const orderSn = (created as { data?: { orderSn?: string } })?.data?.orderSn || ''
-    router.push({ path: '/payment', query: { orderId: orderSn, fromCheckout: '1' } })
+    const created = await apiCreateOrder(payload)
+    ElMessage.success('订单已通过 API 创建（mock），即将跳转到支付页')
+    // 下单成功后：不在此处删除购物车项，支付成功后由支付页统一清理。
+    router.push({ path: '/payment', query: { orderId: (created as any).orderId || (created as any).id } })
   } catch (e) {
     ElMessage.error('创建订单失败：' + (e as Error).message)
   }
@@ -747,6 +659,7 @@ async function createOrder() {
 .product-info {
   display: flex;
   gap: 15px;
+  text-align: left;
   align-items: center;
 }
 
@@ -780,17 +693,4 @@ async function createOrder() {
 }
 
 /* 使用 Element Plus 默认的必填样式，与 UserAddress 弹窗保持一致 */
-
-.summary-card { background: #fffaf7; }
-.summary-row { margin-bottom: 12px; font-size: 15px; }
-.price-strong { font-weight: 700; color: #e53935; font-size: 16px; }
-.price-normal { color: #333; }
-.price-highlight { color: #d32f2f; font-size: 20px; font-weight: 800; }
-.total-box { margin-top: 12px; color: #666; display: flex; flex-direction: column; gap: 8px; }
-.full-width-btn { width: 100%; font-size: 15px; font-weight: 600; }
-.btn-row { display: flex; gap: 8px; }
-.ghost-btn { flex: 0 0 90px; }
-.remark-card { background: #f8fbff; }
-.remark-header { font-weight: 600; margin-bottom: 8px; }
-
 </style>

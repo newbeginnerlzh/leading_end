@@ -3,7 +3,7 @@
   <div>
     <el-card>
       <div style="display:flex;align-items:center;justify-content:space-between;">
-        <el-button type="text" :icon="ArrowLeft" @click="onBack">返回</el-button>
+        <el-button type="text" :icon="ArrowLeft" @click="router.back()">返回</el-button>
         <div style="display:flex;align-items:center;gap:8px;">
           
           <h3 style="margin:0">订单详情</h3>
@@ -15,25 +15,23 @@
       <div v-if="loading">加载中...</div>
       <div v-else-if="!order">未找到订单</div>
       <div v-else>
-        <div>订单号：{{ order.orderSn }}</div>
-        <div>状态：{{ order.status }}</div>
-        <div>创建时间：{{ order.createdAt }}</div>
+        <div>订单号：{{ order.id }}</div>
+        <div>状态：{{ statusText(order.status) }}</div>
+        <div>创建时间：{{ order.createTime }}</div>
         <div>收货人：{{ order.receiverName }} / {{ order.receiverPhone }}</div>
-        <div>地址：{{ order.receiverProvince }} {{ order.receiverCity }} {{ order.receiverDistrict }} {{ order.receiverDetail }}</div>
-        <div style="margin-top:8px;color:#333;font-weight:500">备注：{{ order.buyerRemark ? order.buyerRemark : '（无）' }}</div>
+        <div>地址：{{ order.receiverAddress }}</div>
 
-        <el-table :data="items" style="width:100%;margin-top:12px" size="small">
-          <el-table-column prop="productName" label="商品" />
+        <el-table :data="order.items" style="width:100%;margin-top:12px" size="small">
+          <el-table-column prop="name" label="商品" />
           <el-table-column prop="price" label="单价(¥)" width="120">
             <template #default="{ row }">{{ (row.price || 0).toFixed(2) }}</template>
           </el-table-column>
-          <el-table-column prop="quantity" label="数量" width="100" />
+          <el-table-column prop="count" label="数量" width="100" />
         </el-table>
 
-        <div style="margin-top:12px">总计：<strong>¥{{ (order.totalAmount || 0).toFixed(2) }}</strong>，实付：<strong>¥{{ (order.payAmount || 0).toFixed(2) }}</strong></div>
+        <div style="margin-top:12px">总计：<strong>¥{{ (order.totalPrice || 0).toFixed(2) }}</strong></div>
         <div style="margin-top:12px">
-          <!-- 后端支付接口暂缺，按钮仅做占位，点按提示 -->
-          <el-button v-if="order.status === '待付款'" type="success" @click="goPay">去支付</el-button>
+          <el-button v-if="order.status === 10" type="success" @click="goPay">去支付</el-button>
         </div>
       </div>
     </el-card>
@@ -43,18 +41,30 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getOrderDetail, deleteOrder } from '@/api/order'
-import type { Order, OrderItem } from '@/api/model/orderModel'
+import { getOrderDetail } from '@/api/order'
+import { deleteOrder } from '@/api/order'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
-const order = ref<Order | null>(null)
-const items = ref<OrderItem[]>([])
+const order = ref<any | null>(null)
 const loading = ref(true)
-const acting = ref(false)
-const deleting = ref(false)
+
+function statusText(s: number) {
+  switch (s) {
+    case 10:
+      return '待支付'
+    case 20:
+      return '待发货'
+    case 30:
+      return '待收货'
+    case 40:
+      return '已完成'
+    default:
+      return '未知'
+  }
+}
 
 async function load() {
   loading.value = true
@@ -63,70 +73,38 @@ async function load() {
     loading.value = false
     return
   }
-  try {
-    const res = await getOrderDetail(id)
-    const data = (res as { data?: { order?: Order, items?: OrderItem[] } }).data
-    order.value = data?.order || null
-    items.value = data?.items || []
-  } catch {
-    order.value = null
-    items.value = []
-  }
+  const res = await getOrderDetail(id)
+  order.value = res && Object.keys(res).length ? res : null
   loading.value = false
 }
 
-async function goPay() {
-  if (!order.value || acting.value) return
-  acting.value = true
-  try {
-    router.push({ path: '/payment', query: { orderId: order.value.orderSn || '' } })
-  } finally {
-    acting.value = false
-  }
+function goPay() {
+  if (!order.value) return
+  router.push({ path: '/payment', query: { orderId: order.value.id } })
 }
 
 onMounted(load)
 
 async function onDelete() {
-  if (!order.value || deleting.value) return
-  const allowed = new Set(['已完成', '已取消', '退款成功'])
-  const status = order.value.status || ''
-  if (!allowed.has(status)) {
-    await ElMessageBox.alert('仅状态为“已完成/已取消/退款成功”的订单可以删除。当前状态不支持删除。', '无法删除', {
-      confirmButtonText: '我知道了',
-      type: 'info'
-    })
-    return
-  }
-
+  if (!order.value) return
   try {
-    await ElMessageBox.confirm('确认删除该订单？删除后不可恢复。', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '再想想',
-      type: 'warning'
+    await ElMessageBox.confirm('确定要删除该订单吗？此操作不可恢复', '删除订单', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
     })
-  } catch {
-    return
+    await deleteOrder(order.value.id)
+    ElMessage.success('订单已删除')
+    router.push({ path: '/user/orders' })
+  } catch (e) {
+    // 如果用户取消或删除失败，都在这里忽略或提示
+    if (e && typeof e === 'object' && 'message' in e) {
+      ElMessage.error('删除失败：' + (e as Error).message)
+    }
   }
-
-  deleting.value = true
-  try {
-    await deleteOrder(order.value.orderSn || '')
-    ElMessage.success('已删除订单')
-    router.replace({ path: '/user/orders' })
-  } catch (err) {
-    ElMessage.error((err as Error).message || '删除失败')
-  } finally {
-    deleting.value = false
-  }
-}
-
-function onBack() {
-  router.push({ path: '/user/orders' })
 }
 </script>
 
 <style scoped>
 h3 { margin: 0 0 12px 0 }
-:deep(.el-table__cell) { font-size: 14px; }
 </style>
