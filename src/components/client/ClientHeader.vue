@@ -141,10 +141,13 @@ const updateUsernameFromStorage = () => {
 onMounted(() => {
   updateUsernameFromStorage()
   window.addEventListener('storage', updateUsernameFromStorage)
+  // 监听同一标签页内的用户信息更新事件
+  window.addEventListener('userInfoUpdated', updateUsernameFromStorage)
 })
 
 onUnmounted(() => {
   window.removeEventListener('storage', updateUsernameFromStorage)
+  window.removeEventListener('userInfoUpdated', updateUsernameFromStorage)
 })
 </script>
 
