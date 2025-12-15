@@ -87,7 +87,12 @@
 
                 <el-form-item label="选择其他地址">
                   <el-select v-model="modalSelectedAddressId" placeholder="请选择收货地址" style="width:100%" @change="onModalAddressSelect">
-                    <el-option v-for="a in rawAddresses" :key="a.id" :label="(a.name || '') + ' - ' + (a.phone || '') + ' - ' + ((a.detail && (a.province||a.city||a.district)) ? (a.province + ' ' + a.city + ' ' + a.district + ' ' + a.detail) : (a.address || ''))" :value="a.id" />
+                    <el-option
+                      v-for="a in rawAddresses"
+                      :key="a.id"
+                      :label="(a.name || '') + ' - ' + (a.phone || '') + ' - ' + ((a.detail && (a.province||a.city||a.district)) ? (a.province + ' ' + a.city + ' ' + a.district + ' ' + a.detail) : '')"
+                      :value="a.id"
+                    />
                   </el-select>
                 </el-form-item>
               </el-form>
@@ -152,7 +157,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { createOrder as apiCreateOrder } from '@/api/order'
+import { createOrdersFromCart, buyNowOrder } from '@/api/order'
+import type { AddressInfo } from '@/api/model/userModel'
 import { getAddressList, addAddress } from '@/api/user'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
@@ -163,31 +169,47 @@ const cart = useCartStore()
 // - 直接购买（direct_purchase 存在于 localStorage）：使用临时项，不影响购物车
 // - 购物车结算：使用 cart.selectedItems
 import { ref as _ref } from 'vue'
-const directItems = _ref<any[] | null>(null)
-const items = computed(() => {
-  return (directItems.value && directItems.value.length > 0) ? directItems.value : cart.selectedItems
+// 直购临时项的最小结构定义，替代 any
+interface DirectPurchaseItem {
+  specId?: number
+  skuId?: number
+  id?: number
+  price?: number
+  count?: number
+  quantity?: number
+  productName?: string
+  name?: string
+  mainImage?: string
+  imgUrl?: string
+}
+const directItems = _ref<DirectPurchaseItem[] | null>(null)
+const items = computed<unknown[]>(() => {
+  return (directItems.value && directItems.value.length > 0) ? directItems.value : (cart.selectedItems as unknown[])
 })
 
 // 地址管理：从 localStorage 中读取 mock_addresses（示例格式：[{ id, name, phone, address }])
-const addresses = ref<{ id: number; name: string; phone: string; address: string }[]>([])
+type SimpleAddress = { id: number; name: string; phone: string; address: string }
+const addresses = ref<SimpleAddress[]>([])
 const selectedAddressId = ref<number | null>(null)
-const address = ref({ name: '', phone: '', address: '' })
+const address = ref<{ name: string; phone: string; address: string }>({ name: '', phone: '', address: '' })
 // 控制是否显示地址下拉选择（已改为弹窗管理）
 
 // 弹窗相关
 const modalVisible = ref(false)
-const rawAddresses = ref<any[]>([])
+const rawAddresses = ref<AddressInfo[]>([])
 const modalSelectedAddressId = ref<number | null>(null)
-const modalAddressForm = ref({ name: '', phone: '', province: '', city: '', district: '', detail: '', postal_code: null, isDefault: false })
-const modalOriginal = ref<any>(null)
+const modalAddressForm = ref<{ name: string; phone: string; province: string; city: string; district: string; detail: string; postal_code: string | null; isDefault: boolean }>({ name: '', phone: '', province: '', city: '', district: '', detail: '', postal_code: null, isDefault: false })
+const modalOriginal = ref<{ name?: string; phone?: string; province?: string; city?: string; district?: string; detail?: string } | null>(null)
 // 临时结构化地址（用于在未保存地址时保留 province/city/district/detail）
-const tempAddress = ref<any>(null)
+const tempAddress = ref<{ name?: string; phone?: string; province?: string; city?: string; district?: string; detail?: string } | null>(null)
 const regionValue = ref<string[]>([])
-const regionOptions = ref<any[]>([])
+interface RegionNode { code: string; name: string; children?: RegionNode[] }
+const regionOptions = ref<RegionNode[]>([])
 
 // modal 表单引用与校验规则
 const modalFormRef = ref()
-const modalRules = {
+import type { FormItemRule } from 'element-plus'
+const modalRules: Record<string, FormItemRule[]> = {
   name: [{ required: true, message: '请输入收件人', trigger: 'blur' }],
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
@@ -195,7 +217,7 @@ const modalRules = {
   ],
   province: [
     {
-      validator: (_rule: any, _value: any, callback: any) => {
+      validator: (_rule, _value, callback) => {
         if (Array.isArray(regionValue.value) && regionValue.value.length === 3) {
           callback()
         } else {
@@ -212,20 +234,19 @@ const modalRules = {
 }
 
 // 提取：刷新并映射地址列表为通用函数，返回原始 list
-async function fetchAndMapAddresses() {
+async function fetchAndMapAddresses(): Promise<AddressInfo[]> {
   try {
     const res = await getAddressList()
-    const r = res as unknown
-    const data = (r && (r as { data?: any }).data) ? (r as { data?: any }).data : (r as any)
-    const list = Array.isArray(data) ? data as any[] : []
+    const data = (res as { data?: AddressInfo[] }).data || []
+    const list: AddressInfo[] = Array.isArray(data) ? data : []
     rawAddresses.value = list
     const mapped = list.map((a) => {
-      const addrStr = a.detail ? `${a.province || ''} ${a.city || ''} ${a.district || ''} ${a.detail || ''}`.trim() : (a.address || '')
-      return { id: a.id ?? a.addressId ?? null, name: a.name || '', phone: a.phone || '', address: addrStr }
-    }).filter(x => x.id !== null)
+      const addrStr = a.detail ? `${a.province || ''} ${a.city || ''} ${a.district || ''} ${a.detail || ''}`.trim() : ''
+      return { id: a.id!, name: a.name || '', phone: a.phone || '', address: addrStr }
+    }).filter(x => typeof x.id === 'number')
     addresses.value = mapped
     return list
-  } catch (e) {
+  } catch {
     rawAddresses.value = []
     addresses.value = []
     return []
@@ -237,7 +258,7 @@ import areaData from 'china-area-data/data.json'
 type RawArea = Record<string, Record<string, string>>
 const rawArea = areaData as unknown as RawArea
 
-function buildNodes(parentCode: string) {
+function buildNodes(parentCode: string): RegionNode[] {
   const map = rawArea[parentCode] || {}
   return Object.entries(map).map(([code, name]) => {
     const children = buildNodes(code)
@@ -248,9 +269,9 @@ regionOptions.value = buildNodes('86')
 
 function handleModalRegionChange(value: string[]) {
   if (value.length === 3) {
-    const provNode = regionOptions.value.find((item: any) => item.code === value[0])
-    const cityNode = provNode?.children?.find((item: any) => item.code === value[1])
-    const distNode = cityNode?.children?.find((item: any) => item.code === value[2])
+    const provNode = regionOptions.value.find((item) => item.code === value[0])
+    const cityNode = provNode?.children?.find((item) => item.code === value[1])
+    const distNode = cityNode?.children?.find((item) => item.code === value[2])
 
     const province = provNode?.name || ''
     const city = cityNode?.name || ''
@@ -267,7 +288,7 @@ function onModalAddressSelect(id: number) {
   if (!found) return
   modalAddressForm.value.name = found.name || ''
   modalAddressForm.value.phone = found.phone || ''
-  modalAddressForm.value.detail = found.detail || found.address || ''
+  modalAddressForm.value.detail = found.detail || ''
   modalAddressForm.value.province = found.province || ''
   modalAddressForm.value.city = found.city || ''
   modalAddressForm.value.district = found.district || ''
@@ -303,7 +324,7 @@ const matchesExisting = computed(() => {
   const modalPhone = (modalAddressForm.value.phone || '').trim()
   const modalDetail = (modalAddressForm.value.detail || '').trim()
 
-  return rawAddresses.value.some((a: any) => {
+  return rawAddresses.value.some((a) => {
     const rawName = (a.name || '').trim()
     const rawPhone = (a.phone || '').trim()
     if (rawName !== modalName || rawPhone !== modalPhone) return false
@@ -321,10 +342,7 @@ const matchesExisting = computed(() => {
              ((a.detail || '').trim() === modalDetail)
     }
 
-    // 平面 address 字段对比
-    if (a.address && (a.address || '').trim()) {
-      return (a.address || '').trim() === modalDetail
-    }
+    // 无平面 address 字段，跳过
 
     return false
   })
@@ -352,7 +370,7 @@ async function applyModalAddress() {
     if (modalFormRef.value) {
       await modalFormRef.value.validate()
     }
-  } catch (e) {
+  } catch {
     // 验证失败，不关闭弹窗
     return
   }
@@ -360,10 +378,10 @@ async function applyModalAddress() {
   // 将弹窗当前显示的地址应用到结算页（不一定保存为新地址）
   if (modalSelectedAddressId.value && !isModalModified.value) {
     // 选中了已有地址并且未修改，直接以该 id 为准
-    const found = rawAddresses.value.find((a) => (a.id ?? a.addressId) === modalSelectedAddressId.value)
+    const found = rawAddresses.value.find((a) => a.id === modalSelectedAddressId.value)
     if (found) {
-      selectedAddressId.value = found.id ?? found.addressId ?? null
-      const addrStr = found.detail ? `${found.province || ''} ${found.city || ''} ${found.district || ''} ${found.detail || ''}`.trim() : (found.address || '')
+      selectedAddressId.value = found.id ?? null
+      const addrStr = found.detail ? `${found.province || ''} ${found.city || ''} ${found.district || ''} ${found.detail || ''}`.trim() : ''
       address.value = { name: found.name || '', phone: found.phone || '', address: addrStr }
     }
   } else {
@@ -412,10 +430,9 @@ async function openModal() {
   if (!rawAddresses.value || rawAddresses.value.length === 0) {
     try {
       const res = await getAddressList()
-      const r = res as unknown
-      const data = (r && (r as { data?: any }).data) ? (r as { data?: any }).data : (r as any)
-      rawAddresses.value = Array.isArray(data) ? data as any[] : []
-    } catch (e) {
+      const data = (res as { data?: AddressInfo[] }).data || []
+      rawAddresses.value = Array.isArray(data) ? data : []
+    } catch {
       rawAddresses.value = []
     }
   }
@@ -424,11 +441,11 @@ async function openModal() {
 
   // 如果当前有选中地址，优先用 rawAddresses 的细粒度数据回填 modal 表单
   if (selectedAddressId.value) {
-    const found = rawAddresses.value.find((a) => (a.id ?? a.addressId) === selectedAddressId.value)
+    const found = rawAddresses.value.find((a) => a.id === selectedAddressId.value)
     if (found) {
       modalAddressForm.value.name = found.name || ''
       modalAddressForm.value.phone = found.phone || ''
-      modalAddressForm.value.detail = found.detail || found.address || ''
+      modalAddressForm.value.detail = found.detail || ''
       modalAddressForm.value.province = found.province || ''
       modalAddressForm.value.city = found.city || ''
       modalAddressForm.value.district = found.district || ''
@@ -478,8 +495,8 @@ async function openModal() {
   // 等待 DOM 更新后清除表单的历史验证信息（避免打开时显示旧的错误）
   await nextTick()
   try {
-    modalFormRef.value && modalFormRef.value.clearValidate()
-  } catch (e) {
+    if (modalFormRef.value) { modalFormRef.value.clearValidate() }
+  } catch {
     // ignore
   }
 }
@@ -488,9 +505,9 @@ async function openModal() {
 const total = computed(() => {
   try {
     if (directItems.value && Array.isArray(directItems.value) && directItems.value.length > 0) {
-      return directItems.value.reduce((sum: number, it: any) => sum + ((it.price || 0) * (it.count || 1)), 0)
+      return directItems.value.reduce((sum: number, it: DirectPurchaseItem) => sum + ((it.price || 0) * (it.count || 1)), 0)
     }
-  } catch (e) {
+  } catch {
     // ignore and fallback
   }
   return cart.selectedTotalPrice
@@ -518,7 +535,7 @@ onMounted(async () => {
         // 读取后移除，避免重复使用
         localStorage.removeItem('direct_purchase')
       }
-    } catch (err) {
+    } catch {
       // ignore parsing errors
     }
 
@@ -526,25 +543,27 @@ onMounted(async () => {
     try {
       const list = await fetchAndMapAddresses()
       // 优先使用用户地址列表中标记为默认的地址
-      const defaultRaw = list.find((a: any) => a.isDefault)
+      const defaultRaw = list.find((a) => a.isDefault)
       if (defaultRaw) {
-        const addrStr = defaultRaw.detail ? `${defaultRaw.province || ''} ${defaultRaw.city || ''} ${defaultRaw.district || ''} ${defaultRaw.detail || ''}`.trim() : (defaultRaw.address || '')
-        selectedAddressId.value = defaultRaw.id ?? defaultRaw.addressId ?? null
+        const addrStr = defaultRaw.detail ? `${defaultRaw.province || ''} ${defaultRaw.city || ''} ${defaultRaw.district || ''} ${defaultRaw.detail || ''}`.trim() : ''
+        selectedAddressId.value = defaultRaw.id ?? null
         address.value = { name: defaultRaw.name || '', phone: defaultRaw.phone || '', address: addrStr }
       } else if (addresses.value.length > 0) {
-        selectedAddressId.value = addresses.value[0].id
         const first = addresses.value[0]
-        address.value = { name: first.name, phone: first.phone, address: first.address }
+        if (first) {
+          selectedAddressId.value = first.id
+          address.value = { name: first.name, phone: first.phone, address: first.address }
+        }
       } else {
         selectedAddressId.value = null
         address.value = { name: '', phone: '', address: '' }
       }
-    } catch (e) {
+    } catch {
       addresses.value = []
       selectedAddressId.value = null
       address.value = { name: '', phone: '', address: '' }
     }
-  } catch (e) {
+  } catch {
     // ignore
   }
 })
@@ -569,21 +588,21 @@ async function saveModalAsNewAddress() {
     }
 
     const res = await addAddress(payload)
-    const saved = (res && (res as any).data) ? (res as any).data : res
+    const saved = (res as { data?: AddressInfo }).data
     ElMessage.success('地址已保存')
 
     // 刷新地址列表并选择新保存的地址
     try {
-      const list = await fetchAndMapAddresses()
+      await fetchAndMapAddresses()
       if (saved && saved.id) {
         selectedAddressId.value = saved.id
-        const addrStr = saved.detail ? `${saved.province || ''} ${saved.city || ''} ${saved.district || ''} ${saved.detail || ''}`.trim() : (saved.address || '')
+        const addrStr = saved?.detail ? `${saved.province || ''} ${saved.city || ''} ${saved.district || ''} ${saved.detail || ''}`.trim() : ''
         address.value = { name: saved.name || '', phone: saved.phone || '', address: addrStr }
         modalSelectedAddressId.value = saved.id
         // 用结构化字段回填 modal 表单
         modalAddressForm.value.name = saved.name || ''
         modalAddressForm.value.phone = saved.phone || ''
-        modalAddressForm.value.detail = saved.detail || saved.address || ''
+        modalAddressForm.value.detail = saved?.detail || ''
         modalAddressForm.value.province = saved.province || ''
         modalAddressForm.value.city = saved.city || ''
         modalAddressForm.value.district = saved.district || ''
@@ -599,13 +618,13 @@ async function saveModalAsNewAddress() {
         }
         tempAddress.value = null
       }
-    } catch (e) {
-      console.error('刷新地址列表失败', e)
+    } catch {
+      console.error('刷新地址列表失败')
     }
 
     modalVisible.value = false
-  } catch (e) {
-    console.error('保存地址失败', e)
+  } catch {
+    console.error('保存地址失败')
     ElMessage.error('保存地址失败')
   }
 }
@@ -614,12 +633,7 @@ async function saveModalAsNewAddress() {
 
 // 数量在结算页为只读展示，相关修改操作在购物车页处理
 
-function onAddressChange(id: number) {
-  const found = addresses.value.find((a) => a.id === id)
-  if (found) {
-    address.value = { name: found.name, phone: found.phone, address: found.address }
-  }
-}
+// 已弃用的下拉选择回调（改为弹窗选择），保留逻辑通过弹窗完成
 
 async function createOrder() {
   if (!items.value || items.value.length === 0) {
@@ -631,19 +645,19 @@ async function createOrder() {
     return
   }
 
-    try {
+  try {
     // 如果选中了已保存地址但 address 显示为空或不完整，尝试从原始地址列表中补全（防止用户未点击“确定”导致信息未应用）
     if (selectedAddressId.value && (!(address.value.name && address.value.phone && address.value.address))) {
       try {
         if (!rawAddresses.value || rawAddresses.value.length === 0) {
           await fetchAndMapAddresses()
         }
-        const foundRaw = rawAddresses.value.find((a) => (a.id ?? a.addressId) === selectedAddressId.value)
+        const foundRaw = rawAddresses.value.find((a) => a.id === selectedAddressId.value)
         if (foundRaw) {
-          const addrStr = foundRaw.detail ? `${foundRaw.province || ''} ${foundRaw.city || ''} ${foundRaw.district || ''} ${foundRaw.detail || ''}`.trim() : (foundRaw.address || '')
+          const addrStr = foundRaw.detail ? `${foundRaw.province || ''} ${foundRaw.city || ''} ${foundRaw.district || ''} ${foundRaw.detail || ''}`.trim() : ''
           address.value = { name: foundRaw.name || '', phone: foundRaw.phone || '', address: addrStr }
         }
-      } catch (e) {
+      } catch {
         // ignore
       }
     }
@@ -653,30 +667,46 @@ async function createOrder() {
       return
     }
 
-    const payload: any = {
-      // 传递完整的 item 信息（回退字段 name/price/imgUrl/productId），保证 createOrder 能保存正确的数据
-      items: items.value.map((it: any) => ({
-        skuId: it.skuId,
-        count: it.count,
-        name: it.name,
-        price: it.price,
-        imgUrl: it.imgUrl,
-        productId: it.productId,
-      })),
-      remark: '',
+    // 必须有选中地址（后端创建订单需要 addressId）
+    if (!selectedAddressId.value) {
+      ElMessage.error('请选择收货地址')
+      return
     }
 
-    if (selectedAddressId.value) {
-      payload.addressId = selectedAddressId.value
+    let created: unknown = null
+    if (directItems.value && directItems.value.length > 0) {
+      const first = directItems.value[0]
+      if (!first) {
+        ElMessage.error('直购数据为空')
+        return
+      }
+      const specId = (first.skuId ?? first.specId ?? first.id) as number
+      const quantity = (first.count ?? first.quantity ?? 1) as number
+      try {
+        created = await buyNowOrder({ addressId: selectedAddressId.value!, specId, quantity, buyerRemark: '' })
+      } catch (err) {
+        ElMessage.error('创建直购订单失败：' + (err as Error).message)
+        return
+      }
     } else {
-      // 临时地址（不保存）
-      payload.address = { name: address.value.name, phone: address.value.phone, address: address.value.address }
+      const cartItemIds = (items.value as Array<{ id: number }>)
+        .map((it) => it.id)
+        .filter((id) => typeof id === 'number')
+      if (!cartItemIds.length) {
+        ElMessage.error('缺少购物车条目ID，无法创建订单')
+        return
+      }
+      try {
+        created = await createOrdersFromCart({ addressId: selectedAddressId.value, cartItemIds, buyerRemark: null })
+      } catch (err) {
+        ElMessage.error('创建订单失败：' + (err as Error).message)
+        return
+      }
     }
 
-    const created = await apiCreateOrder(payload)
-    ElMessage.success('订单已通过 API 创建（mock），即将跳转到支付页')
-    // 下单成功后：不在此处删除购物车项，支付成功后由支付页统一清理。
-    router.push({ path: '/payment', query: { orderId: (created as any).orderId || (created as any).id } })
+    ElMessage.success('订单已创建，跳转支付页')
+    const orderSn = (created as { data?: { order?: { orderSn?: string } } })?.data?.order?.orderSn || ''
+    router.push({ path: '/payment', query: { orderId: orderSn } })
   } catch (e) {
     ElMessage.error('创建订单失败：' + (e as Error).message)
   }
@@ -690,7 +720,6 @@ async function createOrder() {
 .product-info {
   display: flex;
   gap: 15px;
-  text-align: left;
   align-items: center;
 }
 
@@ -724,4 +753,5 @@ async function createOrder() {
 }
 
 /* 使用 Element Plus 默认的必填样式，与 UserAddress 弹窗保持一致 */
+
 </style>

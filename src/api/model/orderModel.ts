@@ -112,7 +112,7 @@ export interface Order {
      * 订单所属的用户id
      */
     userId?: number;
-    [property: string]: any;
+    [property: number]: any;
 }
 
 export interface OrderItem {

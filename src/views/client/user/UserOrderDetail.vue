@@ -15,23 +15,24 @@
       <div v-if="loading">加载中...</div>
       <div v-else-if="!order">未找到订单</div>
       <div v-else>
-        <div>订单号：{{ order.id }}</div>
-        <div>状态：{{ statusText(order.status) }}</div>
-        <div>创建时间：{{ order.createTime }}</div>
+        <div>订单号：{{ order.orderSn }}</div>
+        <div>状态：{{ order.status }}</div>
+        <div>创建时间：{{ order.createdAt }}</div>
         <div>收货人：{{ order.receiverName }} / {{ order.receiverPhone }}</div>
-        <div>地址：{{ order.receiverAddress }}</div>
+        <div>地址：{{ order.receiverProvince }} {{ order.receiverCity }} {{ order.receiverDistrict }} {{ order.receiverDetail }}</div>
 
-        <el-table :data="order.items" style="width:100%;margin-top:12px" size="small">
-          <el-table-column prop="name" label="商品" />
+        <el-table :data="items" style="width:100%;margin-top:12px" size="small">
+          <el-table-column prop="productName" label="商品" />
           <el-table-column prop="price" label="单价(¥)" width="120">
             <template #default="{ row }">{{ (row.price || 0).toFixed(2) }}</template>
           </el-table-column>
-          <el-table-column prop="count" label="数量" width="100" />
+          <el-table-column prop="quantity" label="数量" width="100" />
         </el-table>
 
-        <div style="margin-top:12px">总计：<strong>¥{{ (order.totalPrice || 0).toFixed(2) }}</strong></div>
+        <div style="margin-top:12px">总计：<strong>¥{{ (order.totalAmount || 0).toFixed(2) }}</strong>，实付：<strong>¥{{ (order.payAmount || 0).toFixed(2) }}</strong></div>
         <div style="margin-top:12px">
-          <el-button v-if="order.status === 10" type="success" @click="goPay">去支付</el-button>
+          <!-- 后端支付接口暂缺，按钮仅做占位，点按提示 -->
+          <el-button v-if="order.status === '待付款'" type="success" @click="goPay">去支付</el-button>
         </div>
       </div>
     </el-card>
@@ -42,29 +43,15 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOrderDetail } from '@/api/order'
-import { deleteOrder } from '@/api/order'
+import type { Order, OrderItem } from '@/api/model/orderModel'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
-const order = ref<any | null>(null)
+const order = ref<Order | null>(null)
+const items = ref<OrderItem[]>([])
 const loading = ref(true)
-
-function statusText(s: number) {
-  switch (s) {
-    case 10:
-      return '待支付'
-    case 20:
-      return '待发货'
-    case 30:
-      return '待收货'
-    case 40:
-      return '已完成'
-    default:
-      return '未知'
-  }
-}
 
 async function load() {
   loading.value = true
@@ -73,35 +60,30 @@ async function load() {
     loading.value = false
     return
   }
-  const res = await getOrderDetail(id)
-  order.value = res && Object.keys(res).length ? res : null
+  try {
+    const res = await getOrderDetail(id)
+    const data = (res as { data?: { order?: Order, items?: OrderItem[] } }).data
+    order.value = data?.order || null
+    items.value = data?.items || []
+  } catch {
+    order.value = null
+    items.value = []
+  }
   loading.value = false
 }
 
 function goPay() {
   if (!order.value) return
-  router.push({ path: '/payment', query: { orderId: order.value.id } })
+  ElMessage.info('支付接口暂未提供，按钮为占位')
 }
 
 onMounted(load)
 
 async function onDelete() {
-  if (!order.value) return
-  try {
-    await ElMessageBox.confirm('确定要删除该订单吗？此操作不可恢复', '删除订单', {
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-      type: 'warning',
-    })
-    await deleteOrder(order.value.id)
-    ElMessage.success('订单已删除')
-    router.push({ path: '/user/orders' })
-  } catch (e) {
-    // 如果用户取消或删除失败，都在这里忽略或提示
-    if (e && typeof e === 'object' && 'message' in e) {
-      ElMessage.error('删除失败：' + (e as Error).message)
-    }
-  }
+  // 后端未提供删除接口，这里保留占位提示
+  await ElMessageBox.alert('后端未提供删除订单接口，暂无法在此页面删除订单。', '提示', {
+    confirmButtonText: '我知道了'
+  })
 }
 </script>
 
