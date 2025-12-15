@@ -10,8 +10,10 @@
         <el-row :gutter="20">
           <el-col :span="8">
             <div class="avatar-display">
-              <img v-if="userInfo.avatar" :src="userInfo.avatar" class="avatar" />
-              <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
+              <div class="avatar-wrapper">
+                <img v-if="userInfo.avatar" :src="userInfo.avatar" class="avatar" />
+                <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
+              </div>
             </div>
           </el-col>
 
@@ -64,7 +66,7 @@
                   :show-file-list="false"
                   :auto-upload="false"
                   :on-change="handlePickAvatarChange"
-                  accept="image/jpeg,image/png"
+                  accept="image/jpeg,image/png,image/gif,image/bmp,image/webp"
                   name="file"
                   :limit="1"
                 >
@@ -106,10 +108,10 @@
               </el-form-item>
 
               <div style="margin-top:10px">
-                <el-button type="primary" @click="handleSubmit">保存修改</el-button>
-                <el-button @click="handleCancelEdit">取消</el-button>
-                <el-button type="warning" @click="showChangePwdDialog = true" style="margin-left:10px">修改密码</el-button>
-                <el-button type="danger" @click="handleCancelAccount" style="margin-left: 10px">注销账号</el-button>
+                <el-button type="primary" @click="handleSubmit" :disabled="isSaving">保存修改</el-button>
+                <el-button @click="handleCancelEdit" :disabled="isSaving">取消</el-button>
+                <el-button type="warning" @click="showChangePwdDialog = true" style="margin-left:10px" :disabled="isSaving">修改密码</el-button>
+                <el-button type="danger" @click="handleCancelAccount" style="margin-left: 10px" :disabled="isSaving">注销账号</el-button>
               </div>
             </el-col>
           </el-row>
@@ -167,17 +169,18 @@ import type { UploadFile } from 'element-plus'
 import type { FormItemRule } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 // import type { UploadRequestOptions } from 'element-plus'
-import { getUserInfo, updateUserInfo, changePassword, cancelAccount } from '@/api/user'
+import { getUserInfo, updateUserInfo, changePassword, cancelAccount, uploadAvatar } from '@/api/user'
 import type { UserInfo, UpdateUserInfoRequest, ChangePasswordRequest, CancelAccountRequest } from '@/api/model/userModel'
-// 不再走独立头像上传接口，保存时与其他字段一并提交
 
-const AVATAR_TARGET_BYTES = 350
-const AVATAR_MAX_DIMENSION = 80
-const AVATAR_MIN_DIMENSION = 16
-const AVATAR_INITIAL_QUALITY = 0.5
-const AVATAR_MIN_QUALITY = 0.08
-const AVATAR_QUALITY_STEP = 0.08
-const AVATAR_SCALE_STEP = 0.8
+// 支持的头像格式
+const SUPPORTED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp']
+const SUPPORTED_AVATAR_EXTENSIONS = 'jpg, jpeg, png, gif, bmp, webp'
+
+// 待上传的头像文件（保存时上传）
+const pendingAvatarFile = ref<File | null>(null)
+
+// 保存中的加载状态
+const isSaving = ref(false)
 
 // 表单引用
 const formRef = ref()
@@ -281,35 +284,84 @@ const fetchUserInfo = async () => {
   }
 }
 
-// 头像上传成功
-// 选择头像文件：类型校验 + 可选压缩 + 本地预览（不直接上传）
+// 裁剪图片为正方形（取中心最大正方形）
+const cropToSquare = (file: File): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+
+      const size = Math.min(img.width, img.height)
+      const offsetX = (img.width - size) / 2
+      const offsetY = (img.height - size) / 2
+
+      const canvas = document.createElement('canvas')
+      canvas.width = size
+      canvas.height = size
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('无法获取 canvas 上下文'))
+        return
+      }
+
+      // 从原图中心裁剪正方形区域
+      ctx.drawImage(img, offsetX, offsetY, size, size, 0, 0, size, size)
+
+      // 根据原文件类型输出，默认使用 jpeg
+      const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
+      const quality = outputType === 'image/jpeg' ? 0.92 : undefined
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('图片裁剪失败'))
+          return
+        }
+        const ext = outputType === 'image/png' ? '.png' : '.jpg'
+        const baseName = file.name.replace(/\.[^.]+$/, '')
+        const croppedFile = new File([blob], `${baseName}${ext}`, { type: outputType })
+        resolve(croppedFile)
+      }, outputType, quality)
+    }
+
+    img.onerror = (e) => {
+      URL.revokeObjectURL(url)
+      reject(e)
+    }
+
+    img.src = url
+  })
+}
+
+// 选择头像文件：类型校验 + 正方形裁剪 + 本地预览（保存时上传）
 const handlePickAvatar = async (file: File) => {
-  const isImage = file.type === 'image/jpeg' || file.type === 'image/png'
-  if (!isImage) {
-    ElMessage.error('上传头像只能是 JPG/PNG 格式!')
+  // 校验文件格式
+  if (!SUPPORTED_AVATAR_TYPES.includes(file.type)) {
+    ElMessage.error(`上传头像只能是 ${SUPPORTED_AVATAR_EXTENSIONS} 格式!`)
     return false
   }
 
   try {
-    const processed = await compressImage(file)
-    const compressedBytes = processed.size
-    const readableSize = compressedBytes >= 1024
-      ? `${(compressedBytes / 1024).toFixed(2)}KB`
-      : `${compressedBytes}B`
-    // 将文件转为本地预览 URL；保存时由后端接收为字符串字段
-    const reader = new FileReader()
-    const base64 = await new Promise<string>((resolve, reject) => {
-      reader.onload = () => resolve((reader.result || '') as string)
-      reader.onerror = (e) => reject(e)
-      reader.readAsDataURL(processed)
-    })
-    editUserInfo.avatar = base64
-    if (compressedBytes <= AVATAR_TARGET_BYTES) {
-      ElMessage.success(`头像压缩成功（约 ${readableSize}），请点击保存提交`)
-    } else {
-      ElMessage.warning(`已尽力压缩头像（约 ${readableSize}），仍超 ${AVATAR_TARGET_BYTES}B，建议换更小图片`)
+    // 裁剪为正方形
+    const croppedFile = await cropToSquare(file)
+
+    // 生成本地预览URL
+    const previewUrl = URL.createObjectURL(croppedFile)
+    // 释放之前的预览URL
+    if (editUserInfo.avatar && editUserInfo.avatar.startsWith('blob:')) {
+      URL.revokeObjectURL(editUserInfo.avatar)
     }
-    // 阻止 el-upload 继续默认上传流程
+    editUserInfo.avatar = previewUrl
+    // 保存裁剪后的文件引用，待保存时上传
+    pendingAvatarFile.value = croppedFile
+
+    const readableSize = croppedFile.size >= 1024 * 1024
+      ? `${(croppedFile.size / 1024 / 1024).toFixed(2)}MB`
+      : croppedFile.size >= 1024
+        ? `${(croppedFile.size / 1024).toFixed(2)}KB`
+        : `${croppedFile.size}B`
+    ElMessage.success(`已选择头像并裁剪为正方形（${readableSize}），请点击保存提交`)
     return false
   } catch (err) {
     console.error('处理头像失败:', err)
@@ -329,111 +381,54 @@ const handlePickAvatarChange = async (uploadFile: UploadFile) => {
   await handlePickAvatar(raw)
 }
 
-// 头像上传前校验
-// 客户端图片压缩：保持清晰度同时减小体积
-const compressImage = (file: File): Promise<File> => {
-  return new Promise((resolve, reject) => {
-    try {
-      if (file.size <= AVATAR_TARGET_BYTES) {
-        resolve(file)
-        return
-      }
 
-      const img = new Image()
-      const url = URL.createObjectURL(file)
-
-      img.onload = async () => {
-        URL.revokeObjectURL(url)
-
-        const longestEdge = Math.max(img.width, img.height) || 1
-        const minScale = Math.min(1, AVATAR_MIN_DIMENSION / longestEdge)
-        let scale = Math.min(1, AVATAR_MAX_DIMENSION / longestEdge)
-        scale = Math.max(minScale, scale)
-        let currentQuality = AVATAR_INITIAL_QUALITY
-
-        const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')
-        if (!ctx) {
-          reject(new Error('无法获取 canvas 上下文'))
-          return
-        }
-
-        const drawAndCompress = (targetWidth: number, targetHeight: number, quality: number): Promise<Blob> => {
-          canvas.width = Math.max(1, targetWidth)
-          canvas.height = Math.max(1, targetHeight)
-          ctx.fillStyle = '#fff'
-          ctx.fillRect(0, 0, canvas.width, canvas.height)
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-          return new Promise((resolveBlob, rejectBlob) => {
-            canvas.toBlob((blob) => {
-              if (!blob) {
-                rejectBlob(new Error('图片压缩失败'))
-                return
-              }
-              resolveBlob(blob)
-            }, 'image/jpeg', quality)
-          })
-        }
-
-        while (true) {
-          const targetWidth = Math.max(1, Math.round(img.width * scale))
-          const targetHeight = Math.max(1, Math.round(img.height * scale))
-          try {
-            const blob = await drawAndCompress(targetWidth, targetHeight, currentQuality)
-            if (blob.size <= AVATAR_TARGET_BYTES || (targetWidth <= AVATAR_MIN_DIMENSION && targetHeight <= AVATAR_MIN_DIMENSION && currentQuality <= AVATAR_MIN_QUALITY)) {
-              const baseName = file.name.replace(/\.[^.]+$/, '')
-              const newFile = new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' })
-              console.debug('[compressImage] compressed', file.name, '->', newFile.name, `${file.size}B -> ${blob.size}B`, `${targetWidth}x${targetHeight}`, `q=${currentQuality.toFixed(2)}`)
-              resolve(newFile)
-              return
-            }
-
-            if (currentQuality > AVATAR_MIN_QUALITY + 0.001) {
-              currentQuality = Math.max(AVATAR_MIN_QUALITY, currentQuality - AVATAR_QUALITY_STEP)
-              continue
-            }
-
-            if (scale > minScale + 0.001) {
-              scale = Math.max(minScale, scale * AVATAR_SCALE_STEP)
-              continue
-            }
-
-            const baseName = file.name.replace(/\.[^.]+$/, '')
-            const fallbackFile = new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' })
-            resolve(fallbackFile)
-            return
-          } catch (loopErr) {
-            reject(loopErr)
-            return
-          }
-        }
-      }
-
-      img.onerror = (e) => {
-        URL.revokeObjectURL(url)
-        reject(e)
-      }
-
-      img.src = url
-    } catch (err) {
-      reject(err)
-    }
-  })
-}
-
-// 图片上传前处理：验证类型并做压缩处理，返回 Promise<File|boolean>
-// 移除未使用的旧钩子，压缩逻辑已在 handlePickAvatar 内处理
 
 // 保存用户信息
 const handleSubmit = async () => {
   if (!formRef.value) return
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let loadingMessage: any = null
+
   try {
     await formRef.value.validate()
 
+    // 开启加载状态
+    isSaving.value = true
+
+    // 显示顶部加载提示
+    loadingMessage = ElMessage.info({
+      message: '确认中，请稍候...',
+      //type: 'success',
+      duration: 0, // 不自动关闭
+      //icon: 'Loading'
+    })
+
+    let avatarUrl = editUserInfo.avatar
+
+    // 如果有待上传的头像文件，先上传头像
+    if (pendingAvatarFile.value) {
+      try {
+        const avatarRes = await uploadAvatar(pendingAvatarFile.value)
+        avatarUrl = avatarRes.data // 后端返回的图片访问URL
+        // 释放之前的预览URL
+        if (editUserInfo.avatar && editUserInfo.avatar.startsWith('blob:')) {
+          URL.revokeObjectURL(editUserInfo.avatar)
+        }
+        editUserInfo.avatar = avatarUrl
+        pendingAvatarFile.value = null // 清除待上传文件
+      } catch (avatarError) {
+        console.error('头像上传失败:', avatarError)
+        loadingMessage?.close?.() // 关闭加载提示
+        ElMessage.error('头像上传失败: ' + getErrorMessage(avatarError))
+        isSaving.value = false // 关闭加载状态
+        return // 头像上传失败则不继续
+      }
+    }
+
     // 构造更新参数（使用编辑副本）
     const updateData: UpdateUserInfoRequest = {
-      avatar: editUserInfo.avatar,
+      avatar: avatarUrl,
       gender: editUserInfo.gender,
       birthday: editUserInfo.birthday,
       // 额外同步用户名/手机号/邮箱等可选字段
@@ -442,9 +437,11 @@ const handleSubmit = async () => {
       phone: editUserInfo.phone,
       email: editUserInfo.email
     }
-    //console.log('更新用户信息参数:', updateData)
     // 调用更新接口
     await updateUserInfo(updateData)
+
+    // 关闭加载提示
+    loadingMessage?.close?.()
 
     // 保存成功后把编辑副本同步到展示数据并退出编辑模式
     Object.assign(userInfo, editUserInfo)
@@ -465,18 +462,29 @@ const handleSubmit = async () => {
     ElMessage.success('信息修改成功')
   } catch (error) {
     console.error('修改信息失败:', error)
-    //ElMessage.error(getErrorMessage(error))
+    // 关闭加载提示（如果存在）
+    loadingMessage?.close?.()
+    ElMessage.error(getErrorMessage(error))
+  } finally {
+    // 无论成功失败都关闭加载状态
+    isSaving.value = false
   }
 }
 
 // 开始编辑：把当前展示数据拷贝到编辑副本并切换模式
 const startEdit = () => {
   Object.assign(editUserInfo, userInfo)
+  pendingAvatarFile.value = null // 清除之前可能残留的待上传文件
   isEditing.value = true
 }
 
 // 取消编辑：恢复编辑副本为展示数据并退出编辑模式
 const handleCancelEdit = () => {
+  // 如果有待上传的预览URL，释放它
+  if (pendingAvatarFile.value && editUserInfo.avatar && editUserInfo.avatar.startsWith('blob:')) {
+    URL.revokeObjectURL(editUserInfo.avatar)
+  }
+  pendingAvatarFile.value = null
   Object.assign(editUserInfo, userInfo)
   isEditing.value = false
 }
@@ -599,6 +607,19 @@ onMounted(() => {
   object-fit: cover;
   max-width: 100%;
   max-height: 100%;
+}
+
+/* 展示模式的头像容器，与编辑模式保持一致 */
+.avatar-wrapper {
+  border: 1px dashed var(--el-border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  width: 150px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fafafa;
 }
 
 .avatar-display {
