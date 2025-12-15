@@ -5,7 +5,7 @@ const routes = [
   {
     path: '/login',
     component: () => import('../views/client/ClientLogin.vue'),
-    meta: { title: '登录', hideHeader: true },
+    meta: { title: '登录', hideHeader: true, hideFooter: true },
   }, // 登录
   {
     path: '/products',
@@ -35,7 +35,7 @@ const routes = [
   {
     path: '/service',
     component: () => import('../views/client/ClientOnlineService.vue'),
-    meta: { title: '在线客服' },
+    meta: { title: '在线客服', hideFooter: true },
   }, // 在线客服
   {
     path: '/user',
