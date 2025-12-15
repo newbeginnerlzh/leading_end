@@ -13,7 +13,7 @@
       <!-- 2. 中间：圆角搜索框 -->
       <div class="center-section">
         <div class="search-box">
-          <!-- 
+          <!--
             修改点说明：
             1. 移除了 @clear="handleSearch"：这样点击叉号只会清空 v-model，不会触发跳转。
             2. 保留 @keyup.enter="handleSearch"：回车键依然触发跳转。
@@ -52,9 +52,11 @@
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="center">个人中心</el-dropdown-item>
-                <el-dropdown-item command="orders">我的订单</el-dropdown-item>
                 <el-dropdown-item command="address">地址管理</el-dropdown-item>
-                <el-dropdown-item divided command="logout" style="color: red">退出登录</el-dropdown-item>
+                <el-dropdown-item command="orders">我的订单</el-dropdown-item>
+                <el-dropdown-item divided command="logout" style="color: red"
+                  >退出登录</el-dropdown-item
+                >
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -100,22 +102,32 @@ const handleSearch = () => {
   const queryText = keyword.value.trim()
   router.push({
     path: '/products',
-    query: { keyword: queryText }
+    query: { keyword: queryText },
   })
 }
 
 const handleUserCommand = (command: string) => {
   switch (command) {
-    case 'center': router.push('/user/profile'); break
-    case 'orders': router.push('/user/orders'); break
-    case 'address': router.push('/user/address'); break
+    case 'center':
+      router.push('/user/profile')
+      break
+    case 'orders':
+      router.push('/user/orders')
+      break
+    case 'address':
+      router.push('/user/address')
+      break
     case 'logout':
       try {
         localStorage.removeItem('cart')
         localStorage.removeItem('token')
         localStorage.removeItem('userInfo')
-      } catch { console.warn('Logout cleanup failed') }
-      try { cartStore.userId = null } catch {}
+      } catch {
+        console.warn('Logout cleanup failed')
+      }
+      try {
+        cartStore.userId = null
+      } catch {}
       isLogin.value = false
       username.value = ''
       router.push('/')
@@ -141,10 +153,13 @@ const updateUsernameFromStorage = () => {
 onMounted(() => {
   updateUsernameFromStorage()
   window.addEventListener('storage', updateUsernameFromStorage)
+  // 监听同一标签页内的用户信息更新事件
+  window.addEventListener('userInfoUpdated', updateUsernameFromStorage)
 })
 
 onUnmounted(() => {
   window.removeEventListener('storage', updateUsernameFromStorage)
+  window.removeEventListener('userInfoUpdated', updateUsernameFromStorage)
 })
 </script>
 

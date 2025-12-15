@@ -360,7 +360,7 @@ const handleLogin = async () => {
     if (error && typeof error === 'object' && 'message' in error) {
       const m = (error as { message?: unknown }).message
       if (typeof m === 'string' && m.length > 0) {
-        ElMessage.error(m)
+        //ElMessage.error(m)
         return
       }
     }

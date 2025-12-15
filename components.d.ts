@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    '(feat': update component)
     ClientFooter: typeof import('./src/components/client/ClientFooter.vue')['default']
     ClientHeader: typeof import('./src/components/client/ClientHeader.vue')['default']
     ElAside: typeof import('element-plus/es')['ElAside']
@@ -62,7 +63,7 @@ declare module 'vue' {
     IconEcosystem: typeof import('./src/components/icons/IconEcosystem.vue')['default']
     IconSupport: typeof import('./src/components/icons/IconSupport.vue')['default']
     IconTooling: typeof import('./src/components/icons/IconTooling.vue')['default']
-    ProductCard: typeof import('./src/components/ProductCard.vue')['default']
+    ProductCard: typeof import('./src/components/client/ProductCard.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     TheWelcome: typeof import('./src/components/TheWelcome.vue')['default']
