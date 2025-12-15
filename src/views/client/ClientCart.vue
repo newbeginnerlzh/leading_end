@@ -3,6 +3,7 @@ import { useCartStore, type CartItem } from '@/stores/cart'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Minus, Plus } from '@element-plus/icons-vue'
+import { onMounted } from 'vue'
 
 const cartStore = useCartStore()
 const router = useRouter()
@@ -104,6 +105,10 @@ const handleSelectAllChange = async (val: boolean | string | number) => {
 const formatPrice = (price: number) => {
   return Number.isInteger(price) ? price.toString() : price.toFixed(2)
 }
+
+onMounted(() => {
+  cartStore.getCloudCart()
+})
 </script>
 
 <template>

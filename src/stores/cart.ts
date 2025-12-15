@@ -28,16 +28,6 @@ export const useCartStore = defineStore(
   () => {
     const items = ref<CartItem[]>([])
 
-    // 修复持久化可能导致的数据格式错误
-    watch(
-      items,
-      (val) => {
-        if (!Array.isArray(val)) {
-          items.value = []
-        }
-      },
-      { immediate: true },
-    )
     const userId = ref<number | null>(null)
     const serverCartCount = ref(0)
 
@@ -46,6 +36,7 @@ export const useCartStore = defineStore(
       userId,
       async (newUserId) => {
         if (newUserId) {
+          getCloudCart()
           serverCartCount.value = await getCartCount()
         } else {
           serverCartCount.value = 0 // 退出登录时清零（可选）
@@ -56,68 +47,18 @@ export const useCartStore = defineStore(
 
     function setUser(id: number) {
       userId.value = id
-      mergeCloudCart()
+      getCloudCart()
     }
 
-    async function mergeCloudCart() {
+    async function getCloudCart() {
       try {
-        // 1.保存本地购物车
-        if (!Array.isArray(items.value)) {
-          items.value = []
-        }
-        const localCart = [...items.value]
-
-        // 2. 获取云端购物车
+        // 获取云端购物车
         const cloudCart = await getCartList()
-
-        // 3. 如果本地购物车为空，直接使用云端
-        if (localCart.length === 0) {
-          items.value = cloudCart
-          return
-        }
-
-        //  4. 如果云端购物车为空，把本地同步上去
-        if (cloudCart.length === 0) {
-          // 将本地每一项都添加到后端
-          for (const item of localCart) {
-            await addToCartApi({
-              productId: item.productId,
-              skuId: item.skuId,
-              count: item.count,
-            })
-          }
-          return
-        }
-
-        // 5. 两边都有，执行合并
-        const cloudMap = new Map(cloudCart.map((item) => [item.skuId, item]))
-
-        for (const localItem of localCart) {
-          if (cloudMap.has(localItem.skuId)) {
-            // 相同 SKU，累加数量
-            const cloudItem = cloudMap.get(localItem.skuId)!
-            localItem.count = cloudItem.count
-
-            // 同步到后端
-            await updateCartItem({
-              id: cloudItem.id!,
-              count: cloudItem.count,
-            })
-          } else {
-            // 本地独有的 SKU，添加到云端
-            await addToCartApi({
-              productId: localItem.productId,
-              skuId: localItem.skuId,
-              count: localItem.count,
-            })
-          }
-        }
-
-        // 6. 重新获取最新的云端购物车
-        const finalCart = await getCartList()
-        items.value = finalCart
+        items.value = cloudCart
+        serverCartCount.value = await getCartCount()
+        return
       } catch (error) {
-        console.error('合并购物车失败', error)
+        console.error('获取云端购物车失败', error)
       }
     }
 
@@ -413,6 +354,7 @@ export const useCartStore = defineStore(
       toggleSelectAll,
       updateSelection,
       batchRemoveFromCart,
+      getCloudCart,
     }
   },
   {

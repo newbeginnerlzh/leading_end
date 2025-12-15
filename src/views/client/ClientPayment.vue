@@ -9,13 +9,16 @@
         <div>订单号：{{ order.orderSn }}</div>
         <div>创建时间：{{ order.createdAt }}</div>
         <div>收货：{{ order.receiverName }} / {{ order.receiverPhone }}</div>
-        <div>地址：{{ order.receiverProvince }} {{ order.receiverCity }} {{ order.receiverDistrict }} {{ order.receiverDetail }}</div>
-        <div v-if="remainingSeconds > 0" style="margin-top:8px">
+        <div>
+          地址：{{ order.receiverProvince }} {{ order.receiverCity }} {{ order.receiverDistrict }}
+          {{ order.receiverDetail }}
+        </div>
+        <div v-if="remainingSeconds > 0" style="margin-top: 8px">
           <strong>支付倒计时：</strong>
           <span>{{ minutes }}:{{ seconds }}</span>
         </div>
 
-        <el-table :data="orderItems" style="width:100%;margin-top:12px" size="small">
+        <el-table :data="orderItems" style="width: 100%; margin-top: 12px" size="small">
           <el-table-column prop="productName" label="商品" />
           <el-table-column prop="price" label="单价(¥)" width="120">
             <template #default="{ row }">{{ (row.price || 0).toFixed(2) }}</template>
@@ -23,11 +26,12 @@
           <el-table-column prop="quantity" label="数量" width="100" />
         </el-table>
 
-        <div style="margin-top:12px">应付金额：
+        <div style="margin-top: 12px">
+          应付金额：
           <strong>¥{{ (order.payAmount || order.totalAmount || 0).toFixed(2) }}</strong>
         </div>
 
-        <div style="margin-top:12px; display: flex; gap: 10px;">
+        <div style="margin-top: 12px; display: flex; gap: 10px">
           <el-button type="primary" @click="pay" :disabled="!isPending">立即支付（占位）</el-button>
           <el-button @click="cancelAndAbandon" :disabled="!isPending">放弃支付</el-button>
         </div>
@@ -42,6 +46,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getOrderDetail, updateOrderStatus, OrderAction } from '@/api/order'
 import type { Order, OrderItem } from '@/api/model/orderModel'
+import { useCartStore } from '@/stores/cart'
 
 const route = useRoute()
 const router = useRouter()
@@ -76,7 +81,7 @@ async function load() {
   }
   try {
     const res = await getOrderDetail(id)
-    const data = (res as { data?: { order?: Order, items?: OrderItem[] } }).data
+    const data = (res as { data?: { order?: Order; items?: OrderItem[] } }).data
     order.value = data?.order || null
     orderItems.value = data?.items || []
   } catch {
@@ -102,6 +107,9 @@ async function pay() {
   try {
     await updateOrderStatus(order.value.orderSn || '', { action: OrderAction.PAY_ORDER })
     ElMessage.success('支付成功')
+    const cartStore = useCartStore()
+    cartStore.getCloudCart()
+
     router.replace({ path: `/user/order/${order.value.orderSn}` })
   } catch (err) {
     ElMessage.error((err as Error).message || '支付失败')
@@ -114,14 +122,20 @@ async function pay() {
 async function cancelAndAbandon() {
   if (!order.value || canceling.value) return
   try {
-    await ElMessageBox.confirm('确认放弃支付并取消订单吗？', '提示', { confirmButtonText: '确定', cancelButtonText: '再想想' })
+    await ElMessageBox.confirm('确认放弃支付并取消订单吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '再想想',
+    })
   } catch {
     return
   }
 
   canceling.value = true
   try {
-    await updateOrderStatus(order.value.orderSn || '', { action: OrderAction.CANCEL_ORDER, reason: '用户放弃支付' })
+    await updateOrderStatus(order.value.orderSn || '', {
+      action: OrderAction.CANCEL_ORDER,
+      reason: '用户放弃支付',
+    })
     ElMessage.success('已取消订单')
     router.replace({ path: '/' })
   } catch (err) {
@@ -142,5 +156,7 @@ onMounted(load)
 </script>
 
 <style scoped>
-.payment-page h3 { margin: 0 0 12px 0 }
+.payment-page h3 {
+  margin: 0 0 12px 0;
+}
 </style>
