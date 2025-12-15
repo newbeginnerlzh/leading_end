@@ -8,49 +8,30 @@
       <div v-else>
         <div>订单号：{{ order.orderSn }}</div>
         <div>创建时间：{{ order.createdAt }}</div>
-<<<<<<< Updated upstream
-        <div>收货：{{ order.receiverName }} / {{ order.receiverPhone }}</div>
-        <div>
-          地址：{{ order.receiverProvince }} {{ order.receiverCity }} {{ order.receiverDistrict }}
-          {{ order.receiverDetail }}
-        </div>
-        <div v-if="remainingSeconds > 0" style="margin-top: 8px">
-=======
         <div>收货人：{{ order.receiverName }}</div>
         <div>手机号：{{ order.receiverPhone }}</div>
         <div>地址：{{ order.receiverProvince }} {{ order.receiverCity }} {{ order.receiverDistrict }} {{ order.receiverDetail }}</div>
         <div class="remark">备注：{{ order.buyerRemark ? order.buyerRemark : '（无）' }}</div>
         <div v-if="remainingSeconds > 0" class="countdown">
->>>>>>> Stashed changes
           <strong>支付倒计时：</strong>
-          <span>{{ minutes }}:{{ seconds }}</span>
+          <span v-if="remainingSeconds > 0">{{ minutes }}:{{ seconds }}</span>
+          <span v-else style="color:#e4393c">已超时（订单已过期）</span>
         </div>
 
-        <el-table :data="orderItems" style="width: 100%; margin-top: 12px" size="small">
-          <el-table-column prop="productName" label="商品" />
+        <el-table :data="orderItems" style="width:100%;margin-top:12px" size="small">
+          <el-table-column prop="name" label="商品" />
           <el-table-column prop="price" label="单价(¥)" width="120">
             <template #default="{ row }">{{ (row.price || 0).toFixed(2) }}</template>
           </el-table-column>
-          <el-table-column prop="quantity" label="数量" width="100" />
+          <el-table-column prop="count" label="数量" width="100" />
         </el-table>
 
-<<<<<<< Updated upstream
-        <div style="margin-top: 12px">
-          应付金额：
-          <strong>¥{{ (order.payAmount || order.totalAmount || 0).toFixed(2) }}</strong>
-        </div>
-
-        <div style="margin-top: 12px; display: flex; gap: 10px">
-          <el-button type="primary" @click="pay" :disabled="!isPending">立即支付（占位）</el-button>
-          <el-button @click="cancelAndAbandon" :disabled="!isPending">放弃支付</el-button>
-=======
         <div class="pay-actions">
           <div class="pay-amount">应付金额：<span class="price-highlight">¥{{ (order.payAmount || order.totalAmount || 0).toFixed(2) }}</span></div>
           <div class="buttons">
             <el-button type="primary" @click="pay" :disabled="!isPending">立即支付</el-button>
             <el-button @click="cancelAndAbandon" :disabled="!isPending">放弃支付</el-button>
           </div>
->>>>>>> Stashed changes
         </div>
       </div>
     </el-card>
@@ -63,22 +44,18 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getOrderDetail, updateOrderStatus, OrderAction } from '@/api/order'
 import type { Order, OrderItem } from '@/api/model/orderModel'
-<<<<<<< Updated upstream
-=======
 import { onBeforeRouteLeave } from 'vue-router'
->>>>>>> Stashed changes
 import { useCartStore } from '@/stores/cart'
 
 const route = useRoute()
 const router = useRouter()
-const order = ref<Order | null>(null)
+const order = ref<any | null>(null)
 const orderItems = ref<OrderItem[]>([])
 const loading = ref(true)
-const paying = ref(false)
-const canceling = ref(false)
-// 后端未提供倒计时/过期时间字段，暂设为 0
 const remainingSeconds = ref<number>(0)
 let timer: number | null = null
+const paying = ref(false)
+const canceling = ref(false)
 
 const pendingStatuses = new Set(['待付款', '未支付'])
 const isPending = computed(() => pendingStatuses.has(order.value?.status || ''))
@@ -148,7 +125,7 @@ async function load() {
   }
   try {
     const res = await getOrderDetail(id)
-    const data = (res as { data?: { order?: Order; items?: OrderItem[] } }).data
+    const data = (res as { data?: { order?: Order, items?: OrderItem[] } }).data
     order.value = data?.order || null
     orderItems.value = data?.items || []
     orderSnRef.value = order.value?.orderSn || ''
@@ -181,15 +158,10 @@ async function pay() {
   try {
     await updateOrderStatus(order.value.orderSn || '', { action: OrderAction.PAY_ORDER })
     ElMessage.success('支付成功')
-<<<<<<< Updated upstream
     const cartStore = useCartStore()
     cartStore.getCloudCart()
 
-    router.replace({ path: `/user/order/${order.value.orderSn}` })
-=======
-
     router.replace({ path: `/user/order/${order.value.orderSn}` , query: { fromPay: '1' } })
->>>>>>> Stashed changes
   } catch (err) {
     ElMessage.error((err as Error).message || '支付失败')
   } finally {
@@ -201,20 +173,14 @@ async function pay() {
 async function cancelAndAbandon() {
   if (!order.value || canceling.value) return
   try {
-    await ElMessageBox.confirm('确认放弃支付并取消订单吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '再想想',
-    })
+    await ElMessageBox.confirm('确认放弃支付并取消订单吗？', '提示', { confirmButtonText: '确定', cancelButtonText: '再想想' })
   } catch {
     return
   }
 
   canceling.value = true
   try {
-    await updateOrderStatus(order.value.orderSn || '', {
-      action: OrderAction.CANCEL_ORDER,
-      reason: '用户放弃支付',
-    })
+    await updateOrderStatus(order.value.orderSn || '', { action: OrderAction.CANCEL_ORDER, reason: '用户放弃支付' })
     ElMessage.success('已取消订单')
     router.replace({ path: '/' })
   } catch (err) {
@@ -256,11 +222,6 @@ onBeforeRouteLeave((_to, _from, next) => {
 </script>
 
 <style scoped>
-<<<<<<< Updated upstream
-.payment-page h3 {
-  margin: 0 0 12px 0;
-}
-=======
 .payment-page h3 { margin: 0 0 12px 0 }
 .countdown { margin-top: 8px; font-weight: 600; color: #e53935; }
 .pay-actions { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-top: 16px; }
@@ -269,5 +230,4 @@ onBeforeRouteLeave((_to, _from, next) => {
 .buttons { display: flex; gap: 10px; }
 .remark { margin-top: 8px; color: #333; font-weight: 500; }
 :deep(.el-table__cell) { font-size: 14px; }
->>>>>>> Stashed changes
 </style>
