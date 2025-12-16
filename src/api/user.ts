@@ -110,3 +110,18 @@ export function updateAddress(data: AddressInfo) {
 export function deleteAddress(addressId: number) {
   return asApiResult(request.delete<BaseResponse>(`/api/address/delete/${addressId}`));
 }
+
+/**
+ * 上传用户头像
+ * @param file 头像文件
+ * @returns 返回图片访问URL
+ */
+export function uploadAvatar(file: File) {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  return asApiResult<string>(request.post<BaseResponse<string>>('/api/user/avatar', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }));
+}
