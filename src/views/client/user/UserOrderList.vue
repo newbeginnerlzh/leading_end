@@ -70,7 +70,7 @@
             <el-dropdown
               trigger="click"
               style="margin-left:8px"
-              @command="onMoreCommandWrapper(row)"
+              @command="onMoreCommand($event, row)"
             >
               <el-button type="success" size="small" :disabled="availableMoreActions(row).length === 0">
                 更多
@@ -223,8 +223,8 @@ function handleMoreCommand(cmd: 'pay' | 'refund' | 'delete', row: OrderListView)
   if (cmd === 'delete') return onDeleteFromList(row)
 }
 
-function onMoreCommandWrapper(row: OrderListView) {
-  return (cmd: 'pay' | 'refund' | 'delete') => handleMoreCommand(cmd, row)
+function onMoreCommand(cmd: 'pay' | 'refund' | 'delete', row: OrderListView) {
+  handleMoreCommand(cmd, row)
 }
 
 function openRefund(row: OrderListView) {
