@@ -49,7 +49,7 @@ import { useCartStore } from '@/stores/cart'
 
 const route = useRoute()
 const router = useRouter()
-const order = ref<any | null>(null)
+const order = ref<Order | null>(null)
 const orderItems = ref<OrderItem[]>([])
 const loading = ref(true)
 const remainingSeconds = ref<number>(0)

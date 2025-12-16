@@ -99,8 +99,23 @@
             <el-card class="section" shadow="never">
               <div class="section-title">操作</div>
               <div class="actions">
-                <el-button v-if="order.status === '待付款'" type="success" @click="goPay" :loading="acting">去支付</el-button>
-                <el-button type="primary" @click="onBack">返回订单列表</el-button>
+
+                <el-button
+                  v-if="isRefundable(order?.status)"
+                  type="warning"
+                  @click="openRefund"
+                  :loading="refunding"
+                  :style="opBtnStyle"
+                >申请退款</el-button>
+
+                <el-button 
+                  v-if="order.status === '待付款'" 
+                  type="success" 
+                  @click="goPay" 
+                  :loading="acting"
+                  >去支付</el-button>
+
+                <el-button type="primary" @click="onBack" :style="opBtnStyle" ref="backBtnRef">返回订单列表</el-button>
               </div>
               <div class="cancel-reason" v-if="order.cancelReason">
                 取消原因：{{ order.cancelReason }}
@@ -109,17 +124,28 @@
           </el-col>
         </el-row>
       </div>
+      <el-dialog v-model="refundDialogVisible" title="申请退款" width="420px" :close-on-click-modal="false">
+        <el-form label-width="80px">
+          <el-form-item label="退款理由">
+            <el-input v-model="refundReason" type="textarea" :rows="3" placeholder="请填写退款理由" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="refundDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="refunding" @click="submitRefund">确定</el-button>
+        </template>
+      </el-dialog>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getOrderDetail, deleteOrder } from '@/api/order'
+import { getOrderDetail, deleteOrder, updateOrderStatus, OrderAction } from '@/api/order'
 import type { Order, OrderItem } from '@/api/model/orderModel'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { ArrowLeft } from '@element-plus/icons-vue'
+
 
 const route = useRoute()
 const router = useRouter()
@@ -128,6 +154,13 @@ const items = ref<OrderItem[]>([])
 const loading = ref(true)
 const acting = ref(false)
 const deleting = ref(false)
+type ButtonRef = { $el?: HTMLElement }
+const backBtnRef = ref<ButtonRef | HTMLElement | null>(null)
+const opBtnWidth = ref<number | null>(null)
+const opBtnStyle = computed(() => (opBtnWidth.value ? { width: `${opBtnWidth.value}px` } : {}))
+const refundDialogVisible = ref(false)
+const refundReason = ref('')
+const refunding = ref(false)
 
 function formatMoney(val?: number | null) {
   const num = typeof val === 'number' ? val : 0
@@ -165,9 +198,11 @@ function formatPayment(method?: string | null) {
   return map[method] || method
 }
 
-function formatSpecs(specs: Record<string, any>) {
+// 收紧规格类型，移除 any
+type SkuSpecs = Record<string, string | number>
+function formatSpecs(specs: SkuSpecs) {
   return Object.entries(specs)
-    .map(([k, v]) => `${k}:${v}`)
+    .map(([k, v]) => `${k}:${String(v)}`)
     .join('；')
 }
 
@@ -192,6 +227,10 @@ function statusClass(text?: string | null) {
     default:
       return 'st-default'
   }
+}
+
+function isRefundable(text?: string | null) {
+  return ['待发货', '待收货', '已完成'].includes(text || '')
 }
 
 async function load() {
@@ -223,7 +262,38 @@ async function goPay() {
   }
 }
 
+function openRefund() {
+  if (!order.value) return
+  refundReason.value = ''
+  refundDialogVisible.value = true
+}
+
+async function submitRefund() {
+  if (!order.value || refunding.value) return
+  refunding.value = true
+  try {
+    const reason = refundReason.value?.trim() || null
+    await updateOrderStatus(order.value.orderSn || '', { action: OrderAction.APPLY_REFUND, reason })
+    // TODO 若需记录取消原因/时间字段，请与后端确认返回字段后补充
+    order.value = { ...order.value, status: '退款中' }
+    refundDialogVisible.value = false
+    ElMessage.success('已提交退款，状态更新为退款中')
+  } catch (err) {
+    ElMessage.error((err as Error).message || '申请退款失败')
+  } finally {
+    refunding.value = false
+  }
+}
+
 onMounted(load)
+
+onMounted(async () => {
+  await nextTick()
+  const el = backBtnRef.value instanceof HTMLElement ? backBtnRef.value : backBtnRef.value?.$el || null
+  if (el) {
+    opBtnWidth.value = el.offsetWidth
+  }
+})
 
 async function onDelete() {
   if (!order.value || deleting.value) return

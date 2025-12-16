@@ -9,12 +9,6 @@
             <el-option v-for="opt in statusOptions" :key="opt.value ?? 'all'" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="订单号">
-          <el-input v-model="filters.orderSn" placeholder="精确匹配订单号" clearable style="width:200px" @keyup.enter.native="applyFilters" />
-        </el-form-item>
-        <el-form-item label="商品名">
-          <el-input v-model="filters.productName" placeholder="模糊搜索商品名" clearable style="width:200px" @keyup.enter.native="applyFilters" />
-        </el-form-item>
         <el-form-item label="日期">
           <el-date-picker
             v-model="filters.dateRange"
@@ -70,13 +64,45 @@
         <el-table-column prop="payAmount" label="实付(¥)" width="120">
           <template #default="{ row }">{{ (row.payAmount || row.totalAmount || 0).toFixed(2) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="220">
+        <el-table-column label="操作" width="260">
           <template #default="{ row }">
             <el-button type="primary" size="small" @click="viewDetail(row.orderSn)">查看详情</el-button>
-            <el-button v-if="row.statusText === '待付款'" type="success" size="small" style="margin-left:8px" @click="toPay(row.orderSn)">去支付</el-button>
+            <el-dropdown
+              trigger="click"
+              style="margin-left:8px"
+              @command="onMoreCommandWrapper(row)"
+            >
+              <el-button type="success" size="small" :disabled="availableMoreActions(row).length === 0">
+                更多
+                <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item
+                    v-for="act in availableMoreActions(row)"
+                    :key="act.command"
+                    :command="act.command"
+                  >
+                    {{ act.label }}
+                  </el-dropdown-item>
+                  <el-dropdown-item v-if="availableMoreActions(row).length === 0" disabled>暂无可用操作</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
+      <el-dialog v-model="refundDialogVisible" title="申请退款" width="420px" :close-on-click-modal="false">
+        <el-form label-width="80px">
+          <el-form-item label="退款理由">
+            <el-input v-model="refundReason" type="textarea" :rows="3" placeholder="请填写退款理由" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="refundDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="refunding" @click="submitRefund">确定</el-button>
+        </template>
+      </el-dialog>
       <div style="display:flex;justify-content:flex-end;margin-top:12px;">
         <el-pagination
           background
@@ -94,8 +120,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { getOrderList, type GetOrderListParams } from '@/api/order'
+import { ArrowDown } from '@element-plus/icons-vue'
+import { getOrderList, updateOrderStatus, deleteOrder, OrderAction, type GetOrderListParams } from '@/api/order'
 import type { OrderListItem, OrderPreviewItem } from '@/api/order'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 type OrderListView = OrderListItem & { statusText: string }
 
@@ -130,9 +158,13 @@ const router = useRouter()
 
 const pageSizeOptions = [7, 10, 20, 50]
 
-const filters = ref<{ status: number | null; dateRange: string[] | []; orderSn: string; productName: string }>({ status: null, dateRange: [], orderSn: '', productName: '' })
+const filters = ref<{ status: number | null; dateRange: string[] | [] }>({ status: null, dateRange: [] })
 const overflowFlags = ref<Record<string, boolean>>({})
 const previewObservers = new Map<string, ResizeObserver>()
+const refundDialogVisible = ref(false)
+const refundReason = ref('')
+const refunding = ref(false)
+const refundTargetSn = ref('')
 
 function statusTextOf(status?: string | number): string {
   if (typeof status === 'number') return statusNumberMap[status] || `${status}`
@@ -169,6 +201,85 @@ function statusClass(text?: string): string {
   }
 }
 
+function isRefundable(statusText?: string) {
+  return ['待发货', '待收货', '已完成'].includes(statusText || '')
+}
+
+function isDeletable(statusText?: string) {
+  return ['已完成', '已取消', '退款成功'].includes(statusText || '')
+}
+
+function availableMoreActions(row: OrderListView) {
+  const acts: { command: 'pay' | 'refund' | 'delete'; label: string }[] = []
+  if (row.statusText === '待付款') acts.push({ command: 'pay', label: '去支付' })
+  if (isRefundable(row.statusText)) acts.push({ command: 'refund', label: '申请退款' })
+  if (isDeletable(row.statusText)) acts.push({ command: 'delete', label: '删除订单' })
+  return acts
+}
+
+function handleMoreCommand(cmd: 'pay' | 'refund' | 'delete', row: OrderListView) {
+  if (cmd === 'pay') return toPay(row.orderSn)
+  if (cmd === 'refund') return openRefund(row)
+  if (cmd === 'delete') return onDeleteFromList(row)
+}
+
+function onMoreCommandWrapper(row: OrderListView) {
+  return (cmd: 'pay' | 'refund' | 'delete') => handleMoreCommand(cmd, row)
+}
+
+function openRefund(row: OrderListView) {
+  refundTargetSn.value = row.orderSn
+  refundReason.value = ''
+  refundDialogVisible.value = true
+}
+
+async function submitRefund() {
+  if (!refundTargetSn.value || refunding.value) return
+  refunding.value = true
+  try {
+    const reason = refundReason.value?.trim() || null
+    await updateOrderStatus(refundTargetSn.value, { action: OrderAction.APPLY_REFUND, reason })
+
+    orders.value = orders.value.map((o) => (o.orderSn === refundTargetSn.value ? { ...o, statusText: '退款中', status: '退款中' } : o))
+    refundDialogVisible.value = false
+    ElMessage.success('已提交退款，状态更新为退款中')
+  } catch (err) {
+    ElMessage.error((err as Error).message || '申请退款失败')
+  } finally {
+    refunding.value = false
+  }
+}
+
+async function onDeleteFromList(row: OrderListView) {
+  // 和详情页一致：仅“已完成/已取消/退款成功”可删
+  if (!isDeletable(row.statusText)) {
+    await ElMessageBox.alert('仅状态为“已完成/已取消/退款成功”的订单可以删除。当前状态不支持删除。', '无法删除', {
+      confirmButtonText: '我知道了',
+      type: 'info'
+    })
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm('确认删除该订单？删除后不可恢复。', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '再想想',
+      type: 'warning'
+    })
+  } catch {
+    return
+  }
+
+  try {
+    await deleteOrder(row.orderSn)
+    ElMessage.success('已删除订单')
+    // 刷新列表
+    await load()
+  } catch (err) {
+    ElMessage.error((err as Error).message || '删除失败')
+  }
+}
+
 function setPreviewTextEl(key: string, el: HTMLElement | null) {
   const existed = previewObservers.get(key)
   if (existed && !el) {
@@ -199,8 +310,6 @@ async function load() {
   try {
     const params: GetOrderListParams = { page: currentPage.value, pageSize: pageSize.value }
     if (filters.value.status !== null) params.status = filters.value.status
-    if (filters.value.orderSn) params.orderSn = filters.value.orderSn.trim()
-    if (filters.value.productName) params.productName = filters.value.productName.trim()
     if (Array.isArray(filters.value.dateRange) && filters.value.dateRange.length === 2) {
       params.startDate = filters.value.dateRange[0]
       params.endDate = filters.value.dateRange[1]
@@ -245,7 +354,7 @@ function applyFilters() {
 }
 
 function resetFilters() {
-  filters.value = { status: null, dateRange: [], orderSn: '', productName: '' }
+  filters.value = { status: null, dateRange: [] }
   currentPage.value = 1
   load()
 }

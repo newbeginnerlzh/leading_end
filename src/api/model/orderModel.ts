@@ -112,7 +112,7 @@ export interface Order {
      * 订单所属的用户id
      */
     userId?: number;
-    [property: number]: any;
+    //[property: number]: any;
 }
 
 export interface OrderItem {
@@ -149,5 +149,5 @@ export interface OrderItem {
      * 总价
      */
     totalPrice?: number;
-    [property: string]: any;
+    //[property: string]: any;
 }
