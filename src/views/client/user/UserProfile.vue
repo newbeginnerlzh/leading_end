@@ -7,8 +7,8 @@
     <el-card>
       <!-- 展示模式（默认） -->
       <div v-if="!isEditing">
-        <el-row :gutter="20">
-          <el-col :span="8">
+        <el-row :gutter="20" class="profile-row">
+          <el-col :span="8" class="avatar-section">
             <div class="avatar-display">
               <div class="avatar-wrapper">
                 <img v-if="userInfo.avatar" :src="userInfo.avatar" class="avatar" />
@@ -18,7 +18,7 @@
           </el-col>
 
           <el-col :span="16">
-            <el-form label-width="200px">
+            <el-form label-width="250px">
               <el-form-item label="用户名">
                 <div>{{ userInfo.username || '-' }}</div>
               </el-form-item>
@@ -55,10 +55,10 @@
           :model="editUserInfo"
           :rules="rules"
           ref="formRef"
-          label-width="200px"
+          label-width="250px"
         >
-          <el-row :gutter="20">
-            <el-col :span="8">
+          <el-row :gutter="20" class="profile-row">
+            <el-col :span="8" class="avatar-section">
               <!-- 头像上传 -->
               <div class="avatar-display">
                 <el-upload
@@ -76,7 +76,7 @@
               </div>
             </el-col>
 
-            <el-col :span="11">
+            <el-col :span="13">
               <el-form-item label="用户名">
                 <el-input v-model="editUserInfo.username"></el-input>
               </el-form-item>
@@ -628,5 +628,26 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+}
+
+/* 头像与信息区域之间的分割线 - 相对于头像容器定位 */
+.avatar-display::after {
+  content: '';
+  position: absolute;
+  right: -60px; /* 偏移到 el-col 的右边缘（gutter/2） */
+  top: 50%;
+  transform: translateY(-50%);
+  height: 200px; /* 约为头像高度(150px)的2/3 */
+  width: 1px;
+  background-color: var(--el-border-color);
+}
+
+.profile-row {
+  position: relative;
+}
+
+.avatar-section {
+  position: relative;
 }
 </style>
