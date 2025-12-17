@@ -338,6 +338,8 @@ const handleLogin = async () => {
     localStorage.setItem('token', payload.token)
     localStorage.setItem('userInfo', JSON.stringify(payload.userInfo))
 
+    // 触发自定义事件通知 Header 等组件更新用户名显示
+    window.dispatchEvent(new CustomEvent('userInfoUpdated'))
 
     ElMessage.success('登录成功')
     // 设置购物车用户ID（优先 uid，回退到 id）
