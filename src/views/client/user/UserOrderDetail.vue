@@ -10,7 +10,7 @@
           </div>
         </div>
         <div class="right">
-          <el-button type="danger" size="small" @click="onDelete">删除订单</el-button>
+          <el-button type="primary" size="small" @click="onBack">返回订单列表</el-button>
         </div>
       </div>
 
@@ -105,7 +105,7 @@
                   type="warning"
                   @click="openRefund"
                   :loading="refunding"
-                  :style="opBtnStyle"
+                  class="full-btn"
                 >申请退款</el-button>
 
                 <el-button 
@@ -113,9 +113,11 @@
                   type="success" 
                   @click="goPay" 
                   :loading="acting"
+                  class="full-btn"
                   >去支付</el-button>
 
-                <el-button type="primary" @click="onBack" :style="opBtnStyle" ref="backBtnRef">返回订单列表</el-button>
+                <el-button type="danger" @click="onDelete" class="full-btn">删除订单</el-button>
+                
               </div>
               <div class="cancel-reason" v-if="order.cancelReason">
                 取消原因：{{ order.cancelReason }}
@@ -140,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOrderDetail, deleteOrder, updateOrderStatus, OrderAction } from '@/api/order'
 import type { Order, OrderItem } from '@/api/model/orderModel'
@@ -154,10 +156,6 @@ const items = ref<OrderItem[]>([])
 const loading = ref(true)
 const acting = ref(false)
 const deleting = ref(false)
-type ButtonRef = { $el?: HTMLElement }
-const backBtnRef = ref<ButtonRef | HTMLElement | null>(null)
-const opBtnWidth = ref<number | null>(null)
-const opBtnStyle = computed(() => (opBtnWidth.value ? { width: `${opBtnWidth.value}px` } : {}))
 const refundDialogVisible = ref(false)
 const refundReason = ref('')
 const refunding = ref(false)
@@ -287,13 +285,6 @@ async function submitRefund() {
 
 onMounted(load)
 
-onMounted(async () => {
-  await nextTick()
-  const el = backBtnRef.value instanceof HTMLElement ? backBtnRef.value : backBtnRef.value?.$el || null
-  if (el) {
-    opBtnWidth.value = el.offsetWidth
-  }
-})
 
 async function onDelete() {
   if (!order.value || deleting.value) return
@@ -363,5 +354,6 @@ function onBack() {
 .item-text .name { font-weight: 600; }
 .item-text .spec { color: #666; font-size: 12px; }
 .actions { display: flex; flex-direction: column; gap: 8px; }
+.actions .full-btn { width: 100%; }
 .cancel-reason { margin-top: 8px; color: #666; }
 </style>
