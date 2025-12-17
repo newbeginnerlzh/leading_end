@@ -83,9 +83,9 @@ export interface UpdateOrderStatusRequest {
  * @returns 订单创建结果
  */
 export async function createOrdersFromCart(params: CreateOrdersFromCartRequest): Promise<BaseResponse<Order>> {
-  
-  const token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
-  
+
+  const token = localStorage.getItem('token')
+
   const response = await fetch('/api/orders/from-cart', {
     method: 'POST',
     headers: {
@@ -114,7 +114,7 @@ export async function createOrdersFromCart(params: CreateOrdersFromCartRequest):
  */
 export async function buyNowOrder(params: BuyNowOrderRequest): Promise<BaseResponse<Order>> {
 
-  const token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
+  const token = localStorage.getItem('token')
 
   const response = await fetch('/api/orders/buy-now', {
     method: 'POST',
@@ -139,7 +139,7 @@ export async function buyNowOrder(params: BuyNowOrderRequest): Promise<BaseRespo
       errorMessage = errorObj.message || errorMessage;
     } catch {
       // 如果无法解析错误响应，则使用默认错误消息
-    } 
+    }
     throw new Error(errorMessage);
   }
   const result: BaseResponse<Order> = await response.json();
@@ -154,7 +154,7 @@ export async function buyNowOrder(params: BuyNowOrderRequest): Promise<BaseRespo
 export async function getOrderList(params?: GetOrderListParams): Promise<BaseResponse<OrderListData>> {
   // 构建查询参数
   const queryParams = new URLSearchParams();
-  const token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
+  const token = localStorage.getItem('token')
   if (params?.page !== undefined) queryParams.append('page', params.page.toString());
   if (params?.pageSize !== undefined) queryParams.append('pageSize', params.pageSize.toString());
   if (params?.status!== undefined) queryParams.append('status', params.status.toString());
@@ -178,14 +178,14 @@ export async function getOrderList(params?: GetOrderListParams): Promise<BaseRes
     // 根据不同的HTTP状态码抛出相应的错误
     const errorResponse = await response.text();
     let errorMessage = `HTTP error! status: ${response.status},${response.statusText}`;
-    
+
     try {
       const errorObj = JSON.parse(errorResponse);
       errorMessage = errorObj.message || errorMessage;
     } catch {
       // 如果无法解析错误响应，则使用默认错误消息
     }
-    
+
     throw new Error(errorMessage);
   }
 
@@ -199,7 +199,7 @@ export async function getOrderList(params?: GetOrderListParams): Promise<BaseRes
  * @returns 订单详情
  */
 export async function getOrderDetail(orderSn: number | string): Promise<BaseResponse<OrderDetailData>> {
-  const token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
+  const token = localStorage.getItem('token')
   const response = await fetch(`/api/orders/${orderSn}`, {
     method: 'GET',
     headers: {
@@ -212,14 +212,14 @@ export async function getOrderDetail(orderSn: number | string): Promise<BaseResp
     // 根据不同的HTTP状态码抛出相应的错误
     const errorResponse = await response.text();
     let errorMessage = `HTTP error! status: ${response.status}`;
-    
+
     try {
       const errorObj = JSON.parse(errorResponse);
       errorMessage = errorObj.message || errorMessage;
     } catch {
       // 如果无法解析错误响应，则使用默认错误消息
     }
-    
+
     throw new Error(errorMessage);
   }
 
@@ -230,13 +230,13 @@ export async function getOrderDetail(orderSn: number | string): Promise<BaseResp
 /**
  * 更新订单状态API
  * 用户操作订单（确认收货、取消订单等）
- * 
+ *
  * @param orderSn - 订单号
  * @param params - 更新订单状态的参数
  * @returns 更新结果
  */
 export async function updateOrderStatus(orderSn: string, params: UpdateOrderStatusRequest): Promise<BaseResponse<null>> {
-  const token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
+  const token = localStorage.getItem('token')
   const response = await fetch(`/api/orders/${orderSn}`, {
     method: 'PATCH',
     headers: {
@@ -253,14 +253,14 @@ export async function updateOrderStatus(orderSn: string, params: UpdateOrderStat
     // 根据不同的HTTP状态码抛出相应的错误
     const errorResponse = await response.text();
     let errorMessage = `HTTP error! status: ${response.status}`;
-    
+
     try {
       const errorObj = JSON.parse(errorResponse);
       errorMessage = errorObj.message || errorMessage;
     } catch {
       // 如果无法解析错误响应，则使用默认错误消息
     }
-    
+
     throw new Error(errorMessage);
   }
 
@@ -278,12 +278,12 @@ export async function updateOrderStatus(orderSn: string, params: UpdateOrderStat
  * 6-退款成功
  * 7-退款失败
  * 和订单状态强相关
- * 
+ *
  * @param orderSn - 订单号
  * @returns 删除结果
  */
 export async function deleteOrder(orderSn: string): Promise<BaseResponse<null>> {
-  const token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwiaWF0IjoxNzY0ODI3NjY1LCJleHAiOjE4NjQ4Mjc2NjV9.uYMoQl4r52bJRIBm_4wbTvKGFQYKPXrSUbNmx4ESi6d-az-Z-N8Sw18-0fSaU9Qo2O7k1X32fQxqm_dX12gQDA'
+  const token = localStorage.getItem('token')
   const response = await fetch(`/api/orders/delete/${orderSn}`, {
     method: 'DELETE',
     headers: {
@@ -296,14 +296,14 @@ export async function deleteOrder(orderSn: string): Promise<BaseResponse<null>> 
     // 根据不同的HTTP状态码抛出相应的错误
     const errorResponse = await response.text();
     let errorMessage = `HTTP error! status: ${response.status}`;
-    
+
     try {
       const errorObj = JSON.parse(errorResponse);
       errorMessage = errorObj.message || errorMessage;
     } catch {
       // 如果无法解析错误响应，则使用默认错误消息
     }
-    
+
     throw new Error(errorMessage);
   }
 
@@ -322,7 +322,7 @@ const createOrderExample = async () => {
       cartItemIds: [19, 54, 13],
       buyerRemark: '尽快发货'
     };
-    
+
     const result = await createOrdersFromCart(params);
     console.log('订单创建成功:', result);
   } catch (error) {
@@ -339,7 +339,7 @@ const buyNowOrderExample = async () => {
       quantity: 50,
       buyerRemark: 'do'
     };
-    
+
     const result = await buyNowOrder(params);
     console.log('订单创建成功:', result);
   } catch (error) {
@@ -357,7 +357,7 @@ const getOrderListExample = async () => {
       startDate: '2023-01-01',
       endDate: '2023-12-31'
     };
-    
+
     const result = await getOrderList(params);
     console.log('获取订单列表成功:', result);
   } catch (error) {
@@ -369,7 +369,7 @@ const getOrderListExample = async () => {
 const getOrderDetailExample = async () => {
   try {
     const orderSn = '100014'; // 示例订单号
-    
+
     const result = await getOrderDetail(orderSn);
     console.log('获取订单详情成功:', result);
   } catch (error) {
@@ -384,7 +384,7 @@ const confirmReceiptExample = async () => {
     const params: UpdateOrderStatusRequest = {
       action: OrderAction.CONFIRM_RECEIPT
     };
-    
+
     const result = await updateOrderStatus(orderSn, params);
     console.log('确认收货成功:', result);
   } catch (error) {
@@ -400,7 +400,7 @@ const cancelOrderExample = async () => {
       action: OrderAction.CANCEL_ORDER,
       reason: '不想要了'
     };
-    
+
     const result = await updateOrderStatus(orderSn, params);
     console.log('取消订单成功:', result);
   } catch (error) {
@@ -416,7 +416,7 @@ const applyRefundExample = async () => {
       action: OrderAction.APPLY_REFUND,
       reason: '商品质量有问题'
     };
-    
+
     const result = await updateOrderStatus(orderSn, params);
     console.log('申请退款成功:', result);
   } catch (error) {
@@ -431,7 +431,7 @@ const payOrderExample = async () => {
     const params: UpdateOrderStatusRequest = {
       action: OrderAction.PAY_ORDER
     };
-    
+
     const result = await updateOrderStatus(orderSn, params);
     console.log('支付订单成功:', result);
   } catch (error) {
@@ -443,7 +443,7 @@ const payOrderExample = async () => {
 const deleteOrderExample = async () => {
   try {
     const orderSn = '100014'; // 示例订单号
-    
+
     const result = await deleteOrder(orderSn);
     console.log('订单删除成功:', result);
     console.log('状态码:', result.status);

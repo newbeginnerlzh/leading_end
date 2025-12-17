@@ -1,8 +1,11 @@
 <!-- 订单列表：从 mock storage 读取并展示 -->
 <template>
-  <div>
+  <div class="order-container">
+    <div class="order-header">
+      <h2>我的订单</h2>
+    </div>
+
     <el-card>
-      <h3>我的订单</h3>
       <el-form inline style="margin-bottom:12px" :model="filters" label-width="80px" size="small">
         <el-form-item label="状态">
           <el-select v-model="filters.status" placeholder="全部" clearable style="width:160px" @change="onFilterChange">
@@ -31,7 +34,7 @@
           </el-select>
         </el-form-item>
 
-        
+
 
 
 
@@ -368,7 +371,28 @@ onMounted(load)
 </script>
 
 <style scoped>
-h3 { margin: 0 0 12px 0 }
+.order-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.order-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 12px 0;
+  min-height: 50.5px;
+}
+
+.order-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+  color: #1f2329;
+}
 
 /* 固定行高 + 放大字体 */
 :deep(.order-table .el-table__row) { height: 56px; }
