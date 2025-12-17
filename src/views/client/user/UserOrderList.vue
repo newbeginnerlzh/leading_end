@@ -6,9 +6,9 @@
     </div>
 
     <el-card>
-      <el-form inline style="margin-bottom:12px" :model="filters" label-width="80px" size="small">
+      <el-form inline style="margin-bottom:12px" :model="filters" label-width="60px" size="small">
         <el-form-item label="状态">
-          <el-select v-model="filters.status" placeholder="全部" clearable style="width:160px" @change="onFilterChange">
+          <el-select v-model="filters.status" placeholder="全部" clearable style="width:100px" @change="onFilterChange">
             <el-option v-for="opt in statusOptions" :key="opt.value ?? 'all'" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
@@ -16,29 +16,23 @@
           <el-date-picker
             v-model="filters.dateRange"
             type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
+            range-separator="-"
+            start-placeholder="开始"
+            end-placeholder="结束"
             value-format="YYYY-MM-DD"
+            style="width:220px"
             @change="onFilterChange"
           />
         </el-form-item>
-        <el-form-item>
+        <el-form-item label-width="0">
           <el-button type="primary" @click="applyFilters">筛选</el-button>
           <el-button @click="resetFilters">重置</el-button>
         </el-form-item>
-
-        <el-form-item label="每页显示">
-          <el-select v-model="pageSize" size="small" style="width:110px" @change="onPageSizeChange">
+        <el-form-item label="每页" style="margin-left:12px">
+          <el-select v-model="pageSize" size="small" style="width:80px" @change="onPageSizeChange">
             <el-option v-for="size in pageSizeOptions" :key="size" :label="`${size} 条`" :value="size" />
           </el-select>
         </el-form-item>
-
-
-
-
-
-
       </el-form>
       <el-table :data="orders" class="order-table" style="width:100%" size="small">
         <el-table-column prop="orderSn" label="订单号" width="160" />
