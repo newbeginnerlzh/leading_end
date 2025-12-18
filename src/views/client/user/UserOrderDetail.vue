@@ -116,12 +116,19 @@
                   class="full-btn"
                   >去支付</el-button>
 
-                <el-button type="danger" @click="onDelete" class="full-btn">删除订单</el-button>
-                
+                <el-button type="danger" @click="onDelete" class="full-btn">删除订单</el-button>               
               </div>
+
               <div class="cancel-reason" v-if="order.cancelReason">
                 取消原因：{{ order.cancelReason }}
               </div>
+
+              <!-- 这里之后要实现退款原因显示，内容都在cancelReason里，要根据status来区别显示 -->
+              <!-- <div class="cancel-reason" v-if="order.cancelReason">
+                退款原因：{{ order.cancelReason }}
+              </div> -->
+
+
             </el-card>
           </el-col>
         </el-row>

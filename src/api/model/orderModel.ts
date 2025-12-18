@@ -117,10 +117,6 @@ export interface Order {
 
 export interface OrderItem {
     /**
-     * null，退款中，退款成功，退款失败，换货中，换货成功
-     */
-    afterSaleStatus?: null | string;
-    /**
      * 商品id，在products
      */
     id?: number;

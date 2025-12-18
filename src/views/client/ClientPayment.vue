@@ -30,11 +30,23 @@
           <div class="pay-amount">应付金额：<span class="price-highlight">¥{{ (order.payAmount || order.totalAmount || 0).toFixed(2) }}</span></div>
           <div class="buttons">
             <el-button type="primary" @click="pay" :disabled="!isPending">立即支付</el-button>
-            <el-button @click="cancelAndAbandon" :disabled="!isPending">放弃支付</el-button>
+            <el-button @click="openCancel" :disabled="!isPending" :loading="canceling">放弃支付</el-button>
           </div>
         </div>
       </div>
     </el-card>
+    <!-- 放弃支付理由弹窗 -->
+    <el-dialog v-model="cancelDialogVisible" title="放弃支付" width="420px" :close-on-click-modal="false">
+      <el-form label-width="96px">
+        <el-form-item label="放弃理由">
+          <el-input v-model="cancelReason" type="textarea" :rows="3" placeholder="请填写放弃支付理由" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="cancelDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="canceling" @click="submitCancel">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -56,6 +68,8 @@ const remainingSeconds = ref<number>(0)
 let timer: number | null = null
 const paying = ref(false)
 const canceling = ref(false)
+const cancelDialogVisible = ref(false)
+const cancelReason = ref('')
 
 const pendingStatuses = new Set(['待付款', '未支付'])
 const isPending = computed(() => pendingStatuses.has(order.value?.status || ''))
@@ -169,19 +183,20 @@ async function pay() {
   }
 }
 
-// 新增：放弃支付功能
-async function cancelAndAbandon() {
-  if (!order.value || canceling.value) return
-  try {
-    await ElMessageBox.confirm('确认放弃支付并取消订单吗？', '提示', { confirmButtonText: '确定', cancelButtonText: '再想想' })
-  } catch {
-    return
-  }
+function openCancel() {
+  if (!order.value) return
+  cancelReason.value = ''
+  cancelDialogVisible.value = true
+}
 
+async function submitCancel() {
+  if (!order.value || canceling.value) return
   canceling.value = true
   try {
-    await updateOrderStatus(order.value.orderSn || '', { action: OrderAction.CANCEL_ORDER, reason: '用户放弃支付' })
+    const reason = cancelReason.value?.trim() || null
+    await updateOrderStatus(order.value.orderSn || '', { action: OrderAction.CANCEL_ORDER, reason })
     ElMessage.success('已取消订单')
+    cancelDialogVisible.value = false
     router.replace({ path: '/' })
   } catch (err) {
     ElMessage.error((err as Error).message || '取消失败')
