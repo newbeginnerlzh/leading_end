@@ -4,7 +4,6 @@ import axios from 'axios'
 import { useRouter } from 'vue-router'
 import { ArrowRight } from '@element-plus/icons-vue'
 import type { ProductSimple } from '@/api/model/productModel'
-import { useCartStore } from '@/stores/cart'
 
 const router = useRouter()
 
@@ -120,8 +119,6 @@ const fetchHomeData = async () => {
 
 onMounted(() => {
   fetchHomeData()
-  const cartStore = useCartStore()
-  cartStore.getCloudCart()
 })
 
 // 4. 新增：点击跳转到分类列表页 (给楼层左侧使用)
