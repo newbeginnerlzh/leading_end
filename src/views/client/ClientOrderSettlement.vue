@@ -5,10 +5,18 @@
       <el-col :span="16">
         <el-card>
           <h3>购物清单</h3>
-          <div class="checkout-cart-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <div style="color:#999">共 {{ items.length }} 个条目</div>
+          <div
+            class="checkout-cart-header"
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 12px;
+            "
+          >
+            <div style="color: #999">共 {{ items.length }} 个条目</div>
           </div>
-          <el-table :data="items" style="width:100%">
+          <el-table :data="items" style="width: 100%">
             <el-table-column label="商品信息" min-width="400">
               <template #default="{ row }">
                 <div class="product-info">
@@ -42,28 +50,46 @@
           </el-table>
         </el-card>
 
-        <el-card style="margin-top:16px">
-          <h3>收货信息</h3>
-          <div v-if="addresses.length === 0" style="color:#999">
+        <el-card style="margin-top: 16px">
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 12px;
+            "
+          >
+            <h3 style="margin: 0">收货信息</h3>
+            <el-button type="primary" link @click="openAddressSelectModal">选择其他地址</el-button>
+          </div>
+          <div v-if="addresses.length === 0" style="color: #999">
             暂无收货地址，前往
             <router-link to="/user/address">地址管理</router-link>
           </div>
           <div v-else>
-            <div class="address-display" style="padding:12px 0">
-              <div style="font-weight:500">{{ address.name }} {{ address.phone }}</div>
-              <div style="color:#666;margin-top:6px">{{ address.address }}</div>
-                    <div style="text-align:right;margin-top:8px">
+            <div class="address-display" style="padding: 12px 0">
+              <div style="font-weight: 500">{{ address.name }} {{ address.phone }}</div>
+              <div style="color: #666; margin-top: 6px">{{ address.address }}</div>
+              <div style="text-align: right; margin-top: 8px">
                 <el-button type="text" @click="openModal">修改地址</el-button>
               </div>
             </div>
 
             <!-- 地址编辑弹窗 -->
-            <el-dialog v-model="modalVisible" title="修改地址" width="600px" :close-on-click-modal="false" :modal-append-to-body="true" :destroy-on-close="false" center>
-              <el-form 
-              :model="modalAddressForm" 
-              :rules="modalRules" 
-              ref="modalFormRef" 
-              label-width="100px" 
+            <el-dialog
+              v-model="modalVisible"
+              title="修改地址"
+              width="600px"
+              :close-on-click-modal="false"
+              :modal-append-to-body="true"
+              :destroy-on-close="false"
+              center
+            >
+              <el-form
+                :model="modalAddressForm"
+                :rules="modalRules"
+                ref="modalFormRef"
+                label-width="100px"
               >
                 <el-form-item label="收件人" prop="name">
                   <el-input v-model="modalAddressForm.name" placeholder="姓名" />
@@ -74,30 +100,52 @@
                 </el-form-item>
 
                 <el-form-item label="所在地区" prop="province">
-                  <el-cascader v-model="regionValue" :options="regionOptions" :props="{ value: 'code', label: 'name', children: 'children' }" @change="handleModalRegionChange" placeholder="请选择省/市/区" style="width:100%" />
+                  <el-cascader
+                    v-model="regionValue"
+                    :options="regionOptions"
+                    :props="{ value: 'code', label: 'name', children: 'children' }"
+                    @change="handleModalRegionChange"
+                    placeholder="请选择省/市/区"
+                    style="width: 100%"
+                  />
                 </el-form-item>
 
                 <el-form-item label="详细地址" prop="detail">
                   <el-input v-model="modalAddressForm.detail" placeholder="街道、门牌号等" />
                 </el-form-item>
-
-                <el-form-item label="选择其他地址">
-                  <el-select v-model="modalSelectedAddressId" placeholder="请选择收货地址" style="width:100%" @change="onModalAddressSelect">
-                    <el-option
-                      v-for="a in rawAddresses"
-                      :key="a.id"
-                      :label="(a.name || '') + ' - ' + (a.phone || '') + ' - ' + ((a.detail && (a.province||a.city||a.district)) ? (a.province + ' ' + a.city + ' ' + a.district + ' ' + a.detail) : '')"
-                      :value="a.id"
-                    />
-                  </el-select>
-                </el-form-item>
               </el-form>
 
               <template #footer>
                 <el-button @click="modalVisible = false">取消</el-button>
-                <el-button v-if="isModalModified && !matchesExisting" @click="saveModalAsNewAddress">保存为新地址</el-button>
+                <el-button v-if="isModalModified && !matchesExisting" @click="saveModalAsNewAddress"
+                  >保存为新地址</el-button
+                >
                 <el-button type="primary" @click="applyModalAddress">确定</el-button>
               </template>
+            </el-dialog>
+
+            <!-- 选择地址弹窗 -->
+            <el-dialog v-model="addressSelectVisible" title="选择收货地址" width="700px" center>
+              <el-table
+                :data="rawAddresses"
+                style="width: 100%"
+                @row-click="onAddressSelectFromList"
+              >
+                <el-table-column label="收件人" prop="name" width="120" />
+                <el-table-column label="手机号" prop="phone" width="150" />
+                <el-table-column label="详细地址">
+                  <template #default="{ row }">
+                    {{ row.province }} {{ row.city }} {{ row.district }} {{ row.detail }}
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="100" align="center">
+                  <template #default="{ row }">
+                    <el-button type="primary" link @click.stop="onAddressSelectFromList(row)"
+                      >选择</el-button
+                    >
+                  </template>
+                </el-table-column>
+              </el-table>
             </el-dialog>
           </div>
         </el-card>
@@ -116,19 +164,17 @@
           />
         </el-card>
 
-        <el-card class="summary-card" style="margin-top:12px">
+        <el-card class="summary-card" style="margin-top: 12px">
           <h3>订单概要</h3>
-          <div class="summary-row">商品总计： <span class="price-strong">¥{{ total.toFixed(2) }}</span></div>
+          <div class="summary-row">
+            商品总计： <span class="price-strong">¥{{ total.toFixed(2) }}</span>
+          </div>
 
           <el-form label-width="90px" size="small">
             <el-form-item label="运费">
-              <div style="color:#333">
-                <template v-if="shipping === 0">
-                  包邮（订单满 ¥199 已免运费）
-                </template>
-                <template v-else>
-                  运费 ¥{{ shipping.toFixed(2) }}（满 ¥199 包邮）
-                </template>
+              <div style="color: #333">
+                <template v-if="shipping === 0"> 包邮（订单满 ¥199 已免运费） </template>
+                <template v-else> 运费 ¥{{ shipping.toFixed(2) }}（满 ¥199 包邮） </template>
               </div>
             </el-form-item>
 
@@ -143,17 +189,22 @@
             <el-form-item>
               <div class="btn-row">
                 <el-button @click="router.back()" class="ghost-btn">返回</el-button>
-                <el-button type="primary" class="full-width-btn" @click="createOrder">生成订单并支付</el-button>
+                <el-button type="primary" class="full-width-btn" @click="createOrder"
+                  >生成订单并支付</el-button
+                >
               </div>
             </el-form-item>
           </el-form>
 
           <div class="total-box">
-            <div>运费：<span class="price-normal">¥{{ shipping.toFixed(2) }}</span></div>
-            <div class="pay-total">应付总额：<span class="price-highlight">¥{{ (total + shipping).toFixed(2) }}</span></div>
+            <div>
+              运费：<span class="price-normal">¥{{ shipping.toFixed(2) }}</span>
+            </div>
+            <div class="pay-total">
+              应付总额：<span class="price-highlight">¥{{ (total + shipping).toFixed(2) }}</span>
+            </div>
           </div>
         </el-card>
-
       </el-col>
     </el-row>
 
@@ -190,26 +241,69 @@ interface DirectPurchaseItem {
 }
 const directItems = _ref<DirectPurchaseItem[] | null>(null)
 const items = computed<unknown[]>(() => {
-  return (directItems.value && directItems.value.length > 0) ? directItems.value : (cart.selectedItems as unknown[])
+  return directItems.value && directItems.value.length > 0
+    ? directItems.value
+    : (cart.selectedItems as unknown[])
 })
 
 // 地址管理：从 localStorage 中读取 mock_addresses（示例格式：[{ id, name, phone, address }])
 type SimpleAddress = { id: number; name: string; phone: string; address: string }
 const addresses = ref<SimpleAddress[]>([])
 const selectedAddressId = ref<number | null>(null)
-const address = ref<{ name: string; phone: string; address: string }>({ name: '', phone: '', address: '' })
+const address = ref<{ name: string; phone: string; address: string }>({
+  name: '',
+  phone: '',
+  address: '',
+})
 // 控制是否显示地址下拉选择（已改为弹窗管理）
 
 // 弹窗相关
 const modalVisible = ref(false)
+const addressSelectVisible = ref(false)
 const rawAddresses = ref<AddressInfo[]>([])
 const modalSelectedAddressId = ref<number | null>(null)
-const modalAddressForm = ref<{ name: string; phone: string; province: string; city: string; district: string; detail: string; postal_code: string | null; isDefault: boolean }>({ name: '', phone: '', province: '', city: '', district: '', detail: '', postal_code: null, isDefault: false })
-const modalOriginal = ref<{ name?: string; phone?: string; province?: string; city?: string; district?: string; detail?: string } | null>(null)
+const modalAddressForm = ref<{
+  name: string
+  phone: string
+  province: string
+  city: string
+  district: string
+  detail: string
+  postal_code: string | null
+  isDefault: boolean
+}>({
+  name: '',
+  phone: '',
+  province: '',
+  city: '',
+  district: '',
+  detail: '',
+  postal_code: null,
+  isDefault: false,
+})
+const modalOriginal = ref<{
+  name?: string
+  phone?: string
+  province?: string
+  city?: string
+  district?: string
+  detail?: string
+} | null>(null)
 // 临时结构化地址（用于在未保存地址时保留 province/city/district/detail）
-const tempAddress = ref<{ name?: string; phone?: string; province?: string; city?: string; district?: string; detail?: string } | null>(null)
+const tempAddress = ref<{
+  name?: string
+  phone?: string
+  province?: string
+  city?: string
+  district?: string
+  detail?: string
+} | null>(null)
 const regionValue = ref<string[]>([])
-interface RegionNode { code: string; name: string; children?: RegionNode[] }
+interface RegionNode {
+  code: string
+  name: string
+  children?: RegionNode[]
+}
 const regionOptions = ref<RegionNode[]>([])
 
 // modal 表单引用与校验规则
@@ -246,10 +340,14 @@ async function fetchAndMapAddresses(): Promise<AddressInfo[]> {
     const data = (res as { data?: AddressInfo[] }).data || []
     const list: AddressInfo[] = Array.isArray(data) ? data : []
     rawAddresses.value = list
-    const mapped = list.map((a) => {
-      const addrStr = a.detail ? `${a.province || ''} ${a.city || ''} ${a.district || ''} ${a.detail || ''}`.trim() : ''
-      return { id: a.id!, name: a.name || '', phone: a.phone || '', address: addrStr }
-    }).filter(x => typeof x.id === 'number')
+    const mapped = list
+      .map((a) => {
+        const addrStr = a.detail
+          ? `${a.province || ''} ${a.city || ''} ${a.district || ''} ${a.detail || ''}`.trim()
+          : ''
+        return { id: a.id!, name: a.name || '', phone: a.phone || '', address: addrStr }
+      })
+      .filter((x) => typeof x.id === 'number')
     addresses.value = mapped
     return list
   } catch {
@@ -257,6 +355,23 @@ async function fetchAndMapAddresses(): Promise<AddressInfo[]> {
     addresses.value = []
     return []
   }
+}
+
+async function openAddressSelectModal() {
+  if (rawAddresses.value.length === 0) {
+    await fetchAndMapAddresses()
+  }
+  addressSelectVisible.value = true
+}
+
+function onAddressSelectFromList(addr: AddressInfo) {
+  selectedAddressId.value = addr.id ?? null
+  const addrStr = addr.detail
+    ? `${addr.province || ''} ${addr.city || ''} ${addr.district || ''} ${addr.detail || ''}`.trim()
+    : ''
+  address.value = { name: addr.name || '', phone: addr.phone || '', address: addrStr }
+  addressSelectVisible.value = false
+  ElMessage.success('已切换收货地址')
 }
 
 // 导入中国省市区数据并构建级联选项
@@ -289,41 +404,6 @@ function handleModalRegionChange(value: string[]) {
   }
 }
 
-function onModalAddressSelect(id: number) {
-  const found = rawAddresses.value.find((a) => a.id === id)
-  if (!found) return
-  modalAddressForm.value.name = found.name || ''
-  modalAddressForm.value.phone = found.phone || ''
-  modalAddressForm.value.detail = found.detail || ''
-  modalAddressForm.value.province = found.province || ''
-  modalAddressForm.value.city = found.city || ''
-  modalAddressForm.value.district = found.district || ''
-  // 更新 regionValue via reverse lookup
-  const provs = rawArea['86'] || {}
-  const provEntry = Object.entries(provs).find(([, name]) => name === modalAddressForm.value.province)
-  if (provEntry) {
-    const provCode = provEntry[0]
-    const cities = rawArea[provCode] || {}
-    const cityEntry = Object.entries(cities).find(([, name]) => name === modalAddressForm.value.city)
-    const cityCode = cityEntry ? cityEntry[0] : undefined
-    const distCode = cityCode ? (Object.entries(rawArea[cityCode] || {}).find(([, name]) => name === modalAddressForm.value.district) || [])[0] : undefined
-    const codes: string[] = []
-    if (provCode) codes.push(provCode)
-    if (cityCode) codes.push(cityCode)
-    if (distCode) codes.push(distCode)
-    regionValue.value = codes
-  }
-  // 更新原始值用于判断是否修改
-  modalOriginal.value = {
-    name: modalAddressForm.value.name,
-    phone: modalAddressForm.value.phone,
-    province: modalAddressForm.value.province,
-    city: modalAddressForm.value.city,
-    district: modalAddressForm.value.district,
-    detail: modalAddressForm.value.detail,
-  }
-}
-
 // 是否与地址管理里的任一地址一致（用于隐藏“保存为新地址”）
 const matchesExisting = computed(() => {
   const modalName = (modalAddressForm.value.name || '').trim()
@@ -342,7 +422,7 @@ const matchesExisting = computed(() => {
       (a.district || '') === (modalAddressForm.value.district || '')
 
     // 如果有省市区信息，需同时匹配省市区与详细地址
-    if ((a.province || a.city || a.district)) {
+    if (a.province || a.city || a.district) {
       return sameDetail && sameRegion
     }
 
@@ -355,7 +435,14 @@ const isModalModified = computed(() => {
   const orig = modalOriginal.value
   if (!orig) {
     // 若没有原始值，则根据是否填写判定
-    return !!(modalAddressForm.value.name || modalAddressForm.value.phone || modalAddressForm.value.detail || (modalAddressForm.value.province && modalAddressForm.value.city && modalAddressForm.value.district))
+    return !!(
+      modalAddressForm.value.name ||
+      modalAddressForm.value.phone ||
+      modalAddressForm.value.detail ||
+      (modalAddressForm.value.province &&
+        modalAddressForm.value.city &&
+        modalAddressForm.value.district)
+    )
   }
   return (
     (modalAddressForm.value.name || '') !== (orig.name || '') ||
@@ -384,14 +471,22 @@ async function applyModalAddress() {
     const found = rawAddresses.value.find((a) => a.id === modalSelectedAddressId.value)
     if (found) {
       selectedAddressId.value = found.id ?? null
-      const addrStr = found.detail ? `${found.province || ''} ${found.city || ''} ${found.district || ''} ${found.detail || ''}`.trim() : ''
+      const addrStr = found.detail
+        ? `${found.province || ''} ${found.city || ''} ${found.district || ''} ${found.detail || ''}`.trim()
+        : ''
       address.value = { name: found.name || '', phone: found.phone || '', address: addrStr }
     }
   } else {
     // 使用弹窗表单的内容作为临时结构化地址（无论是否选择了已有地址但做了修改）
     selectedAddressId.value = null
-    const addrStr = modalAddressForm.value.detail ? `${modalAddressForm.value.province || ''} ${modalAddressForm.value.city || ''} ${modalAddressForm.value.district || ''} ${modalAddressForm.value.detail || ''}`.trim() : ''
-    address.value = { name: modalAddressForm.value.name || '', phone: modalAddressForm.value.phone || '', address: addrStr }
+    const addrStr = modalAddressForm.value.detail
+      ? `${modalAddressForm.value.province || ''} ${modalAddressForm.value.city || ''} ${modalAddressForm.value.district || ''} ${modalAddressForm.value.detail || ''}`.trim()
+      : ''
+    address.value = {
+      name: modalAddressForm.value.name || '',
+      phone: modalAddressForm.value.phone || '',
+      address: addrStr,
+    }
     // 保存结构化的临时地址，便于再次打开弹窗时回填 province/city/district/detail
     tempAddress.value = {
       name: modalAddressForm.value.name || '',
@@ -399,14 +494,18 @@ async function applyModalAddress() {
       province: modalAddressForm.value.province || '',
       city: modalAddressForm.value.city || '',
       district: modalAddressForm.value.district || '',
-      detail: modalAddressForm.value.detail || ''
+      detail: modalAddressForm.value.detail || '',
     }
   }
 
   modalVisible.value = false
 }
 
-function findCodesByNames(provinceName?: string, cityName?: string, districtName?: string): string[] {
+function findCodesByNames(
+  provinceName?: string,
+  cityName?: string,
+  districtName?: string,
+): string[] {
   if (!provinceName) return []
   const provinces = rawArea['86'] || {}
   const provEntry = Object.entries(provinces).find(([, name]) => name === provinceName)
@@ -452,7 +551,11 @@ async function openModal() {
       modalAddressForm.value.province = found.province || ''
       modalAddressForm.value.city = found.city || ''
       modalAddressForm.value.district = found.district || ''
-      regionValue.value = findCodesByNames(modalAddressForm.value.province, modalAddressForm.value.city, modalAddressForm.value.district)
+      regionValue.value = findCodesByNames(
+        modalAddressForm.value.province,
+        modalAddressForm.value.city,
+        modalAddressForm.value.district,
+      )
     } else {
       // 回退到扁平 address
       modalAddressForm.value.name = address.value.name || ''
@@ -472,7 +575,11 @@ async function openModal() {
       modalAddressForm.value.province = tempAddress.value.province || ''
       modalAddressForm.value.city = tempAddress.value.city || ''
       modalAddressForm.value.district = tempAddress.value.district || ''
-      regionValue.value = findCodesByNames(modalAddressForm.value.province, modalAddressForm.value.city, modalAddressForm.value.district)
+      regionValue.value = findCodesByNames(
+        modalAddressForm.value.province,
+        modalAddressForm.value.city,
+        modalAddressForm.value.district,
+      )
     } else {
       modalAddressForm.value.name = address.value.name || ''
       modalAddressForm.value.phone = address.value.phone || ''
@@ -498,7 +605,9 @@ async function openModal() {
   // 等待 DOM 更新后清除表单的历史验证信息（避免打开时显示旧的错误）
   await nextTick()
   try {
-    if (modalFormRef.value) { modalFormRef.value.clearValidate() }
+    if (modalFormRef.value) {
+      modalFormRef.value.clearValidate()
+    }
   } catch {
     // ignore
   }
@@ -508,7 +617,10 @@ async function openModal() {
 const total = computed(() => {
   try {
     if (directItems.value && Array.isArray(directItems.value) && directItems.value.length > 0) {
-      return directItems.value.reduce((sum: number, it: DirectPurchaseItem) => sum + ((it.price || 0) * (it.count || 1)), 0)
+      return directItems.value.reduce(
+        (sum: number, it: DirectPurchaseItem) => sum + (it.price || 0) * (it.count || 1),
+        0,
+      )
     }
   } catch {
     // ignore and fallback
@@ -556,7 +668,7 @@ onMounted(async () => {
     } else if (qMode === 'cart') {
       checkoutMode.value = 'cart'
     } else {
-      checkoutMode.value = (directItems.value && directItems.value.length > 0) ? 'direct' : 'cart'
+      checkoutMode.value = directItems.value && directItems.value.length > 0 ? 'direct' : 'cart'
     }
 
     // 使用统一的用户地址 API 获取地址列表，保持与 UserAddress.vue 一致
@@ -565,9 +677,15 @@ onMounted(async () => {
       // 优先使用用户地址列表中标记为默认的地址
       const defaultRaw = list.find((a) => a.isDefault)
       if (defaultRaw) {
-        const addrStr = defaultRaw.detail ? `${defaultRaw.province || ''} ${defaultRaw.city || ''} ${defaultRaw.district || ''} ${defaultRaw.detail || ''}`.trim() : ''
+        const addrStr = defaultRaw.detail
+          ? `${defaultRaw.province || ''} ${defaultRaw.city || ''} ${defaultRaw.district || ''} ${defaultRaw.detail || ''}`.trim()
+          : ''
         selectedAddressId.value = defaultRaw.id ?? null
-        address.value = { name: defaultRaw.name || '', phone: defaultRaw.phone || '', address: addrStr }
+        address.value = {
+          name: defaultRaw.name || '',
+          phone: defaultRaw.phone || '',
+          address: addrStr,
+        }
       } else if (addresses.value.length > 0) {
         const first = addresses.value[0]
         if (first) {
@@ -590,7 +708,11 @@ onMounted(async () => {
 
 async function saveModalAsNewAddress() {
   // validate basic fields
-  if (!modalAddressForm.value.name || !modalAddressForm.value.phone || !modalAddressForm.value.detail) {
+  if (
+    !modalAddressForm.value.name ||
+    !modalAddressForm.value.phone ||
+    !modalAddressForm.value.detail
+  ) {
     ElMessage.warning('请填写完整收货信息后再保存')
     return
   }
@@ -616,7 +738,9 @@ async function saveModalAsNewAddress() {
       await fetchAndMapAddresses()
       if (saved && saved.id) {
         selectedAddressId.value = saved.id
-        const addrStr = saved?.detail ? `${saved.province || ''} ${saved.city || ''} ${saved.district || ''} ${saved.detail || ''}`.trim() : ''
+        const addrStr = saved?.detail
+          ? `${saved.province || ''} ${saved.city || ''} ${saved.district || ''} ${saved.detail || ''}`.trim()
+          : ''
         address.value = { name: saved.name || '', phone: saved.phone || '', address: addrStr }
         modalSelectedAddressId.value = saved.id
         // 用结构化字段回填 modal 表单
@@ -626,7 +750,11 @@ async function saveModalAsNewAddress() {
         modalAddressForm.value.province = saved.province || ''
         modalAddressForm.value.city = saved.city || ''
         modalAddressForm.value.district = saved.district || ''
-        regionValue.value = findCodesByNames(modalAddressForm.value.province, modalAddressForm.value.city, modalAddressForm.value.district)
+        regionValue.value = findCodesByNames(
+          modalAddressForm.value.province,
+          modalAddressForm.value.city,
+          modalAddressForm.value.district,
+        )
         // 更新原始值，并清理临时存储
         modalOriginal.value = {
           name: modalAddressForm.value.name,
@@ -674,22 +802,34 @@ async function createOrder() {
 
   try {
     // 如果选中了已保存地址但 address 显示为空或不完整，尝试从原始地址列表中补全（防止用户未点击“确定”导致信息未应用）
-    if (selectedAddressId.value && (!(address.value.name && address.value.phone && address.value.address))) {
+    if (
+      selectedAddressId.value &&
+      !(address.value.name && address.value.phone && address.value.address)
+    ) {
       try {
         if (!rawAddresses.value || rawAddresses.value.length === 0) {
           await fetchAndMapAddresses()
         }
         const foundRaw = rawAddresses.value.find((a) => a.id === selectedAddressId.value)
         if (foundRaw) {
-          const addrStr = foundRaw.detail ? `${foundRaw.province || ''} ${foundRaw.city || ''} ${foundRaw.district || ''} ${foundRaw.detail || ''}`.trim() : ''
-          address.value = { name: foundRaw.name || '', phone: foundRaw.phone || '', address: addrStr }
+          const addrStr = foundRaw.detail
+            ? `${foundRaw.province || ''} ${foundRaw.city || ''} ${foundRaw.district || ''} ${foundRaw.detail || ''}`.trim()
+            : ''
+          address.value = {
+            name: foundRaw.name || '',
+            phone: foundRaw.phone || '',
+            address: addrStr,
+          }
         }
       } catch {
         // ignore
       }
     }
     // 支持未保存的临时地址：如果没有 selectedAddressId，就把当前 address 表单作为临时地址传入 API
-    if (!selectedAddressId.value && !(address.value.name && address.value.phone && address.value.address)) {
+    if (
+      !selectedAddressId.value &&
+      !(address.value.name && address.value.phone && address.value.address)
+    ) {
       ElMessage.warning('请填写完整收货信息或选择已保存地址')
       return
     }
@@ -710,7 +850,12 @@ async function createOrder() {
       const specId = (first.skuId ?? first.specId ?? first.id) as number
       const quantity = (first.count ?? first.quantity ?? 1) as number
       try {
-        created = await buyNowOrder({ addressId: selectedAddressId.value!, specId, quantity, buyerRemark: buyerRemark.value || '' })
+        created = await buyNowOrder({
+          addressId: selectedAddressId.value!,
+          specId,
+          quantity,
+          buyerRemark: buyerRemark.value || '',
+        })
       } catch (err) {
         ElMessage.error('创建直购订单失败：' + (err as Error).message)
         return
@@ -724,7 +869,11 @@ async function createOrder() {
         return
       }
       try {
-        created = await createOrdersFromCart({ addressId: selectedAddressId.value, cartItemIds, buyerRemark: buyerRemark.value || null })
+        created = await createOrdersFromCart({
+          addressId: selectedAddressId.value,
+          cartItemIds,
+          buyerRemark: buyerRemark.value || null,
+        })
       } catch (err) {
         ElMessage.error('创建购物车订单失败：' + (err as Error).message)
         return
@@ -741,7 +890,9 @@ async function createOrder() {
 </script>
 
 <style scoped>
-.order-settlement h3 { margin: 0 0 12px 0 }
+.order-settlement h3 {
+  margin: 0 0 12px 0;
+}
 
 /* 使用与购物车页面一致的商品信息样式 */
 .product-info {
@@ -781,16 +932,50 @@ async function createOrder() {
 
 /* 使用 Element Plus 默认的必填样式，与 UserAddress 弹窗保持一致 */
 
-.summary-card { background: #fffaf7; }
-.summary-row { margin-bottom: 12px; font-size: 15px; }
-.price-strong { font-weight: 700; color: #e53935; font-size: 16px; }
-.price-normal { color: #333; }
-.price-highlight { color: #d32f2f; font-size: 20px; font-weight: 800; }
-.total-box { margin-top: 12px; color: #666; display: flex; flex-direction: column; gap: 8px; }
-.full-width-btn { width: 100%; font-size: 15px; font-weight: 600; }
-.btn-row { display: flex; gap: 8px; }
-.ghost-btn { flex: 0 0 90px; }
-.remark-card { background: #f8fbff; }
-.remark-header { font-weight: 600; margin-bottom: 8px; }
-
+.summary-card {
+  background: #fffaf7;
+}
+.summary-row {
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+.price-strong {
+  font-weight: 700;
+  color: #e53935;
+  font-size: 16px;
+}
+.price-normal {
+  color: #333;
+}
+.price-highlight {
+  color: #d32f2f;
+  font-size: 20px;
+  font-weight: 800;
+}
+.total-box {
+  margin-top: 12px;
+  color: #666;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.full-width-btn {
+  width: 100%;
+  font-size: 15px;
+  font-weight: 600;
+}
+.btn-row {
+  display: flex;
+  gap: 8px;
+}
+.ghost-btn {
+  flex: 0 0 90px;
+}
+.remark-card {
+  background: #f8fbff;
+}
+.remark-header {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
 </style>
