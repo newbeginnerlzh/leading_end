@@ -5,7 +5,7 @@ import axios from 'axios'
 import { Filter, Sort, ArrowDown, ArrowUp, Search } from '@element-plus/icons-vue'
 import type { ProductSimple } from '@/api/model/productModel'
 
-// --- 1. 分类配置 (ID 必须对应数据库 product_category 表) ---
+// --- 1. 定义分类接口 ---
 interface Category {
   id: number
   name: string
@@ -13,58 +13,86 @@ interface Category {
   subTitle: string
 }
 
-const categories: Category[] = [
-  { id: 0, name: '全部商品', themeColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', subTitle: '探索联想全系科技产品' },
-  { id: 25, name: '拯救者系列', themeColor: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)', subTitle: '为战而生 极致性能' },
-  // 🔴 修改点：加深小新系列颜色 (改为 vibrant blue/cyan)
-  { id: 26, name: '小新系列', themeColor: 'linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)', subTitle: '年轻 就要出色' },
-  { id: 27, name: 'YOGA系列', themeColor: 'linear-gradient(135deg, #cc95c0 0%, #dbd4b4 100%)', subTitle: '品质 匠心 优雅随行' },
-  { id: 28, name: 'ThinkBook系列', themeColor: 'linear-gradient(135deg, #bdc2e8 0%, #e6dee9 100%)', subTitle: '新青年 创造力' },
-  { id: 29, name: 'ThinkPad系列', themeColor: 'linear-gradient(135deg, #000000 0%, #434343 100%)', subTitle: '思考 进化 商务旗舰' }
-]
-
 const route = useRoute()
 const router = useRouter()
 
 // --- 状态定义 ---
+// 1. 将 categories 改为 ref，并填入默认数据作为“兜底”
+// 这样即使接口没写好，页面也不会坏
+const categories = ref<Category[]>([
+  { id: 0, name: '全部商品', themeColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', subTitle: '探索联想全系科技产品' },
+  { id: 25, name: '拯救者系列', themeColor: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)', subTitle: '为战而生 极致性能' },
+  { id: 26, name: '小新系列', themeColor: 'linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)', subTitle: '年轻 就要出色' },
+  { id: 27, name: 'YOGA系列', themeColor: 'linear-gradient(135deg, #cc95c0 0%, #dbd4b4 100%)', subTitle: '品质 匠心 优雅随行' },
+  { id: 28, name: 'ThinkBook系列', themeColor: 'linear-gradient(135deg, #bdc2e8 0%, #e6dee9 100%)', subTitle: '新青年 创造力' },
+  { id: 29, name: 'ThinkPad系列', themeColor: 'linear-gradient(135deg, #000000 0%, #434343 100%)', subTitle: '思考 进化 商务旗舰' }
+])
+
 const currentCategoryId = ref<number>(0)
-const sortType = ref('default') // default, price_asc, price_desc
-const allProducts = ref<ProductSimple[]>([]) // 存储当前分类下的商品
-const searchKeyword = ref('') // 侧边栏搜索框的值
+const sortType = ref('default') 
+const allProducts = ref<ProductSimple[]>([]) 
+const searchKeyword = ref('') 
 const loading = ref(false)
 
 // --- 计算属性: 当前分类展示信息 ---
 const currentCategoryInfo = computed<Category>(() => {
-  // 如果正在搜索，展示搜索主题
   if (searchKeyword.value) {
     return {
       id: -1,
-      // 🔴 修改点：移除双引号，直接显示 "搜索：XXX"
       name: `搜索：${searchKeyword.value}`,
       themeColor: 'linear-gradient(135deg, #606c88 0%, #3f4c6b 100%)',
       subTitle: '全站搜索结果'
     }
   }
-  const found = categories.find(c => c.id === currentCategoryId.value)
-  return found || categories[0]! 
+  const found = categories.value.find(c => c.id === currentCategoryId.value)
+  // 如果找不到（可能是异步数据还没回来），默认显示第一个
+  return found || categories.value[0]! 
 })
 
-// --- 2. 核心：从后端获取数据 ---
+// --- 2. 新增：从后端获取分类列表 ---
+const fetchCategories = async () => {
+  try {
+    // 假设后端接口地址是 /api/products/categories (和主页逻辑一致)
+    // 如果你还没有这个接口，这一步会失败，catch 会捕获，页面将使用上面的默认数据
+    const res = await axios.get('/api/products/categories')
+    
+    // 检查数据结构
+    const rawCats = Array.isArray(res.data) ? res.data : (res.data.data || [])
+
+    if (rawCats.length > 0) {
+      // 映射数据结构
+      const dbCategories = rawCats.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        // 如果数据库没存颜色，给个默认值
+        themeColor: item.themeColor || item.theme_color || 'linear-gradient(135deg, #444 0%, #000 100%)',
+        subTitle: item.subTitle || item.sub_title || '联想精选'
+      }))
+
+      // 组合：保留 "全部商品" (ID=0) 在最前面，后面接数据库查出来的分类
+      categories.value = [
+        categories.value[0], // 把默认的 "全部商品" 拿过来
+        ...dbCategories
+      ]
+    }
+  } catch (err) {
+    console.warn('获取分类失败，将使用默认分类配置。错误信息:', err)
+  }
+}
+
+// --- 3. 核心：从后端获取商品列表 ---
 const fetchProductList = async () => {
   loading.value = true
   const token = localStorage.getItem('token') || ''
   
   try {
-    // 构造参数
     const params: any = {
-      // 如果有搜索词，传搜索词；如果没有，传空格(搜全部)
       keyword: searchKeyword.value.trim() || ' ', 
       page: 1,
-      pageSize: 50, // 列表页一次拿多点
+      pageSize: 50, 
       sort: sortType.value === 'default' ? '' : sortType.value
     }
 
-    // 如果选了特定分类(非全部)，传 categoryId
     if (currentCategoryId.value !== 0) {
       params.categoryId = currentCategoryId.value
     }
@@ -76,7 +104,6 @@ const fetchProductList = async () => {
       params: params
     })
 
-    // 解析数据 (适配后端可能的大小写问题)
     const resData = res.data
     let rawList = []
     
@@ -84,7 +111,6 @@ const fetchProductList = async () => {
     else if (resData?.data?.productSimple) rawList = resData.data.productSimple
     else if (Array.isArray(resData?.data)) rawList = resData.data
 
-    // 映射数据
     allProducts.value = rawList.map((item: any) => {
       let finalImg = ''
       if (item.imgUrl) finalImg = item.imgUrl
@@ -109,22 +135,16 @@ const fetchProductList = async () => {
   }
 }
 
-// --- 3. 事件处理 ---
+// --- 4. 事件处理 ---
 
-// 切换左侧分类
 const handleCategoryChange = (id: number) => {
   currentCategoryId.value = id
-  // 切换分类时，通常清空搜索词，回归该分类下的全部商品
   searchKeyword.value = '' 
-  
-  // 更新 URL 参数 (不刷新页面)
   router.push({ query: { category: id === 0 ? undefined : id } })
-  
   fetchProductList()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-// 切换排序
 const handleSortChange = (type: string) => {
   if (type === 'price') {
     sortType.value = sortType.value === 'price_asc' ? 'price_desc' : 'price_asc'
@@ -134,32 +154,27 @@ const handleSortChange = (type: string) => {
   fetchProductList()
 }
 
-// 触发搜索 (侧边栏回车)
 const handleSidebarSearch = () => {
-  // 搜索时，把分类重置为“全部”，进行全站搜索
   currentCategoryId.value = 0
   router.push({ query: { keyword: searchKeyword.value } })
   fetchProductList()
 }
 
-// --- 4. 监听路由变化 (实现从首页跳转过来自动搜索) ---
+// 监听路由变化
 watch(() => route.query, (query) => {
   let needsFetch = false
 
-  // 处理 keyword 参数
   if (query.keyword) {
     searchKeyword.value = query.keyword as string
-    currentCategoryId.value = 0 // 搜索模式默认查全部
+    currentCategoryId.value = 0 
     needsFetch = true
   } else {
-    // 如果 URL 里没关键字，但输入框里有，说明是用户手动清空了 URL，需同步清空输入框
     if (searchKeyword.value) {
       searchKeyword.value = ''
       needsFetch = true
     }
   }
 
-  // 处理 category 参数 (这里传的是 ID 数字)
   if (query.category) {
     const catId = Number(query.category)
     if (!isNaN(catId) && catId !== currentCategoryId.value) {
@@ -167,19 +182,19 @@ watch(() => route.query, (query) => {
       needsFetch = true
     }
   } else if (!query.keyword && currentCategoryId.value !== 0) {
-    // 既没搜也没选分类，重置为0
     currentCategoryId.value = 0
     needsFetch = true
   }
 
-  // 如果参数变了，或者页面刚加载(且列表为空)，请求数据
   if (needsFetch || allProducts.value.length === 0) {
     fetchProductList()
   }
 }, { immediate: true })
 
-onMounted(() => {
-  // 兜底：如果 watch 没触发，手动请求一次
+onMounted(async () => {
+  // 页面加载时：先获取分类，再兜底检查是否需要获取商品
+  await fetchCategories()
+  
   if (allProducts.value.length === 0) {
     fetchProductList()
   }
@@ -211,6 +226,7 @@ onMounted(() => {
           <el-icon><Filter /></el-icon> 商品分类
         </div>
         <ul class="nav-menu">
+          <!-- 这里的 categories 已经是响应式的了 -->
           <li 
             v-for="cat in categories" 
             :key="cat.id"
@@ -294,7 +310,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* 样式保持不变 */
+/* 样式与之前完全一致，无需修改 */
 .product-list-page { background-color: #f4f4f4; min-height: 100vh; padding-top: 20px; padding-bottom: 40px; }
 .container { max-width: 1240px; margin: 0 auto; display: flex; gap: 20px; padding: 0 20px; align-items: flex-start; }
 .sidebar { width: 240px; background: #fff; border-radius: 12px; position: sticky; top: 84px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; flex-shrink: 0; display: flex; flex-direction: column; }
