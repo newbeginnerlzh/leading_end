@@ -12,8 +12,8 @@ export interface HomeData {
 export interface BannerItem {
   id: number
   imgUrl: string
-  linkUrl: string
-  title: string
+  linkUrl?: string
+  title?: string
 }
 
 /**
@@ -36,4 +36,85 @@ export function getHomeData() {
   // 参考实现：
   // return get<HomeData>('/home/index')
   return Promise.resolve({} as HomeData)
+}
+
+
+
+
+// 定义接口返回的数据类型
+export interface BannerItem {
+  id: number
+  imgUrl: string
+  link?: string
+}
+
+export interface HomeCategory {
+  id: number
+  name: string
+  subTitle: string
+  themeColor: string
+}
+
+// --- 模拟数据 (Mock Data) ---
+
+// 1. 模拟轮播图数据
+const mockBanners: BannerItem[] = [
+  { id: 1, imgUrl: 'https://p3.lefile.cn/fes/cms/2025/11/26/q9wa3g5jnkik6rl6gxjykhc0xvphbd164310.jpg' },
+  { id: 2, imgUrl: 'https://p1.lefile.cn/fes/cms/2025/11/25/whw61hnappz3x3k2n9rqbq8giucyd9076100.jpg' },
+  { id: 3, imgUrl: 'https://p4.lefile.cn/fes/cms/2025/12/04/pqvp2a8gia2eu549qaljn49e9hn0pt791216.jpg' }
+]
+
+// 2. 模拟分类/楼层配置数据 (ID 与你的数据库保持一致)
+const mockCategories: HomeCategory[] = [
+  { 
+    id: 29, 
+    name: 'ThinkPad系列', 
+    subTitle: '思考 进化', 
+    themeColor: 'linear-gradient(135deg, #000000 0%, #434343 100%)' 
+  },
+  { 
+    id: 27, 
+    name: 'YOGA系列', 
+    subTitle: '品质 匠心', 
+    themeColor: 'linear-gradient(135deg, #cc95c0 0%, #dbd4b4 100%)' 
+  },
+  { 
+    id: 25, 
+    name: '拯救者系列', 
+    subTitle: '为战而生', 
+    themeColor: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)' 
+  },
+  { 
+    id: 26, 
+    name: '小新系列', 
+    subTitle: '年轻 就要出色', 
+    themeColor: 'linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)' 
+  },
+  { 
+    id: 28, 
+    name: 'ThinkBook系列', 
+    subTitle: '新青年 创造力', 
+    themeColor: 'linear-gradient(135deg, #bdc2e8 0%, #e6dee9 100%)' 
+  }
+]
+
+// --- 模拟 API 函数 ---
+
+// 模拟获取轮播图
+export const getHomeBanners = async () => {
+  return new Promise<{ data: BannerItem[] }>((resolve) => {
+    // 模拟网络延迟 300ms
+    setTimeout(() => {
+      resolve({ data: mockBanners })
+    }, 300)
+  })
+}
+
+// 模拟获取分类配置
+export const getHomeCategories = async () => {
+  return new Promise<{ data: HomeCategory[] }>((resolve) => {
+    setTimeout(() => {
+      resolve({ data: mockCategories })
+    }, 300)
+  })
 }
