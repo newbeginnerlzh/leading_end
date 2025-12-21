@@ -1,14 +1,73 @@
 <script setup lang="ts">
 import { useCartStore, type CartItem } from '@/stores/cart'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Minus, Plus } from '@element-plus/icons-vue'
-import { onMounted } from 'vue'
+import { ref } from 'vue'
 
 const cartStore = useCartStore()
 const router = useRouter()
 
-// 跳转到商品详情
+// --- Custom UI Logic ---
+
+// Toast System
+interface Toast {
+  id: number
+  msg: string
+  type: 'success' | 'error' | 'warning'
+}
+const toasts = ref<Toast[]>([])
+const showToast = (msg: string, type: 'success' | 'error' | 'warning' = 'success') => {
+  const id = Date.now()
+  toasts.value.push({ id, msg, type })
+  setTimeout(() => {
+    toasts.value = toasts.value.filter((t) => t.id !== id)
+  }, 3000)
+}
+
+// Confirm Dialog System
+const confirmState = ref({
+  visible: false,
+  message: '',
+  resolve: null as ((val: boolean) => void) | null,
+})
+
+const safeConfirm = (message: string): Promise<boolean> => {
+  return new Promise((resolve) => {
+    confirmState.value = {
+      visible: true,
+      message,
+      resolve,
+    }
+  })
+}
+
+const handleConfirmAction = (result: boolean) => {
+  if (confirmState.value.resolve) {
+    confirmState.value.resolve(result)
+  }
+  confirmState.value.visible = false
+  confirmState.value.resolve = null
+}
+
+// Scroll Reveal Directive
+const vScrollReveal = {
+  mounted: (el: HTMLElement) => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            el.classList.add('is-visible')
+            observer.unobserve(el)
+          }
+        })
+      },
+      { threshold: 0.15 },
+    )
+    observer.observe(el)
+  },
+}
+
+// --- Business Logic ---
+
 const goToDetail = (productId: number, skuId: number) => {
   router.push({
     path: `/product/${productId}`,
@@ -16,63 +75,49 @@ const goToDetail = (productId: number, skuId: number) => {
   })
 }
 
-// 删除商品
 const handleDelete = async (skuId: number) => {
+  const confirmed = await safeConfirm('确定要删除这个商品吗?')
+  if (!confirmed) return
+
   try {
     await cartStore.removeFromCart(skuId)
-    ElMessage.success('商品已删除')
+    showToast('商品已删除', 'success')
   } catch {
-    ElMessage.error('删除失败，请重试')
+    showToast('删除失败，请重试', 'error')
   }
 }
 
-// 删除所选项
 const handleClear = async () => {
+  const confirmed = await safeConfirm('确定要清空购物车吗？此操作无法恢复。')
+  if (!confirmed) return
+
   try {
-    if (cartStore.isAllSelected == true) {
-      await ElMessageBox.confirm('清空后无法恢复', '确定要清空购物车吗', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      })
-      await cartStore.clearCart()
-      ElMessage.success('购物车已清空')
-    } else {
-      await ElMessageBox.confirm('清空后无法恢复', '确定要删除这几项吗', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      })
-      await cartStore.batchRemoveFromCart()
-      ElMessage.success('已删除所选项')
-    }
+    await cartStore.clearCart()
+    showToast('购物车已清空', 'success')
   } catch (error: unknown) {
-    // 如果 error.message 存在，说明是 API 错误，而非用户取消
-    if (error && typeof error === 'object' && 'message' in error) {
-      ElMessage.error('删除失败，请重试')
+    if (error) {
+      showToast('清空失败，请重试', 'error')
     }
   }
 }
 
-// 结算
 const handleCheckout = () => {
   if (cartStore.selectedTotalCount === 0) {
-    ElMessage.warning('请至少选择一件商品')
+    showToast('请至少选择一件商品', 'warning')
     return
   }
   router.push('/checkout')
 }
 
-// 数量变更逻辑
 const decreaseQuantity = async (item: CartItem) => {
   if (item.count <= 1) {
-    ElMessage.warning('最低限购一件！')
+    showToast('最低限购一件！', 'warning')
     return
   }
   try {
     await cartStore.updateQuantity(item.skuId, item.count - 1)
   } catch {
-    ElMessage.error('更新数量失败，请重试')
+    showToast('更新数量失败', 'error')
   }
 }
 
@@ -80,336 +125,828 @@ const increaseQuantity = async (item: CartItem) => {
   try {
     await cartStore.updateQuantity(item.skuId, item.count + 1)
   } catch {
-    ElMessage.error('更新数量失败，请重试')
+    showToast('更新数量失败', 'error')
   }
 }
 
-// 单个商品选中状态变更
-const handleSelectionChange = async (skuId: number, val: boolean) => {
+const handleSelectAllChange = async (e: Event) => {
+  const target = e.target as HTMLInputElement
   try {
-    await cartStore.updateSelection(skuId, val)
+    await cartStore.toggleSelectAll(target.checked)
   } catch {
-    ElMessage.error('更新选中状态失败，请重试')
+    showToast('操作失败', 'error')
   }
 }
 
-// 全选/取消全选
-const handleSelectAllChange = async (val: boolean | string | number) => {
-  try {
-    await cartStore.toggleSelectAll(val as boolean)
-  } catch {
-    ElMessage.error('操作失败，请重试')
-  }
-}
-// 格式化价格：整数时不显示小数
 const formatPrice = (price: number) => {
   return Number.isInteger(price) ? price.toString() : price.toFixed(2)
 }
 
-onMounted(() => {
-  cartStore.getCloudCart()
-})
+// 保留此函数以兼容旧逻辑，但在新CSS中我们可能不再依赖它做探照灯，或者做微光效果
+const handleMouseMove = (e: MouseEvent) => {
+  const target = e.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  const y = e.clientY - rect.top
+  target.style.setProperty('--x', `${x}px`)
+  target.style.setProperty('--y', `${y}px`)
+}
 </script>
 
 <template>
-  <div class="cart-page">
-    <div class="page-header">
-      <h2>购物车</h2>
-      <span class="item-count">共 {{ cartStore.totalCount }} 件商品</span>
+  <div class="modern-cart-page">
+    <!-- Header -->
+    <div class="cart-header" v-scroll-reveal>
+      <h2 class="page-title">购物车</h2>
+      <span class="item-count">商品总数: {{ cartStore.totalCount }}</span>
     </div>
 
-    <!-- 空状态 -->
-    <div v-if="cartStore.items.length === 0" class="empty-cart">
-      <el-empty description="购物车空空如也">
-        <el-button type="primary" @click="router.push('/')">去购物</el-button>
-      </el-empty>
+    <!-- Empty State -->
+    <div v-if="cartStore.items.length === 0" class="empty-state" v-scroll-reveal>
+      <div class="empty-icon">🛒</div>
+      <p>您的购物车是空的。</p>
+      <div class="beam-container center-beam">
+        <div class="beam-border"></div>
+        <button class="primary-btn-beam" @click="router.push('/')">去购物</button>
+      </div>
     </div>
 
-    <!-- 购物车列表 -->
-    <div v-else class="cart-content">
-      <el-card shadow="never" class="cart-card">
-        <el-table :data="cartStore.items" style="width: 100%">
-          <!-- 选择框 -->
-          <el-table-column width="55" align="center">
-            <template #default="{ row }">
-              <el-checkbox
-                :model-value="row.selected"
-                @change="(val: boolean) => handleSelectionChange(row.skuId, val as boolean)"
-              />
-            </template>
-          </el-table-column>
+    <!-- Cart Content -->
+    <div v-else class="cart-container">
+      <!-- List Header -->
+      <div class="list-header" v-scroll-reveal>
+        <div class="col-checkbox"></div>
+        <div class="col-product">商品信息</div>
+        <div class="col-price">单价</div>
+        <div class="col-quantity">数量</div>
+        <div class="col-subtotal">小计</div>
+        <div class="col-action">操作</div>
+      </div>
 
-          <el-table-column label="商品信息" min-width="400" align="center">
-            <template #default="{ row }">
-              <div class="product-info" @click="goToDetail(row.productId, row.skuId)">
-                <img :src="row.imgUrl" class="product-img" alt="Product" />
-                <div class="product-detail">
-                  <div class="product-name">{{ row.name }}</div>
-                  <div class="product-specs">
-                    <el-tag
-                      v-for="(val, key) in row.specs"
-                      :key="key"
-                      size="small"
-                      type="info"
-                      class="spec-tag"
-                    >
-                      {{ key }}: {{ val }}
-                    </el-tag>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="单价" width="150" align="center">
-            <template #default="{ row }">
-              <span class="price">¥{{ row.price }}</span>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="数量" width="200" align="center">
-            <template #default="{ row }">
-              <div class="quantity-control">
-                <el-button size="small" :icon="Minus" @click="decreaseQuantity(row)" />
-                <span class="quantity-text">{{ row.count }}</span>
-                <el-button size="small" :icon="Plus" @click="increaseQuantity(row)" />
-              </div>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="小计" width="150" align="center">
-            <template #default="{ row }">
-              <span class="subtotal">¥{{ formatPrice(row.price * row.count) }}</span>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="操作" width="100" align="center">
-            <template #default="{ row }">
-              <el-popconfirm
-                title="确定删除该商品吗？"
-                confirm-button-text="删除"
-                cancel-button-text="取消"
-                confirm-button-type="danger"
-                placement="left"
-                width="200"
-                hide-icon
-                @confirm="handleDelete(row.skuId)"
-              >
-                <template #reference>
-                  <el-button type="danger" link>删除</el-button>
-                </template>
-              </el-popconfirm>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <div class="cart-footer">
-          <div class="footer-left">
-            <el-checkbox :model-value="cartStore.isAllSelected" @change="handleSelectAllChange">
-              全选
-            </el-checkbox>
-            <el-button
-              link
-              type="danger"
-              @click="handleClear"
-              style="margin-left: 20px"
-              :disabled="cartStore.selectedTotalCount === 0"
-            >
-              删除所选项
-            </el-button>
+      <!-- Items List -->
+      <div class="cart-items">
+        <div
+          v-for="(item, index) in cartStore.items"
+          :key="item.skuId"
+          class="cart-item"
+          v-scroll-reveal
+          @mousemove="handleMouseMove"
+          :style="{ animationDelay: `${index * 100}ms` }"
+        >
+          <!-- Selection -->
+          <div class="col-checkbox">
+            <label class="custom-checkbox">
+              <input type="checkbox" v-model="item.selected" />
+              <span class="checkmark"></span>
+            </label>
           </div>
-          <div class="footer-right">
-            <div class="price-info">
-              <div class="total-price-row">
-                总计：<span class="total-price"
-                  >￥{{ formatPrice(cartStore.selectedTotalPrice) }}</span
-                >
-              </div>
-              <div class="selected-count-row">
-                已选择<span class="count-highlight">{{ cartStore.selectedTotalCount }}</span
-                >件商品
+
+          <!-- Product Info -->
+          <div class="col-product" @click="goToDetail(item.productId, item.skuId)">
+            <div class="img-wrapper">
+              <img :src="item.imgUrl" alt="product" />
+            </div>
+            <div class="info-wrapper">
+              <div class="name">{{ item.name }}</div>
+              <div class="specs">
+                <span v-for="(val, key) in item.specs" :key="key" class="spec-tag">
+                  {{ key }}: {{ val }}
+                </span>
               </div>
             </div>
-            <el-button
-              type="primary"
-              size="large"
+          </div>
+
+          <!-- Price -->
+          <div class="col-price">
+            <span class="unit-price">¥{{ item.price }}</span>
+          </div>
+
+          <!-- Quantity -->
+          <div class="col-quantity">
+            <div class="qty-control">
+              <button class="qty-btn" @click.stop="decreaseQuantity(item)">−</button>
+              <span class="qty-val">{{ item.count }}</span>
+              <button class="qty-btn" @click.stop="increaseQuantity(item)">+</button>
+            </div>
+          </div>
+
+          <!-- Subtotal -->
+          <div class="col-subtotal">
+            <span class="price-val">¥{{ formatPrice(item.price * item.count) }}</span>
+          </div>
+
+          <!-- Action -->
+          <div class="col-action">
+            <button class="delete-btn" @click.stop="handleDelete(item.skuId)">删除</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="cart-footer-bar">
+        <div class="footer-left">
+          <label class="custom-checkbox select-all">
+            <input
+              type="checkbox"
+              :checked="cartStore.isAllSelected"
+              @change="handleSelectAllChange"
+            />
+            <span class="checkmark"></span>
+            <span class="label-text">全选</span>
+          </label>
+          <button class="text-btn" @click="handleClear">清空购物车</button>
+        </div>
+
+        <div class="footer-right">
+          <div class="total-info">
+            <div class="row-count">
+              已选: <span>{{ cartStore.selectedTotalCount }}</span>
+            </div>
+            <div class="row-total">
+              合计:
+              <span class="total-amount">¥{{ formatPrice(cartStore.selectedTotalPrice) }}</span>
+            </div>
+          </div>
+
+          <!-- Modern Beam/Gradient Button -->
+          <div class="beam-container" :class="{ disabled: cartStore.selectedTotalCount === 0 }">
+            <div class="beam-border" v-if="cartStore.selectedTotalCount > 0"></div>
+            <button
               class="checkout-btn"
               :disabled="cartStore.selectedTotalCount === 0"
               @click="handleCheckout"
             >
               去结算
-            </el-button>
+            </button>
           </div>
         </div>
-      </el-card>
+      </div>
     </div>
+
+    <!-- Custom Toast Container -->
+    <div class="toast-container">
+      <transition-group name="toast-fade">
+        <div v-for="toast in toasts" :key="toast.id" class="toast-msg" :class="toast.type">
+          {{ toast.msg }}
+        </div>
+      </transition-group>
+    </div>
+
+    <!-- Custom Confirm Modal -->
+    <transition name="modal-fade">
+      <div v-if="confirmState.visible" class="modal-overlay">
+        <div class="modal-content">
+          <h3>确认</h3>
+          <p>{{ confirmState.message }}</p>
+          <div class="modal-actions">
+            <button class="cancel-btn" @click="handleConfirmAction(false)">取消</button>
+            <button class="confirm-btn" @click="handleConfirmAction(true)">确认</button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <style scoped>
-.cart-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
+/* Google Font Import (Inter) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* --- Scheme 1: Modern Clean & Trust --- */
+.modern-cart-page {
+  /* 基础背景：极浅的蓝灰色，比纯白更有质感 */
+  --bg-color: #f8f9fc;
+
+  /* 卡片背景：纯白，突出内容 */
+  --card-bg: #ffffff;
+
+  /* 字体颜色：深灰代替纯黑 */
+  --text-primary: #1a1b25;
+  --text-secondary: #5e6c84;
+  --text-tertiary: #94a3b8;
+
+  /* 核心强调色：现代靛蓝 */
+  --accent-color: #4f46e5;
+
+  /* 特殊感：靛蓝到洋红的流动渐变 */
+  --accent-gradient: linear-gradient(135deg, #4f46e5, #9333ea);
+
+  /* 辅助色 */
+  --danger-color: #ef4444;
+  --border-color: #e2e8f0;
+
+  /* 浅色系下的毛玻璃效果 */
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+
+  /* 电商必备：轻柔的阴影 */
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+  --card-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 40px 20px 120px; /* 增加底部 padding 避免被 footer 遮挡 */
+  box-sizing: border-box;
 }
 
-.page-header {
+h2,
+p,
+div,
+span,
+button {
+  box-sizing: border-box;
+}
+
+/* --- Animations --- */
+@keyframes slideFadeBlurIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.cart-item,
+.cart-header,
+.empty-state,
+.list-header {
+  animation: slideFadeBlurIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-play-state: paused;
+}
+
+.is-visible {
+  animation-play-state: running;
+}
+
+/* --- Header --- */
+.cart-header {
+  max-width: 1200px;
+  margin: 0 auto 30px;
   display: flex;
   align-items: baseline;
-  margin-bottom: 20px;
-  gap: 10px;
+  gap: 20px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 15px;
 }
 
-.page-header h2 {
+.page-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
   margin: 0;
-  font-size: 24px;
-  color: #333;
+  /* 浅色背景下使用深色渐变 */
+  background: linear-gradient(to right, #1a1b25, #4f46e5);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .item-count {
-  color: #999;
   font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  background: #eef2ff;
+  color: var(--accent-color);
+  padding: 4px 10px;
+  border-radius: 99px;
 }
 
-.cart-card {
-  border-radius: 8px;
+/* --- Layout --- */
+.cart-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
 }
 
-.product-info {
-  display: flex;
-  gap: 15px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-  text-align: left; /* product-name靠左显示 */
-  align-items: center; /* 图片垂直居中 */
+.list-header {
+  display: grid;
+  grid-template-columns: 50px 4fr 1.5fr 2fr 1.5fr 1fr;
+  padding: 15px 20px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
-.product-info:hover {
-  opacity: 0.8;
-}
-
-.product-img {
-  width: 120px;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 4px;
-  border: 1px solid #eee;
-  flex-shrink: 0; /* 防止图片被压缩 */
-}
-
-.product-detail {
+.cart-items {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 8px;
+  gap: 16px;
+  margin-bottom: 80px;
 }
 
-.product-name {
-  font-size: 16px; /* 已经是16px */
-  font-weight: 500;
-  color: #333;
+/* --- Cart Item Card --- */
+.cart-item {
+  display: grid;
+  grid-template-columns: 50px 4fr 1.5fr 2fr 1.5fr 1fr;
+  align-items: center;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 20px;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.cart-item:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--card-hover-shadow);
+  border-color: rgba(79, 70, 229, 0.3); /* Accent border on hover */
+}
+
+/* 浅色系微光效果 (替代原本的探照灯) */
+.cart-item::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.6), transparent);
+  transform: skewX(-25deg);
+  pointer-events: none;
+  transition: 0.5s;
+}
+/* 鼠标滑过时一道光扫过 */
+.cart-item:hover::after {
+  left: 150%;
+  transition: 0.7s ease-in-out;
+}
+
+/* --- Columns --- */
+.col-checkbox {
+  display: flex;
+  justify-content: center;
+}
+.col-product {
+  padding-right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  cursor: pointer;
+}
+.col-price,
+.col-quantity,
+.col-subtotal,
+.col-action {
+  text-align: center;
+}
+
+/* --- Product Info --- */
+.img-wrapper {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f1f5f9; /* Lighter placeholder */
+  border: 1px solid var(--border-color);
+}
+.img-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s;
+  mix-blend-mode: multiply; /* Helps integrate product images on white */
+}
+.cart-item:hover .img-wrapper img {
+  transform: scale(1.08);
+}
+
+.info-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
   line-height: 1.4;
 }
-
-.product-specs {
+.specs {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 6px;
 }
-
 .spec-tag {
-  font-size: 12px; /* 调大 2px */
-}
-
-.price {
-  font-size: 16px; /* 调大 2px */
-  color: #333;
+  font-size: 11px;
+  background: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
-.subtotal {
-  font-size: 16px; /* 调大 2px */
-  color: #e4393c;
-  font-weight: bold;
+/* --- Price --- */
+.unit-price {
+  font-size: 15px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.price-val {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-feature-settings: 'tnum';
 }
 
-.cart-footer {
-  margin-top: 20px;
+/* --- Quantity Control --- */
+.qty-control {
+  display: inline-flex;
+  align-items: center;
+  background: #f8f9fc;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 4px;
+}
+.qty-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: #fff;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+.qty-btn:hover {
+  background: var(--accent-color);
+  color: #fff;
+}
+.qty-val {
+  width: 36px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* --- Action --- */
+.delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.2s;
+  font-weight: 600;
+}
+.delete-btn:hover {
+  color: var(--danger-color);
+}
+
+/* --- Custom Checkbox (Light Mode Adapted) --- */
+.custom-checkbox {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+.custom-checkbox input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+.checkmark {
+  position: relative;
+  height: 20px;
+  width: 20px;
+  background-color: #fff;
+  border-radius: 6px;
+  border: 2px solid #cbd5e1; /* Light grey border */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.custom-checkbox:hover input ~ .checkmark {
+  border-color: var(--accent-color);
+}
+.custom-checkbox input:checked ~ .checkmark {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3); /* Glow in accent color */
+}
+.checkmark:after {
+  content: '';
+  position: absolute;
+  display: none;
+  left: 6px;
+  top: 2px;
+  width: 4px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.custom-checkbox input:checked ~ .checkmark:after {
+  display: block;
+}
+.label-text {
+  margin-left: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* --- Footer Bar (Glassmorphism Light) --- */
+.cart-footer-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--glass-border);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03);
+  padding: 20px 40px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 20px;
-  border-top: 1px solid #eee;
+  z-index: 100;
 }
 
 .footer-left {
   display: flex;
+  gap: 30px;
   align-items: center;
-  padding-left: 20px; /* 与表格选择框列左侧padding对齐 */
+}
+.text-btn {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: 0.2s;
+  font-size: 13px;
+  font-weight: 600;
+}
+.text-btn:hover {
+  color: var(--danger-color);
 }
 
 .footer-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 40px;
 }
-
-.price-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end; /* 右对齐 */
+.total-info {
+  text-align: right;
 }
-
-.total-price-row {
+.row-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.row-total {
   font-size: 16px;
-  color: #333;
+  color: var(--text-primary);
   font-weight: 500;
 }
-
-.selected-count-row {
-  font-size: 14px;
-  color: #666;
+.total-amount {
+  font-size: 26px;
+  font-weight: 800;
+  margin-left: 10px;
+  /* 价格使用渐变色突显 */
+  background: var(--accent-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.count-highlight {
-  color: #e4393c; /* 数字着色为红色 */
-  font-weight: bold;
-  margin: 0 2px;
+/* --- Beam Button (Light Mode Version) --- */
+/* 保留光束逻辑，但改为白色内部+彩色旋转边框 */
+.beam-container {
+  position: relative;
+  border-radius: 9999px;
+  padding: 3px; /* Border thickness */
+  overflow: hidden;
+  background: #e2e8f0; /* Inactive border color */
+  display: flex;
+  transition: all 0.3s;
+}
+.beam-container:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+}
+.beam-container.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+  filter: grayscale(1);
 }
 
-.total-label {
-  font-size: 14px;
-  color: #666;
+.beam-border {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    transparent,
+    transparent 80deg,
+    #4f46e5 100deg,
+    #9333ea 140deg,
+    transparent 180deg
+  );
+  animation: rotateBeam 3s linear infinite;
+  opacity: 1; /* Always visible for the effect */
+  z-index: 0;
 }
 
-.total-price {
-  font-size: 20px; /* 调大 */
-  color: #e4393c;
-  font-weight: bold;
+@keyframes rotateBeam {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .checkout-btn {
-  width: 150px; /* 增大宽度 */
-  height: 48px; /* 增加高度 */
-  background-color: #e4393c;
-  border-color: #e4393c;
-  font-size: 18px; /* 去结算按钮字体调大 */
+  position: relative;
+  /* 按钮中心为纯白或渐变? 这里选深色渐变以对比浅色背景，或纯白配彩色字 */
+  background: var(--text-primary);
+  color: #fff;
+  border: none;
+  border-radius: 9999px;
+  padding: 12px 40px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  z-index: 1;
+  width: 100%;
+  transition: background 0.3s;
 }
 
-.quantity-control {
+/* 另一种风格：按钮也是渐变的，和光束融为一体 */
+.checkout-btn {
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
+}
+
+.primary-btn-beam {
+  position: relative;
+  background: var(--text-primary);
+  color: #fff;
+  border: none;
+  border-radius: 9999px;
+  padding: 14px 48px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  z-index: 1;
+}
+
+/* --- Toast (Light Mode) --- */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.toast-msg {
+  padding: 12px 24px;
+  border-radius: 12px;
+  color: #1e293b;
+  font-size: 14px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+}
+.toast-msg.success {
+  border-left: 4px solid #10b981;
+  color: #059669;
+}
+.toast-msg.error {
+  border-left: 4px solid #ef4444;
+  color: #dc2626;
+}
+.toast-msg.warning {
+  border-left: 4px solid #f59e0b;
+  color: #d97706;
+}
+
+.toast-fade-enter-active,
+.toast-fade-leave-active {
+  transition: all 0.3s ease;
+}
+.toast-fade-enter-from,
+.toast-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+/* --- Modal (Light Mode) --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4); /* Darker overlay for contrast */
+  backdrop-filter: blur(4px);
+  z-index: 200;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
 }
-
-.quantity-text {
-  width: 30px;
+.modal-content {
+  background: #ffffff;
+  padding: 32px;
+  border-radius: 20px;
+  width: 320px;
   text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+.modal-content h3 {
+  margin-top: 0;
+  color: var(--text-primary);
+  font-size: 20px;
+}
+.modal-content p {
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.modal-actions button {
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
   font-size: 14px;
+  transition: transform 0.1s;
+}
+.modal-actions button:active {
+  transform: scale(0.96);
 }
 
-.empty-cart {
-  padding: 40px 0;
+.cancel-btn {
+  background: #f1f5f9;
+  color: var(--text-secondary);
+}
+.cancel-btn:hover {
+  background: #e2e8f0;
+}
+
+.confirm-btn {
+  background: var(--accent-color);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+.confirm-btn:hover {
+  background: #4338ca;
+}
+
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
+}
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 100px 0;
+}
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
+  opacity: 0.8;
+  filter: grayscale(0.5);
+}
+.center-beam {
+  display: inline-flex;
+  margin-top: 20px;
 }
 </style>

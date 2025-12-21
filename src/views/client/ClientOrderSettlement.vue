@@ -1,214 +1,242 @@
-<!-- 结算页：展示购物车条目、收货地址选择、订单概要并创建订单（调用 mock API） -->
+<!-- 结算页：展示购物车条目、收货地址选择、订单概要并创建订单 -->
 <template>
-  <div class="order-settlement">
-    <el-row :gutter="20">
-      <el-col :span="16">
-        <el-card>
-          <h3>购物清单</h3>
-          <div
-            class="checkout-cart-header"
-            style="
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              margin-bottom: 12px;
-            "
-          >
-            <div style="color: #999">共 {{ items.length }} 个条目</div>
+  <div class="modern-settlement-page">
+    <!-- Header -->
+    <div class="page-header" v-scroll-reveal>
+      <h2 class="page-title">订单结算</h2>
+      <span class="step-indicator">确认订单</span>
+    </div>
+
+    <div class="settlement-container">
+      <!-- Left Column: Address & Items -->
+      <div class="main-content">
+        <!-- Address Section -->
+        <section class="section-card address-card" v-scroll-reveal>
+          <div class="section-header">
+            <h3>收货地址</h3>
+            <button class="text-btn" @click="openAddressSelectModal">切换</button>
           </div>
-          <el-table :data="items" style="width: 100%">
-            <el-table-column label="商品信息" min-width="400">
-              <template #default="{ row }">
-                <div class="product-info">
-                  <img :src="row.imgUrl" class="product-img" alt="Product" />
-                  <div class="product-detail">
-                    <div class="product-name">{{ row.name }}</div>
+
+          <div v-if="!address.name" class="empty-address" @click="openModal">
+            <div class="add-icon">+</div>
+            <span>添加收货地址</span>
+          </div>
+
+          <div v-else class="address-content">
+            <div class="address-icon">📍</div>
+            <div class="address-info">
+              <div class="user-row">
+                <span class="name">{{ address.name }}</span>
+                <span class="phone">{{ address.phone }}</span>
+              </div>
+              <div class="detail-row">{{ address.address }}</div>
+            </div>
+            <button class="edit-btn" @click="openModal">编辑</button>
+          </div>
+        </section>
+
+        <!-- Items Section -->
+        <section class="section-card items-card" v-scroll-reveal>
+          <div class="section-header">
+            <h3>商品清单 ({{ items.length }})</h3>
+          </div>
+
+          <!-- List Header -->
+          <div class="list-header">
+            <div class="col-product">商品信息</div>
+            <div class="col-price">单价</div>
+            <div class="col-quantity">数量</div>
+            <div class="col-subtotal">小计</div>
+          </div>
+
+          <div class="items-list">
+            <div
+              v-for="(item, index) in items"
+              :key="index"
+              class="settlement-item"
+              :style="{ animationDelay: `${index * 50}ms` }"
+            >
+              <!-- Product Info -->
+              <div class="col-product">
+                <div class="img-wrapper">
+                  <img :src="item.imgUrl" alt="Product" />
+                </div>
+                <div class="info-wrapper">
+                  <div class="name">{{ item.name }}</div>
+                  <!-- Specs if available -->
+                  <div class="specs" v-if="item.spec">
+                    <span class="spec-tag">{{ item.spec }}</span>
                   </div>
                 </div>
-              </template>
-            </el-table-column>
+              </div>
 
-            <el-table-column label="单价" width="150" align="center">
-              <template #default="{ row }">
-                <span class="price">¥{{ (row.price || 0).toFixed(2) }}</span>
-              </template>
-            </el-table-column>
+              <!-- Price -->
+              <div class="col-price">
+                <span class="unit-price">¥{{ (item.price || 0).toFixed(2) }}</span>
+              </div>
 
-            <el-table-column label="数量" width="200" align="center">
-              <template #default="{ row }">
-                <div class="quantity-control">
-                  <span class="quantity-text">{{ row.count }}</span>
-                </div>
-              </template>
-            </el-table-column>
+              <!-- Quantity -->
+              <div class="col-quantity">
+                <span class="qty-display">x{{ item.count }}</span>
+              </div>
 
-            <el-table-column label="小计" width="150" align="center">
-              <template #default="{ row }">
-                <span class="subtotal">¥{{ (row.price * row.count).toFixed(2) }}</span>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-
-        <el-card style="margin-top: 16px">
-          <div
-            style="
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              margin-bottom: 12px;
-            "
-          >
-            <h3 style="margin: 0">收货信息</h3>
-            <el-button type="primary" link @click="openAddressSelectModal">选择其他地址</el-button>
-          </div>
-          <div v-if="addresses.length === 0" style="color: #999">
-            暂无收货地址，前往
-            <router-link to="/user/address">地址管理</router-link>
-          </div>
-          <div v-else>
-            <div class="address-display" style="padding: 12px 0">
-              <div style="font-weight: 500">{{ address.name }} {{ address.phone }}</div>
-              <div style="color: #666; margin-top: 6px">{{ address.address }}</div>
-              <div style="text-align: right; margin-top: 8px">
-                <el-button type="text" @click="openModal">修改地址</el-button>
+              <!-- Subtotal -->
+              <div class="col-subtotal">
+                <span class="price-val">¥{{ ((item.price || 0) * (item.count || 1)).toFixed(2) }}</span>
               </div>
             </div>
-
-            <!-- 地址编辑弹窗 -->
-            <el-dialog
-              v-model="modalVisible"
-              title="修改地址"
-              width="600px"
-              :close-on-click-modal="false"
-              :modal-append-to-body="true"
-              :destroy-on-close="false"
-              center
-            >
-              <el-form
-                :model="modalAddressForm"
-                :rules="modalRules"
-                ref="modalFormRef"
-                label-width="100px"
-              >
-                <el-form-item label="收件人" prop="name">
-                  <el-input v-model="modalAddressForm.name" placeholder="姓名" />
-                </el-form-item>
-
-                <el-form-item label="手机号" prop="phone">
-                  <el-input v-model="modalAddressForm.phone" placeholder="手机号码" />
-                </el-form-item>
-
-                <el-form-item label="所在地区" prop="province">
-                  <el-cascader
-                    v-model="regionValue"
-                    :options="regionOptions"
-                    :props="{ value: 'code', label: 'name', children: 'children' }"
-                    @change="handleModalRegionChange"
-                    placeholder="请选择省/市/区"
-                    style="width: 100%"
-                  />
-                </el-form-item>
-
-                <el-form-item label="详细地址" prop="detail">
-                  <el-input v-model="modalAddressForm.detail" placeholder="街道、门牌号等" />
-                </el-form-item>
-              </el-form>
-
-              <template #footer>
-                <el-button @click="modalVisible = false">取消</el-button>
-                <el-button v-if="isModalModified && !matchesExisting" @click="saveModalAsNewAddress"
-                  >保存为新地址</el-button
-                >
-                <el-button type="primary" @click="applyModalAddress">确定</el-button>
-              </template>
-            </el-dialog>
-
-            <!-- 选择地址弹窗 -->
-            <el-dialog v-model="addressSelectVisible" title="选择收货地址" width="700px" center>
-              <el-table
-                :data="rawAddresses"
-                style="width: 100%"
-                @row-click="onAddressSelectFromList"
-              >
-                <el-table-column label="收件人" prop="name" width="120" />
-                <el-table-column label="手机号" prop="phone" width="150" />
-                <el-table-column label="详细地址">
-                  <template #default="{ row }">
-                    {{ row.province }} {{ row.city }} {{ row.district }} {{ row.detail }}
-                  </template>
-                </el-table-column>
-                <el-table-column label="操作" width="100" align="center">
-                  <template #default="{ row }">
-                    <el-button type="primary" link @click.stop="onAddressSelectFromList(row)"
-                      >选择</el-button
-                    >
-                  </template>
-                </el-table-column>
-              </el-table>
-            </el-dialog>
           </div>
-        </el-card>
-      </el-col>
+        </section>
+      </div>
 
-      <el-col :span="8">
-        <el-card class="remark-card">
-          <div class="remark-header">买家留言</div>
-          <el-input
-            v-model="buyerRemark"
-            type="textarea"
-            :autosize="{ minRows: 2, maxRows: 4 }"
-            maxlength="200"
-            show-word-limit
-            placeholder="给卖家的留言（选填）"
-          />
-        </el-card>
+      <!-- Right Column: Summary & Payment -->
+      <div class="sidebar-content">
+        <section class="section-card summary-card" v-scroll-reveal>
+          <h3>订单摘要</h3>
 
-        <el-card class="summary-card" style="margin-top: 12px">
-          <h3>订单概要</h3>
           <div class="summary-row">
-            商品总计： <span class="price-strong">¥{{ total.toFixed(2) }}</span>
+            <span>商品总额</span>
+            <span class="val">¥{{ total.toFixed(2) }}</span>
+          </div>
+          <div class="summary-row">
+            <span>运费</span>
+            <span class="val">{{ shipping === 0 ? '包邮' : `¥${shipping.toFixed(2)}` }}</span>
           </div>
 
-          <el-form label-width="90px" size="small">
-            <el-form-item label="运费">
-              <div style="color: #333">
-                <template v-if="shipping === 0"> 包邮（订单满 ¥199 已免运费） </template>
-                <template v-else> 运费 ¥{{ shipping.toFixed(2) }}（满 ¥199 包邮） </template>
-              </div>
-            </el-form-item>
+          <div class="divider"></div>
 
-            <el-form-item label="支付方式">
-              <el-radio-group v-model="payment">
-                <el-radio label="alipay">支付宝</el-radio>
-                <el-radio label="wechat">微信</el-radio>
-                <el-radio label="cod">货到付款</el-radio>
-              </el-radio-group>
-            </el-form-item>
+          <div class="summary-total">
+            <span>应付总额</span>
+            <span class="total-val">¥{{ (total + shipping).toFixed(2) }}</span>
+          </div>
 
-            <el-form-item>
-              <div class="btn-row">
-                <el-button @click="router.back()" class="ghost-btn">返回</el-button>
-                <el-button type="primary" class="full-width-btn" @click="createOrder"
-                  >生成订单并支付</el-button
-                >
-              </div>
-            </el-form-item>
-          </el-form>
-
-          <div class="total-box">
-            <div>
-              运费：<span class="price-normal">¥{{ shipping.toFixed(2) }}</span>
-            </div>
-            <div class="pay-total">
-              应付总额：<span class="price-highlight">¥{{ (total + shipping).toFixed(2) }}</span>
+          <!-- Payment Method -->
+          <div class="payment-method">
+            <h4>支付方式</h4>
+            <div class="payment-options">
+              <label class="payment-option" :class="{ active: payment === 'alipay' }">
+                <input type="radio" v-model="payment" value="alipay" />
+                <span class="radio-mark"></span>
+                <span>支付宝</span>
+              </label>
+              <label class="payment-option" :class="{ active: payment === 'wechat' }">
+                <input type="radio" v-model="payment" value="wechat" />
+                <span class="radio-mark"></span>
+                <span>微信支付</span>
+              </label>
+              <label class="payment-option" :class="{ active: payment === 'cod' }">
+                <input type="radio" v-model="payment" value="cod" />
+                <span class="radio-mark"></span>
+                <span>货到付款</span>
+              </label>
             </div>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
 
-    <!-- 结算页不在此展示订单详情，创建订单后跳转到支付页 -->
+          <!-- Remark -->
+          <div class="remark-section">
+            <h4>买家留言</h4>
+            <textarea
+              v-model="buyerRemark"
+              class="custom-textarea"
+              placeholder="给卖家的留言（选填）..."
+              rows="3"
+              maxlength="200"
+            ></textarea>
+          </div>
+
+          <!-- Action -->
+          <div class="action-area">
+            <div class="beam-container">
+              <div class="beam-border"></div>
+              <button class="primary-btn-beam full-width" @click="createOrder">提交订单</button>
+            </div>
+            <button class="text-btn back-btn" @click="router.back()">返回购物车</button>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Dialogs (Keeping Element Plus for complex forms) -->
+    <el-dialog
+      v-model="modalVisible"
+      title="编辑地址"
+      width="500px"
+      :close-on-click-modal="false"
+      :modal-append-to-body="true"
+      :destroy-on-close="false"
+      center
+      class="custom-dialog"
+    >
+      <el-form
+        :model="modalAddressForm"
+        :rules="modalRules"
+        ref="modalFormRef"
+        label-position="top"
+        class="custom-form"
+      >
+        <el-form-item label="收件人" prop="name">
+          <el-input v-model="modalAddressForm.name" placeholder="姓名" />
+        </el-form-item>
+
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="modalAddressForm.phone" placeholder="手机号" />
+        </el-form-item>
+
+        <el-form-item label="所在地区" prop="province">
+          <el-cascader
+            v-model="regionValue"
+            :options="regionOptions"
+            :props="{ value: 'code', label: 'name', children: 'children' }"
+            @change="handleModalRegionChange"
+            placeholder="选择地区"
+            style="width: 100%"
+          />
+        </el-form-item>
+
+        <el-form-item label="详细地址" prop="detail">
+          <el-input v-model="modalAddressForm.detail" placeholder="街道、楼牌号等" />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <button class="cancel-btn" @click="modalVisible = false">取消</button>
+          <button
+            v-if="isModalModified && !matchesExisting"
+            class="secondary-btn"
+            @click="saveModalAsNewAddress"
+          >
+            保存为新地址
+          </button>
+          <button class="confirm-btn" @click="applyModalAddress">确认</button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="addressSelectVisible"
+      title="选择地址"
+      width="600px"
+      center
+      class="custom-dialog"
+    >
+      <div class="address-list-container">
+        <div
+          v-for="addr in rawAddresses"
+          :key="addr.id"
+          class="address-select-item"
+          @click="onAddressSelectFromList(addr)"
+        >
+          <div class="addr-main">
+            <span class="addr-name">{{ addr.name }}</span>
+            <span class="addr-phone">{{ addr.phone }}</span>
+          </div>
+          <div class="addr-detail">
+            {{ addr.province }} {{ addr.city }} {{ addr.district }} {{ addr.detail }}
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -219,7 +247,25 @@ import { createOrdersFromCart, buyNowOrder } from '@/api/order'
 import type { AddressInfo } from '@/api/model/userModel'
 import { getAddressList, addAddress } from '@/api/user'
 import { useRouter, useRoute } from 'vue-router'
-import { useCartStore } from '@/stores/cart'
+import { useCartStore, type CartItem } from '@/stores/cart'
+
+// Scroll Reveal Directive
+const vScrollReveal = {
+  mounted: (el: HTMLElement) => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            el.classList.add('is-visible')
+            observer.unobserve(el)
+          }
+        })
+      },
+      { threshold: 0.1 },
+    )
+    observer.observe(el)
+  },
+}
 
 const cart = useCartStore()
 // 支持两种结算模式：
@@ -238,12 +284,22 @@ interface DirectPurchaseItem {
   name?: string
   mainImage?: string
   imgUrl?: string
+  spec?: string // Added for display
 }
 const directItems = _ref<DirectPurchaseItem[] | null>(null)
-const items = computed<unknown[]>(() => {
-  return directItems.value && directItems.value.length > 0
-    ? directItems.value
-    : (cart.selectedItems as unknown[])
+const items = computed<DirectPurchaseItem[]>(() => {
+  if (directItems.value && directItems.value.length > 0) {
+    return directItems.value
+  }
+  return cart.selectedItems.map((item: CartItem) => ({
+    skuId: item.skuId,
+    id: item.productId,
+    name: item.name,
+    imgUrl: item.imgUrl,
+    price: item.price,
+    count: item.count,
+    spec: Object.values(item.specs || {}).join(' '),
+  }))
 })
 
 // 地址管理：从 localStorage 中读取 mock_addresses（示例格式：[{ id, name, phone, address }])
@@ -255,7 +311,6 @@ const address = ref<{ name: string; phone: string; address: string }>({
   phone: '',
   address: '',
 })
-// 控制是否显示地址下拉选择（已改为弹窗管理）
 
 // 弹窗相关
 const modalVisible = ref(false)
@@ -777,12 +832,6 @@ async function saveModalAsNewAddress() {
   }
 }
 
-// 已合并并重构：非模态保存函数与冗余计算属性被移除，使用统一的 fetchAndMapAddresses() 与 modal 保存流程。
-
-// 数量在结算页为只读展示，相关修改操作在购物车页处理
-
-// 已弃用的下拉选择回调（改为弹窗选择），保留逻辑通过弹窗完成
-
 async function createOrder() {
   if (checkoutMode.value === 'cart') {
     if (!items.value || items.value.length === 0) {
@@ -890,92 +939,531 @@ async function createOrder() {
 </script>
 
 <style scoped>
-.order-settlement h3 {
-  margin: 0 0 12px 0;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.modern-settlement-page {
+  --bg-color: #f8f9fc;
+  --card-bg: #ffffff;
+  --text-primary: #1a1b25;
+  --text-secondary: #5e6c84;
+  --text-tertiary: #94a3b8;
+  --accent-color: #4f46e5;
+  --accent-gradient: linear-gradient(135deg, #4f46e5, #9333ea);
+  --danger-color: #ef4444;
+  --border-color: #e2e8f0;
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+  --card-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 40px 20px;
+  box-sizing: border-box;
 }
 
-/* 使用与购物车页面一致的商品信息样式 */
-.product-info {
+/* --- Animations --- */
+@keyframes slideFadeBlurIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.page-header,
+.section-card {
+  animation: slideFadeBlurIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-play-state: paused;
+}
+
+.is-visible {
+  animation-play-state: running;
+}
+
+/* --- Header --- */
+.page-header {
+  max-width: 1200px;
+  margin: 0 auto 30px;
   display: flex;
-  gap: 15px;
+  align-items: baseline;
+  gap: 20px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 15px;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin: 0;
+  background: linear-gradient(to right, #1a1b25, #4f46e5);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.step-indicator {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-color);
+  background: #eef2ff;
+  padding: 4px 12px;
+  border-radius: 99px;
+}
+
+/* --- Layout --- */
+.settlement-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+}
+
+.main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.section-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--card-shadow);
+  transition: all 0.3s ease;
+}
+
+.section-card:hover {
+  box-shadow: var(--card-hover-shadow);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* --- Address Section --- */
+.empty-address {
+  border: 2px dashed var(--border-color);
+  border-radius: 12px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+.empty-address:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background: #f8fafc;
+}
+.add-icon {
+  font-size: 24px;
+  font-weight: 300;
+}
+
+.address-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+.address-icon {
+  font-size: 24px;
+}
+.address-info {
+  flex: 1;
+}
+.user-row {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+.user-row .name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.user-row .phone {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.detail-row {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.edit-btn {
+  background: none;
+  border: none;
+  color: var(--accent-color);
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* --- Items Section --- */
+.list-header {
+  display: grid;
+  grid-template-columns: 4fr 1.5fr 1fr 1.5fr;
+  padding: 0 10px 10px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 16px;
+}
+.col-product {
+  display: flex;
+  gap: 16px;
   align-items: center;
 }
-
-.product-img {
-  width: 120px;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 4px;
-  border: 1px solid #eee;
-  flex-shrink: 0;
+.col-price,
+.col-quantity,
+.col-subtotal {
+  text-align: center;
 }
 
-.product-detail {
+.items-list {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 8px;
+  gap: 16px;
 }
 
-.product-name {
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
-  line-height: 1.4;
+.settlement-item {
+  display: grid;
+  grid-template-columns: 4fr 1.5fr 1fr 1.5fr;
+  align-items: center;
+  padding: 10px;
+  border-radius: 12px;
+  transition: background 0.2s;
+}
+.settlement-item:hover {
+  background: #f8fafc;
 }
 
-.product-specs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+.img-wrapper {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: #fff;
 }
-
-/* 使用 Element Plus 默认的必填样式，与 UserAddress 弹窗保持一致 */
-
-.summary-card {
-  background: #fffaf7;
-}
-.summary-row {
-  margin-bottom: 12px;
-  font-size: 15px;
-}
-.price-strong {
-  font-weight: 700;
-  color: #e53935;
-  font-size: 16px;
-}
-.price-normal {
-  color: #333;
-}
-.price-highlight {
-  color: #d32f2f;
-  font-size: 20px;
-  font-weight: 800;
-}
-.total-box {
-  margin-top: 12px;
-  color: #666;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.full-width-btn {
+.img-wrapper img {
   width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.info-wrapper .name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+.spec-tag {
+  font-size: 11px;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+.unit-price,
+.qty-display {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.price-val {
   font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* --- Sidebar Summary --- */
+.summary-card {
+  position: sticky;
+  top: 20px;
+}
+.summary-card h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.summary-row .val {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 16px 0;
+}
+
+.summary-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 24px;
+}
+.summary-total span:first-child {
+  font-size: 16px;
   font-weight: 600;
 }
-.btn-row {
+.total-val {
+  font-size: 24px;
+  font-weight: 800;
+  background: var(--accent-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Payment Method */
+.payment-method {
+  margin-bottom: 24px;
+}
+.payment-method h4,
+.remark-section h4 {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.payment-options {
   display: flex;
+  flex-direction: row;
   gap: 8px;
 }
-.ghost-btn {
-  flex: 0 0 90px;
+.payment-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-.remark-card {
-  background: #f8fbff;
+.payment-option:hover {
+  border-color: #cbd5e1;
 }
-.remark-header {
+.payment-option.active {
+  border-color: var(--accent-color);
+  background: #eef2ff;
+}
+.payment-option input {
+  display: none;
+}
+.radio-mark {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #cbd5e1;
+  border-radius: 50%;
+  margin-right: 10px;
+  position: relative;
+}
+.payment-option.active .radio-mark {
+  border-color: var(--accent-color);
+}
+.payment-option.active .radio-mark::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 6px;
+  height: 6px;
+  background: var(--accent-color);
+  border-radius: 50%;
+}
+.payment-option span:last-child {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Remark */
+.remark-section {
+  margin-bottom: 24px;
+}
+.custom-textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.custom-textarea:focus {
+  border-color: var(--accent-color);
+}
+
+/* Action */
+.action-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.beam-container {
+  position: relative;
+  border-radius: 9999px;
+  padding: 3px;
+  overflow: hidden;
+  background: #e2e8f0;
+}
+.beam-border {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    transparent,
+    transparent 80deg,
+    #4f46e5 100deg,
+    #9333ea 140deg,
+    transparent 180deg
+  );
+  animation: rotateBeam 3s linear infinite;
+}
+@keyframes rotateBeam {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.primary-btn-beam {
+  position: relative;
+  background: var(--text-primary);
+  color: #fff;
+  border: none;
+  border-radius: 9999px;
+  padding: 14px 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  z-index: 1;
+  width: 100%;
+}
+.back-btn {
+  width: 100%;
+  padding: 10px;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
   font-weight: 600;
-  margin-bottom: 8px;
+}
+.back-btn:hover {
+  color: var(--text-primary);
+}
+.text-btn {
+  background: none;
+  border: none;
+  color: var(--accent-color);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Dialog Customization */
+.custom-dialog :deep(.el-dialog__body) {
+  padding: 20px 30px;
+}
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.cancel-btn,
+.secondary-btn,
+.confirm-btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+}
+.cancel-btn {
+  background: #f1f5f9;
+  color: var(--text-secondary);
+}
+.secondary-btn {
+  background: #eef2ff;
+  color: var(--accent-color);
+}
+.confirm-btn {
+  background: var(--accent-color);
+  color: #fff;
+}
+
+.address-list-container {
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.address-select-item {
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.address-select-item:hover {
+  border-color: var(--accent-color);
+  background: #f8fafc;
+}
+.addr-main {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.addr-detail {
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 </style>
