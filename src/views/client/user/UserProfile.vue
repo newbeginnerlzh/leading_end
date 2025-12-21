@@ -1,141 +1,169 @@
 <template>
-  <div class="profile-container">
-    <div class="profile-header">
-      <h2>个人信息</h2>
+  <div class="modern-profile-page">
+    <!-- Header -->
+    <div class="page-header" v-scroll-reveal>
+      <h1 class="page-title">个人信息</h1>
+      <span class="step-indicator">Profile Settings</span>
     </div>
 
-    <el-card>
-      <!-- 展示模式（默认） -->
-      <div v-if="!isEditing">
-        <el-row :gutter="20" class="profile-row">
-          <el-col :span="8" class="avatar-section">
-            <div class="avatar-display">
-              <div class="avatar-wrapper">
-                <img v-if="userInfo.avatar" :src="userInfo.avatar" class="avatar" />
-                <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
+    <div class="profile-content">
+      <div class="section-card" v-scroll-reveal>
+        <Transition name="fade-slide" mode="out-in">
+          <!-- 展示模式（默认） -->
+          <div v-if="!isEditing" class="mode-view" key="view">
+            <div class="profile-layout">
+              <div class="avatar-section">
+                <div class="avatar-wrapper">
+                  <img v-if="userInfo.avatar" :src="userInfo.avatar" class="avatar" />
+                  <el-icon v-else class="avatar-placeholder-icon"><Plus /></el-icon>
+                </div>
+              </div>
+
+              <div class="info-section">
+                <div class="info-grid">
+                  <div class="info-item">
+                    <span class="label">用户名</span>
+                    <span class="value">{{ userInfo.username || '-' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">手机号</span>
+                    <span class="value">{{ userInfo.phone || '-' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">性别</span>
+                    <span class="value">{{ userInfo.gender || '-' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">出生日期</span>
+                    <span class="value">{{ userInfo.birthday || '-' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">邮箱</span>
+                    <span class="value">{{ userInfo.email || '-' }}</span>
+                  </div>
+                </div>
+
+                <div class="action-bar">
+                  <el-button type="primary" class="custom-btn primary" @click="startEdit">编辑资料</el-button>
+                  <el-button class="custom-btn secondary" @click="showChangePwdDialog = true">修改密码</el-button>
+                  <el-button type="danger" plain class="custom-btn danger" @click="handleCancelAccount">注销账号</el-button>
+                </div>
               </div>
             </div>
-          </el-col>
+          </div>
 
-          <el-col :span="16">
-            <el-form label-width="250px">
-              <el-form-item label="用户名">
-                <div>{{ userInfo.username || '-' }}</div>
-              </el-form-item>
+          <!-- 编辑模式 -->
+          <div v-else class="mode-edit" key="edit">
+            <el-form
+              :model="editUserInfo"
+              :rules="rules"
+              ref="formRef"
+              label-position="top"
+              class="edit-form"
+            >
+              <div class="profile-layout">
+                <div class="avatar-section">
+                  <div class="avatar-wrapper upload-mode">
+                    <el-upload
+                      class="avatar-uploader"
+                      :show-file-list="false"
+                      :auto-upload="false"
+                      :on-change="handlePickAvatarChange"
+                      accept="image/jpeg,image/png,image/gif,image/bmp,image/webp"
+                      name="file"
+                      :limit="1"
+                    >
+                      <div v-if="editUserInfo.avatar" class="avatar-edit-wrapper">
+                        <img :src="editUserInfo.avatar" class="avatar" />
+                        <div class="avatar-mask">
+                          <el-icon><Plus /></el-icon>
+                          <span>更换头像</span>
+                        </div>
+                      </div>
+                      <div v-else class="upload-placeholder">
+                        <el-icon class="avatar-uploader-icon"><Plus /></el-icon>
+                        <span class="upload-text">点击上传</span>
+                      </div>
+                    </el-upload>
+                  </div>
+                  <div class="avatar-tip">支持 jpg, png, gif 格式</div>
+                </div>
 
-              <el-form-item label="手机号">
-                <div>{{ userInfo.phone || '-' }}</div>
-              </el-form-item>
+                <div class="info-section">
+                  <div class="form-grid">
+                    <el-form-item label="用户名" prop="username">
+                      <el-input v-model="editUserInfo.username" placeholder="请输入用户名"></el-input>
+                    </el-form-item>
 
-              <el-form-item label="性别">
-                <div>{{ userInfo.gender || '-' }}</div>
-              </el-form-item>
+                    <el-form-item label="手机号" prop="phone">
+                      <el-input v-model="editUserInfo.phone" placeholder="请输入手机号"></el-input>
+                    </el-form-item>
 
-              <el-form-item label="出生日期">
-                <div>{{ userInfo.birthday || '-' }}</div>
-              </el-form-item>
+                    <el-form-item label="性别" prop="gender">
+                      <el-radio-group v-model="editUserInfo.gender">
+                        <el-radio label="男">男</el-radio>
+                        <el-radio label="女">女</el-radio>
+                        <el-radio label="未知">未知</el-radio>
+                      </el-radio-group>
+                    </el-form-item>
 
-              <el-form-item label="邮箱">
-                <div>{{ userInfo.email || '-' }}</div>
-              </el-form-item>
+                    <el-form-item label="出生日期" prop="birthday">
+                      <el-date-picker
+                        v-model="editUserInfo.birthday"
+                        type="date"
+                        placeholder="请选择出生日期"
+                        format="YYYY-MM-DD"
+                        value-format="YYYY-MM-DD"
+                        style="width: 100%"
+                      ></el-date-picker>
+                    </el-form-item>
 
-              <div style="margin-top:10px">
-                <el-button type="primary" @click="startEdit">编辑资料</el-button>
-                <el-button type="warning" @click="showChangePwdDialog = true" style="margin-left:10px">修改密码</el-button>
-                <el-button type="danger" @click="handleCancelAccount" style="margin-left: 10px">注销账号</el-button>
+                    <el-form-item label="邮箱" prop="email">
+                      <el-input v-model="editUserInfo.email" placeholder="选填"></el-input>
+                    </el-form-item>
+                  </div>
+
+                  <div class="action-bar">
+                    <div class="beam-container">
+                      <div class="beam-border"></div>
+                      <button
+                        class="primary-btn-beam"
+                        @click="handleSubmit"
+                        :disabled="isSaving"
+                      >
+                        <el-icon v-if="isSaving" class="is-loading" style="margin-right: 8px;"><Loading /></el-icon>
+                        {{ isSaving ? '保存中...' : '保存修改' }}
+                      </button>
+                    </div>
+                    <el-button class="custom-btn" @click="handleCancelEdit" :disabled="isSaving">取消</el-button>
+                  </div>
+                </div>
               </div>
             </el-form>
-          </el-col>
-        </el-row>
+          </div>
+        </Transition>
       </div>
-
-      <!-- 编辑模式（原有表单，绑定到 editUserInfo） -->
-      <div v-else>
-        <el-form
-          :model="editUserInfo"
-          :rules="rules"
-          ref="formRef"
-          label-width="250px"
-        >
-          <el-row :gutter="20" class="profile-row">
-            <el-col :span="8" class="avatar-section">
-              <!-- 头像上传 -->
-              <div class="avatar-display">
-                <el-upload
-                  class="avatar-uploader"
-                  :show-file-list="false"
-                  :auto-upload="false"
-                  :on-change="handlePickAvatarChange"
-                  accept="image/jpeg,image/png,image/gif,image/bmp,image/webp"
-                  name="file"
-                  :limit="1"
-                >
-                  <img v-if="editUserInfo.avatar" :src="editUserInfo.avatar" class="avatar" />
-                  <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
-                </el-upload>
-              </div>
-            </el-col>
-
-            <el-col :span="13">
-              <el-form-item label="用户名">
-                <el-input v-model="editUserInfo.username"></el-input>
-              </el-form-item>
-
-              <el-form-item label="手机号">
-                <el-input v-model="editUserInfo.phone"></el-input>
-              </el-form-item>
-
-              <el-form-item label="性别" prop="gender">
-                <el-radio-group v-model="editUserInfo.gender">
-                  <el-radio label="男">男</el-radio>
-                  <el-radio label="女">女</el-radio>
-                  <el-radio label="未知">未知</el-radio>
-                </el-radio-group>
-              </el-form-item>
-
-              <el-form-item label="出生日期" prop="birthday">
-                <el-date-picker
-                  v-model="editUserInfo.birthday"
-                  type="date"
-                  placeholder="请选择出生日期"
-                  format="YYYY-MM-DD"
-                  value-format="YYYY-MM-DD"
-                ></el-date-picker>
-              </el-form-item>
-
-              <el-form-item label="邮箱">
-                <el-input v-model="editUserInfo.email" placeholder="选填"></el-input>
-              </el-form-item>
-
-              <div style="margin-top:10px">
-                <el-button type="primary" @click="handleSubmit" :disabled="isSaving">保存修改</el-button>
-                <el-button @click="handleCancelEdit" :disabled="isSaving">取消</el-button>
-                <el-button type="warning" @click="showChangePwdDialog = true" style="margin-left:10px" :disabled="isSaving">修改密码</el-button>
-                <el-button type="danger" @click="handleCancelAccount" style="margin-left: 10px" :disabled="isSaving">注销账号</el-button>
-              </div>
-            </el-col>
-          </el-row>
-        </el-form>
-      </div>
-    </el-card>
+    </div>
 
     <!-- 修改密码弹窗 -->
     <el-dialog
       v-model="showChangePwdDialog"
       title="修改密码"
       width="400px"
+      class="custom-dialog"
     >
       <el-form
         :model="pwdForm"
         :rules="pwdRules"
         ref="pwdFormRef"
-        label-width="100px"
+        label-position="top"
       >
         <el-form-item label="原密码" prop="oldPassword">
           <el-input
             v-model="pwdForm.oldPassword"
             type="password"
             show-password
+            placeholder="请输入原密码"
           ></el-input>
         </el-form-item>
         <el-form-item label="新密码" prop="newPassword">
@@ -143,6 +171,7 @@
             v-model="pwdForm.newPassword"
             type="password"
             show-password
+            placeholder="请输入新密码"
           ></el-input>
         </el-form-item>
         <el-form-item label="确认新密码" prop="confirmPassword">
@@ -150,13 +179,65 @@
             v-model="pwdForm.confirmPassword"
             type="password"
             show-password
+            placeholder="请再次输入新密码"
           ></el-input>
         </el-form-item>
       </el-form>
 
       <template #footer>
-        <el-button @click="showChangePwdDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleChangePassword">确认修改</el-button>
+        <div class="dialog-footer">
+          <el-button class="custom-btn" @click="showChangePwdDialog = false">取消</el-button>
+          <div class="beam-container">
+            <div class="beam-border"></div>
+            <button
+              class="primary-btn-beam"
+              @click="handleChangePassword"
+              :disabled="isChangingPwd"
+            >
+              <el-icon v-if="isChangingPwd" class="is-loading" style="margin-right: 8px;"><Loading /></el-icon>
+              {{ isChangingPwd ? '提交中...' : '确认修改' }}
+            </button>
+          </div>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 注销账号弹窗 -->
+    <el-dialog
+      v-model="showCancelAccountDialog"
+      title="注销账号"
+      width="400px"
+      class="custom-dialog"
+    >
+      <div style="margin-bottom: 20px; color: var(--danger-color); font-size: 14px; line-height: 1.6;">
+        <el-icon style="vertical-align: middle; margin-right: 4px;"><Warning /></el-icon>
+        警告：注销账号后，所有个人数据、订单记录将永久删除且无法恢复，请谨慎操作。
+      </div>
+      <el-form label-position="top">
+        <el-form-item label="请输入登录密码确认注销">
+          <el-input
+            v-model="cancelAccountPassword"
+            type="password"
+            show-password
+            placeholder="请输入密码"
+          ></el-input>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button class="custom-btn" @click="showCancelAccountDialog = false">取消</el-button>
+          <div class="beam-container danger">
+            <div class="beam-border"></div>
+            <button
+              class="primary-btn-beam danger"
+              @click="confirmCancelAccount"
+              :disabled="isCancellingAccount"
+            >
+              <el-icon v-if="isCancellingAccount" class="is-loading" style="margin-right: 8px;"><Loading /></el-icon>
+              {{ isCancellingAccount ? '注销中...' : '确认注销' }}
+            </button>
+          </div>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -164,13 +245,31 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
 import type { FormItemRule } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Loading, Warning } from '@element-plus/icons-vue'
 // import type { UploadRequestOptions } from 'element-plus'
 import { getUserInfo, updateUserInfo, changePassword, cancelAccount, uploadAvatar } from '@/api/user'
 import type { UserInfo, UpdateUserInfoRequest, ChangePasswordRequest, CancelAccountRequest } from '@/api/model/userModel'
+
+// Scroll Reveal Directive
+const vScrollReveal = {
+  mounted: (el: HTMLElement) => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            el.classList.add('is-visible')
+            observer.unobserve(el)
+          }
+        })
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' },
+    )
+    observer.observe(el)
+  },
+}
 
 // 支持的头像格式
 const SUPPORTED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp']
@@ -229,6 +328,12 @@ const userInfo = reactive<UserInfo>({})
 
 // 修改密码弹窗
 const showChangePwdDialog = ref(false)
+const isChangingPwd = ref(false)
+
+// 注销账号弹窗
+const showCancelAccountDialog = ref(false)
+const cancelAccountPassword = ref('')
+const isCancellingAccount = ref(false)
 
 // 修改密码表单
 const pwdForm = reactive<ChangePasswordRequest & { confirmPassword: string }>({
@@ -495,6 +600,7 @@ const handleChangePassword = async () => {
 
   try {
     await pwdFormRef.value.validate()
+    isChangingPwd.value = true
 
     // 调用修改密码接口
     await changePassword({
@@ -511,26 +617,29 @@ const handleChangePassword = async () => {
   } catch (error) {
     console.error('修改密码失败:', error)
     ElMessage.error(getErrorMessage(error))
+  } finally {
+    isChangingPwd.value = false
   }
 }
 
-// 注销账号
-const handleCancelAccount = async () => {
-  try {
-    const password = await ElMessageBox.prompt(
-      '请输入密码确认注销账号',
-      '注销账号',
-      {
-        inputType: 'password',
-        confirmButtonText: '确认注销',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
+// 打开注销弹窗
+const handleCancelAccount = () => {
+  cancelAccountPassword.value = ''
+  showCancelAccountDialog.value = true
+}
 
+// 确认注销账号
+const confirmCancelAccount = async () => {
+  if (!cancelAccountPassword.value) {
+    ElMessage.warning('请输入密码确认注销')
+    return
+  }
+
+  try {
+    isCancellingAccount.value = true
     // 调用注销接口
     const cancelData: CancelAccountRequest = {
-      password: password.value
+      password: cancelAccountPassword.value
     }
     await cancelAccount(cancelData)
 
@@ -540,11 +649,10 @@ const handleCancelAccount = async () => {
     localStorage.removeItem('token')
     window.location.href = '/'
   } catch (error) {
-    // 取消操作不提示错误
-    if (error !== 'cancel') {
-      console.error('注销账号失败:', error)
-      ElMessage.error('注销失败: ' + getErrorMessage(error))
-    }
+    console.error('注销账号失败:', error)
+    ElMessage.error('注销失败: ' + getErrorMessage(error))
+  } finally {
+    isCancellingAccount.value = false
   }
 }
 
@@ -555,99 +663,468 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.profile-container {
-  padding: 20px;
-  max-width: 1200px;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.modern-profile-page {
+  --bg-color: #f8f9fc;
+  --card-bg: #ffffff;
+  --text-primary: #1a1b25;
+  --text-secondary: #5e6c84;
+  --text-tertiary: #94a3b8;
+  --accent-color: #4f46e5;
+  --accent-gradient: linear-gradient(135deg, #4f46e5, #9333ea);
+  --danger-color: #ef4444;
+  --border-color: #e2e8f0;
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+  --card-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  min-height: auto;
+  padding: 40px 20px;
+  box-sizing: border-box;
+}
+
+/* --- Animations --- */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+@keyframes slideFadeBlurIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.page-header,
+.section-card {
+  animation: slideFadeBlurIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-play-state: paused;
+}
+
+.is-visible {
+  animation-play-state: running;
+}
+
+/* --- Header --- */
+.page-header {
+  max-width: 1000px;
+  margin: 0 auto 30px;
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 15px;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin: 0;
+  background: linear-gradient(to right, #1a1b25, #4f46e5);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.step-indicator {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-color);
+  background: #eef2ff;
+  padding: 4px 12px;
+  border-radius: 99px;
+}
+
+/* --- Content --- */
+.profile-content {
+  max-width: 1000px;
   margin: 0 auto;
 }
 
-.profile-header {
+.section-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: var(--card-shadow);
+  transition: all 0.3s ease;
+}
+
+.section-card:hover {
+  box-shadow: var(--card-hover-shadow);
+}
+
+/* --- Layout --- */
+.profile-layout {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  padding: 12px 0;
-  min-height: 50.5px;
-}
-
-.profile-header h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 1;
-  color: #1f2329;
-}
-
-.avatar-uploader {
-  border: 1px dashed var(--el-border-color);
-  border-radius: 6px;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition: var(--el-transition-duration-fast);
-  width: 150px;
-  height: 150px;
-}
-
-.avatar-uploader:hover {
-  border-color: var(--el-color-primary);
-}
-
-.avatar-uploader-icon {
-  font-size: 28px;
-  color: #8c939d;
-  width: 150px;
-  height: 150px;
-  line-height: 150px;
-  text-align: center;
-}
-
-.avatar {
-  display: block;
-  object-fit: cover;
-  max-width: 100%;
-  max-height: 100%;
-}
-
-/* 展示模式的头像容器，与编辑模式保持一致 */
-.avatar-wrapper {
-  border: 1px dashed var(--el-border-color);
-  border-radius: 6px;
-  overflow: hidden;
-  width: 150px;
-  height: 150px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #fafafa;
-}
-
-.avatar-display {
-  width: 100%;
-  height: 33vh; /* 占据竖向约三分之一 */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-/* 头像与信息区域之间的分割线 - 相对于头像容器定位 */
-.avatar-display::after {
-  content: '';
-  position: absolute;
-  right: -60px; /* 偏移到 el-col 的右边缘（gutter/2） */
-  top: 50%;
-  transform: translateY(-50%);
-  height: 200px; /* 约为头像高度(150px)的2/3 */
-  width: 1px;
-  background-color: var(--el-border-color);
-}
-
-.profile-row {
-  position: relative;
+  gap: 60px;
+  align-items: flex-start;
 }
 
 .avatar-section {
+  flex-shrink: 0;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.info-section {
+  flex: 1;
+  max-width: 600px;
+}
+
+/* --- Avatar --- */
+.avatar-wrapper {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid #fff;
+  box-shadow: 0 0 0 1px var(--border-color), 0 10px 20px rgba(0,0,0,0.05);
+  background-color: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
+  transition: all 0.3s ease;
+}
+
+.avatar-wrapper.upload-mode {
+  cursor: pointer;
+}
+
+.avatar-wrapper.upload-mode:hover {
+  box-shadow: 0 0 0 2px var(--accent-color), 0 10px 25px rgba(79, 70, 229, 0.15);
+}
+
+.avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-edit-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0;
+  transition: all 0.3s ease;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.avatar-wrapper.upload-mode:hover .avatar-mask {
+  opacity: 1;
+}
+
+.avatar-mask .el-icon {
+  font-size: 24px;
+}
+
+.avatar-placeholder-icon {
+  font-size: 40px;
+  color: var(--text-tertiary);
+}
+
+.avatar-uploader {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.upload-text {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.avatar-tip {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* --- Info Grid (View Mode) --- */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.info-item .label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-item .value {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  min-height: 24px;
+}
+
+/* --- Form (Edit Mode) --- */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 24px; /* 第一个值是行间距（上下），第二个是列间距（左右） */
+  margin-bottom: 10px;
+}
+
+.edit-form :deep(.el-form-item) {
+  margin-bottom: 12px; /* 减小每个表单项底部的外边距 */
+}
+
+.edit-form :deep(.el-form-item__label) {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding-bottom: 2px; /* 减小标签与输入框之间的间距 */
+}
+
+.edit-form :deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px var(--border-color) inset;
+  border-radius: 8px;
+  padding: 4px 12px; /* 减小上下内边距 */
+  height: 24px;      /* 直接设置较小的高度 */
+  transition: all 0.2s;
+}
+
+.edit-form :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px var(--accent-color) inset !important;
+}
+
+/* --- Actions --- */
+.action-bar {
+  display: flex;
+  gap: 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+  align-items: center;
+}
+
+/* Beam Effect for Save Button */
+.beam-container {
+  position: relative;
+  border-radius: 8px;
+  padding: 2px;
+  overflow: hidden;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.beam-border {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    transparent,
+    rgba(79, 70, 229, 0.3),
+    var(--accent-color),
+    rgba(79, 70, 229, 0.3),
+    transparent 30%
+  );
+  animation: rotateBeam 3s linear infinite;
+}
+
+@keyframes rotateBeam {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.beam-container.danger .beam-border {
+  background: conic-gradient(
+    transparent,
+    rgba(239, 68, 68, 0.3),
+    var(--danger-color),
+    rgba(239, 68, 68, 0.3),
+    transparent 30%
+  );
+}
+
+.primary-btn-beam {
+  position: relative;
+  background: var(--text-primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  height: 36px;
+  padding: 0 24px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.primary-btn-beam:hover {
+  background: #000;
+}
+
+.primary-btn-beam.danger {
+  background: var(--danger-color);
+}
+
+.primary-btn-beam.danger:hover {
+  background: #dc2626;
+}
+
+.primary-btn-beam:disabled {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.custom-btn {
+  height: 40px;
+  padding: 0 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s;
+  border: 1px solid var(--border-color);
+  background: #fff;
+  color: var(--text-primary);
+}
+
+.custom-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: var(--accent-color);
+}
+
+.custom-btn.primary {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #fff;
+}
+
+.custom-btn.primary:hover {
+  background: #4338ca;
+  border-color: #4338ca;
+}
+
+.custom-btn.danger {
+  color: var(--danger-color);
+  border-color: #fee2e2;
+  background: #fef2f2;
+}
+
+.custom-btn.danger:hover {
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+/* --- Dialog --- */
+.custom-dialog :deep(.el-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.custom-dialog :deep(.el-dialog__header) {
+  margin: 0;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.custom-dialog :deep(.el-dialog__body) {
+  padding: 24px;
+}
+
+.custom-dialog :deep(.el-dialog__footer) {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  background: #f8fafc;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .profile-layout {
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+  }
+
+  .info-section {
+    width: 100%;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-bar {
+    flex-wrap: wrap;
+  }
 }
 </style>
