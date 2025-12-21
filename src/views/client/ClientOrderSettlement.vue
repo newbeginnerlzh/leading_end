@@ -293,7 +293,7 @@ const items = computed<DirectPurchaseItem[]>(() => {
   }
   return cart.selectedItems.map((item: CartItem) => ({
     skuId: item.skuId,
-    id: item.productId,
+    id: item.id,
     name: item.name,
     imgUrl: item.imgUrl,
     price: item.price,
