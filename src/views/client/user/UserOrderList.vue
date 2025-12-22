@@ -73,7 +73,7 @@
             <span class="price-text">¥{{ (row.payAmount || row.totalAmount || 0).toFixed(2) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="110" fixed="right">
+        <el-table-column label="操作" width="110" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-group">
               <span class="action-link" @click="viewDetail(row.orderSn)">详情</span>
@@ -202,7 +202,7 @@ const currentPage = ref(Number(route.query.page) > 0 ? Number(route.query.page) 
 const pageSize = ref(Number(route.query.pageSize) > 0 ? Number(route.query.pageSize) : 7)
 const total = ref(0)
 
-const pageSizeOptions = [7, 10, 20, 50]
+const pageSizeOptions = [10, 20, 50]
 
 const filters = ref<{ status: number | null; dateRange: string[] | [] }>({ status: null, dateRange: [] })
 const overflowFlags = ref<Record<string, boolean>>({})
@@ -677,6 +677,7 @@ onMounted(load)
 .action-group {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
 }
 

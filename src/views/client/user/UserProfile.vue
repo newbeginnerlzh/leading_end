@@ -91,15 +91,15 @@
 
                 <div class="info-section">
                   <div class="form-grid">
-                    <el-form-item label="用户名" prop="username" v-scroll-reveal>
+                    <el-form-item label="用户名" prop="username">
                       <el-input v-model="editUserInfo.username" placeholder="请输入用户名"></el-input>
                     </el-form-item>
 
-                    <el-form-item label="手机号" prop="phone" v-scroll-reveal>
+                    <el-form-item label="手机号" prop="phone">
                       <el-input v-model="editUserInfo.phone" placeholder="请输入手机号"></el-input>
                     </el-form-item>
 
-                    <el-form-item label="性别" prop="gender" v-scroll-reveal>
+                    <el-form-item label="性别" prop="gender">
                       <el-radio-group v-model="editUserInfo.gender">
                         <el-radio label="男">男</el-radio>
                         <el-radio label="女">女</el-radio>
@@ -107,7 +107,7 @@
                       </el-radio-group>
                     </el-form-item>
 
-                    <el-form-item label="出生日期" prop="birthday" v-scroll-reveal>
+                    <el-form-item label="出生日期" prop="birthday">
                       <el-date-picker
                         v-model="editUserInfo.birthday"
                         type="date"
@@ -118,7 +118,7 @@
                       ></el-date-picker>
                     </el-form-item>
 
-                    <el-form-item label="邮箱" prop="email" v-scroll-reveal>
+                    <el-form-item label="邮箱" prop="email">
                       <el-input v-model="editUserInfo.email" placeholder="选填"></el-input>
                     </el-form-item>
                   </div>
@@ -713,8 +713,7 @@ onMounted(() => {
 
 .page-header,
 .section-card,
-.info-item,
-.edit-form :deep(.el-form-item) {
+.info-item {
   animation: slideFadeBlurIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   animation-play-state: paused;
 }
