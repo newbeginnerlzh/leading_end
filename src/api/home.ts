@@ -59,9 +59,9 @@ export interface HomeCategory {
 
 // 1. 模拟轮播图数据
 const mockBanners: BannerItem[] = [
-  { id: 1, imgUrl: 'https://p3.lefile.cn/fes/cms/2025/11/26/q9wa3g5jnkik6rl6gxjykhc0xvphbd164310.jpg' },
-  { id: 2, imgUrl: 'https://p1.lefile.cn/fes/cms/2025/11/25/whw61hnappz3x3k2n9rqbq8giucyd9076100.jpg' },
-  { id: 3, imgUrl: 'https://p4.lefile.cn/fes/cms/2025/12/04/pqvp2a8gia2eu549qaljn49e9hn0pt791216.jpg' }
+  { id: 1, imgUrl: 'https://p1.lefile.cn/fes/cms/2025/11/14/fqcf0ucoygm6564p5q2h2p3h2ri1l0795845.jpg' },
+  { id: 2, imgUrl: 'https://p1.lefile.cn/fes/cms/2025/12/08/amnrpzizrr95itmwgjjc8bbbvn4f2j126568.jpg' },
+  { id: 3, imgUrl: 'https://p4.lefile.cn/fes/cms/2025/11/26/clgl9znq9m6e8clobxpx0drrljj2ku877590.jpg' }
 ]
 
 // 2. 模拟分类/楼层配置数据 (ID 与你的数据库保持一致)

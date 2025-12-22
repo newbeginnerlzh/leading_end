@@ -48,7 +48,6 @@ const initData = async () => {
     bannerList.value = resBanners.data
 
     const dbCats = resCats.data
-    
     const seckillCat = { 
       id: 1, 
       name: '联想秒杀',
@@ -72,10 +71,9 @@ const initData = async () => {
   }
 }
 
-// --- 3. 获取真实商品数据 ---
+// --- 3. 获取商品数据 ---
 const fetchProductDataForFloors = async () => {
   const token = localStorage.getItem('token') || ''; 
-  
   const requests = floorList.value.map(async (floor) => {
     try {
       const res = await axios.get('/api/products', {
@@ -109,13 +107,10 @@ const fetchProductDataForFloors = async () => {
       console.error(`❌ 楼层 [${floor.name}] 商品加载失败`, err);
     }
   });
-
   await Promise.all(requests);
 }
 
-onMounted(() => {
-  initData()
-})
+onMounted(() => { initData() })
 
 const goToCategory = (id: number) => {
   router.push({ path: '/products', query: { category: id } })
@@ -132,33 +127,41 @@ const scrollToFloor = (id: number) => {
 <template>
   <div class="main-view">
     
-    <!-- 1. 顶部区域：盒式布局 -->
-    <div class="banner-box">
+    <!-- 
+      1. 全屏通栏轮播区 
+      banner-container 宽度 100%，高度固定，图片 cover 铺满
+    -->
+    <div class="banner-container">
       
-      <!-- 左侧：固定菜单栏 -->
-      <div class="category-sidebar">
-        <div class="sidebar-header">全部分类</div>
-        <ul class="category-list">
-          <li v-for="cat in categoryList" :key="cat.id" class="category-item" @click="scrollToFloor(cat.id)">
-            <span class="cat-name">{{ cat.name }}</span>
-            <el-icon class="arrow-icon"><ArrowRight /></el-icon>
-          </li>
-        </ul>
-      </div>
+      <!-- 底层：轮播图 (占满全屏) -->
+      <el-carousel trigger="click" height="480px" :interval="5000" arrow="hover" class="full-width-carousel">
+        <el-carousel-item v-for="(item, index) in bannerList" :key="index">
+          <!-- 
+            object-fit: cover -> 保证图片铺满全屏，多余部分裁切，不留白
+            object-position: center top -> 保证图片顶部（通常是人脸）不被裁切
+           -->
+          <img :src="item.imgUrl" alt="banner" class="banner-img" />
+        </el-carousel-item>
+      </el-carousel>
 
-      <!-- 右侧：轮播图区域 -->
-      <div class="carousel-area">
-        <el-carousel trigger="click" height="480px" :interval="5000" arrow="hover">
-          <el-carousel-item v-for="(item, index) in bannerList" :key="index">
-            <!-- 使用 fill 强制填满，或者 cover -->
-            <img :src="item.imgUrl" alt="banner" class="banner-img" />
-          </el-carousel-item>
-        </el-carousel>
+      <!-- 
+        顶层：居中内容限制层 
+        宽度限制为 1240px，绝对定位覆盖在轮播图上方，用于定位菜单
+      -->
+      <div class="banner-content-wrapper">
+        <div class="category-sidebar">
+          <ul class="category-list">
+            <li v-for="cat in categoryList" :key="cat.id" class="category-item" @click="scrollToFloor(cat.id)">
+              <span class="cat-name">{{ cat.name }}</span>
+              <el-icon class="arrow-icon"><ArrowRight /></el-icon>
+            </li>
+          </ul>
+        </div>
       </div>
 
     </div>
 
-    <!-- 2. 商品楼层 -->
+    <!-- 2. 商品楼层 (宽度也是 1240px，与上方菜单左对齐) -->
     <div class="floor-container">
       <div v-for="floor in floorList" :key="floor.id" :id="`floor-${floor.id}`" class="floor-section">
         <div class="floor-aside" :style="{ background: floor.themeColor }" @click="goToCategory(floor.id)">
@@ -183,50 +186,59 @@ const scrollToFloor = (id: number) => {
 <style scoped>
 .main-view { width: 100%; padding: 0; background-color: #f4f4f4; padding-bottom: 40px; }
 
-/* --- 顶部盒式容器 --- */
-.banner-box {
-  width: 1240px; /* 固定宽度 */
-  height: 480px;
-  margin: 20px auto; /* 居中 */
-  display: flex; /* 左右布局 */
-  
-  /* 🔴 核心美化：边框、圆角、阴影 */
-  background-color: #fff;
-  border: 1px solid #e5e5e5;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-  overflow: hidden; /* 保证子元素不溢出圆角 */
+/* --- 1. 全屏轮播容器 --- */
+.banner-container {
+  position: relative;
+  width: 100%; /* 关键：占满浏览器宽度 */
+  height: 480px; /* 固定高度，根据图片比例调整 */
+  background-color: #000;
+  margin-bottom: 30px;
 }
 
-/* 1. 左侧菜单 */
+.full-width-carousel {
+  width: 100%;
+  height: 100%;
+}
+
+.banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* 铺满不留白 */
+  object-position: center top; /* 重点显示中上方内容 */
+  display: block;
+}
+
+/* --- 2. 居中限制层 (为了定位菜单) --- */
+.banner-content-wrapper {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%); /* 绝对居中 */
+  width: 100%;
+  max-width: 1240px; /* 限制宽度，与下方楼层对齐 */
+  height: 100%;
+  z-index: 10;
+  pointer-events: none; /* 让点击穿透空白区域，否则点不到轮播图 */
+}
+
+/* --- 侧边栏菜单 --- */
 .category-sidebar {
   width: 240px;
   height: 100%;
-  background-color: #fff; /* 纯白背景 */
-  border-right: 1px solid #f0f0f0; /* 右侧分割线 */
-  display: flex;
-  flex-direction: column;
-  z-index: 2;
-}
-
-.sidebar-header {
-  height: 50px;
-  line-height: 50px;
-  padding-left: 24px;
-  font-size: 16px;
-  font-weight: bold;
-  color: #333;
-  border-bottom: 1px solid #f5f5f5;
-  background-color: #fafafa;
+  /* 模仿截图的透明白色背景 */
+  background: rgba(255, 255, 255, 0.85); 
+  backdrop-filter: blur(10px);
+  pointer-events: auto; /* 恢复菜单点击 */
+  padding: 15px 0;
 }
 
 .category-list { 
-  flex: 1;
   list-style: none; 
   padding: 0; 
   margin: 0; 
   display: flex; 
   flex-direction: column; 
+  height: 100%; 
 }
 
 .category-item { 
@@ -234,46 +246,29 @@ const scrollToFloor = (id: number) => {
   display: flex; 
   align-items: center; 
   justify-content: space-between; 
-  padding: 0 24px; 
+  padding: 0 30px; 
   cursor: pointer; 
   transition: all 0.2s;
-  color: #555; 
-  border-left: 3px solid transparent; 
+  color: #333; 
+  font-size: 15px;
+  font-weight: 500;
 }
 
 .category-item:hover { 
-  background-color: #f2f7fd; /* 浅蓝悬停色 */
+  background-color: #fff;
   color: var(--el-color-primary); 
-  border-left-color: var(--el-color-primary); /* 左侧亮条 */
-  padding-left: 28px; /* 轻微位移 */
+  padding-left: 38px; 
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05); /* 悬停时加点阴影 */
 }
 
-.cat-name { font-size: 15px; font-weight: 500; }
-.arrow-icon { font-size: 14px; color: #ccc; }
-.category-item:hover .arrow-icon { color: var(--el-color-primary); }
+.cat-name { letter-spacing: 1px; }
+.arrow-icon { font-size: 14px; opacity: 0.5; }
 
-/* 2. 右侧轮播图 */
-.carousel-area {
-  flex: 1; /* 占满剩余空间 */
-  height: 100%;
-  background-color: #f9f9f9;
-}
-
-.banner-img { 
-  width: 100%; 
-  height: 100%; 
-  /* 
-    object-fit: fill; -> 强制拉伸填满，适合尺寸不一但需要对齐的情况
-    object-fit: cover; -> 裁剪填满
-  */
-  object-fit: fill; 
-  display: block;
-}
-
-/* 轮播指示器 */
-:deep(.el-carousel__indicators--horizontal) { bottom: 15px; left: 50%; transform: translateX(-50%); }
-:deep(.el-carousel__indicator--horizontal .el-carousel__button) { width: 8px; height: 8px; border-radius: 50%; background-color: rgba(255,255,255,0.6); margin: 0 4px; }
-:deep(.el-carousel__indicator--horizontal.is-active .el-carousel__button) { background-color: #fff; width: 20px; border-radius: 4px; }
+/* 轮播指示器 (居中显示) */
+:deep(.el-carousel__indicators--horizontal) { bottom: 20px; left: 50%; transform: translateX(-50%); }
+:deep(.el-carousel__indicator--horizontal .el-carousel__button) { width: 10px; height: 10px; border-radius: 50%; background-color: rgba(0, 0, 0, 0.2); }
+:deep(.el-carousel__indicator--horizontal.is-active .el-carousel__button) { background-color: var(--el-color-primary); width: 25px; border-radius: 5px; opacity: 1;}
 
 /* --- 楼层样式 (保持不变) --- */
 .floor-container { max-width: 1240px; margin: 0 auto; padding: 0 20px; display: flex; flex-direction: column; gap: 30px; }
