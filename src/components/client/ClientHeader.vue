@@ -73,7 +73,13 @@
     </div>
 
     <!-- 悬浮客服按钮 -->
-    <div class="floating-service-btn" @click="goService" title="联系客服">
+    <div
+      class="floating-service-btn"
+      :style="{ left: pos.x + 'px', top: pos.y + 'px', bottom: 'auto', right: 'auto' }"
+      @mousedown="handleMouseDown"
+      @click="handleServiceClick"
+      title="联系客服"
+    >
       <el-icon size="24"><Headset /></el-icon>
       <span class="btn-text">客服</span>
     </div>
@@ -92,6 +98,69 @@ const cartStore = useCartStore()
 const keyword = ref('')
 const isLogin = ref(false)
 const username = ref('')
+
+// 悬浮按钮拖拽逻辑
+const pos = ref({ x: 0, y: 0 })
+const startPos = ref({ x: 0, y: 0 })
+let isMoved = false
+
+const handleMouseDown = (e: MouseEvent) => {
+  isMoved = false
+  startPos.value = { x: e.clientX, y: e.clientY }
+  const initialX = pos.value.x
+  const initialY = pos.value.y
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    const dx = moveEvent.clientX - startPos.value.x
+    const dy = moveEvent.clientY - startPos.value.y
+
+    // 如果移动距离超过 3 像素，则认为是拖拽而非点击
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      isMoved = true
+    }
+
+    let newX = initialX + dx
+    let newY = initialY + dy
+
+    // 边界检查（按钮宽高为 60px）
+    const maxX = window.innerWidth - 60
+    const maxY = window.innerHeight - 60
+    newX = Math.max(0, Math.min(newX, maxX))
+    newY = Math.max(0, Math.min(newY, maxY))
+
+    pos.value = { x: newX, y: newY }
+  }
+
+  const onMouseUp = () => {
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+  }
+
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
+
+const handleServiceClick = () => {
+  if (!isMoved) {
+    goService()
+  }
+}
+
+const initPosition = () => {
+  // 初始位置：右下角留出 50px 边距
+  pos.value = {
+    x: window.innerWidth - 110,
+    y: window.innerHeight - 110,
+  }
+}
+
+const clampPosition = () => {
+  // 窗口缩放时，确保按钮仍在可视区域内
+  const maxX = window.innerWidth - 60
+  const maxY = window.innerHeight - 60
+  pos.value.x = Math.max(0, Math.min(pos.value.x, maxX))
+  pos.value.y = Math.max(0, Math.min(pos.value.y, maxY))
+}
 
 const goHome = () => router.push('/')
 const goLogin = (type: 'login' | 'register') => router.push({ path: '/login', query: { type } })
@@ -151,15 +220,19 @@ const updateUsernameFromStorage = () => {
 }
 
 onMounted(() => {
+  initPosition()
   updateUsernameFromStorage()
   window.addEventListener('storage', updateUsernameFromStorage)
   // 监听同一标签页内的用户信息更新事件
   window.addEventListener('userInfoUpdated', updateUsernameFromStorage)
+  // 监听窗口大小变化，防止按钮超出边界
+  window.addEventListener('resize', clampPosition)
 })
 
 onUnmounted(() => {
   window.removeEventListener('storage', updateUsernameFromStorage)
   window.removeEventListener('userInfoUpdated', updateUsernameFromStorage)
+  window.removeEventListener('resize', clampPosition)
 })
 </script>
 
@@ -314,8 +387,6 @@ onUnmounted(() => {
 /* 悬浮按钮 */
 .floating-service-btn {
   position: fixed;
-  bottom: 50px;
-  right: 50px;
   width: 60px;
   height: 60px;
   background: linear-gradient(135deg, #409eff, #337ecc);
@@ -326,9 +397,10 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   color: #fff;
-  cursor: pointer;
+  cursor: move;
   z-index: 9999;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
+  user-select: none;
 }
 
 .floating-service-btn:hover {
