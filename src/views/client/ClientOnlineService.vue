@@ -12,7 +12,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="faq-section">
           <h4>常见问题</h4>
           <ul class="faq-list">
@@ -21,7 +21,7 @@
             </li>
           </ul>
         </div>
-        
+
         <div class="sidebar-footer">
           <p>服务时间：9:00 - 22:00</p>
           <p>客服热线：400-888-8888</p>
@@ -44,21 +44,21 @@
         <!-- 消息列表区域 -->
         <div class="message-list" ref="messageListRef">
           <div class="time-stamp">今天 {{ currentTime }}</div>
-          
-          <div 
-            v-for="(msg, index) in messages" 
-            :key="index" 
+
+          <div
+            v-for="(msg, index) in messages"
+            :key="index"
             class="message-row"
             :class="{ 'message-mine': msg.role === 'user', 'message-admin': msg.role === 'admin' }"
           >
             <!-- 客服头像 (左侧) -->
-            <el-avatar 
-              v-if="msg.role === 'admin'" 
-              :size="36" 
-              src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" 
-              class="msg-avatar" 
+            <el-avatar
+              v-if="msg.role === 'admin'"
+              :size="36"
+              src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png"
+              class="msg-avatar"
             />
-            
+
             <!-- 消息气泡 -->
             <div class="bubble-wrapper">
               <div class="bubble">
@@ -67,11 +67,11 @@
             </div>
 
             <!-- 用户头像 (右侧) -->
-            <el-avatar 
-              v-if="msg.role === 'user'" 
-              :size="36" 
-              src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png" 
-              class="msg-avatar" 
+            <el-avatar
+              v-if="msg.role === 'user'"
+              :size="36"
+              src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png"
+              class="msg-avatar"
             />
           </div>
         </div>
@@ -86,7 +86,7 @@
               <el-icon class="tool-icon"><Orange /></el-icon>
             </el-tooltip>
           </div>
-          
+
           <el-input
             v-model="inputContent"
             type="textarea"
@@ -96,7 +96,7 @@
             class="msg-input"
             @keydown.enter.prevent="handleSend"
           />
-          
+
           <div class="send-action">
             <span class="tip">按 Enter 发送</span>
             <el-button type="primary" @click="handleSend" :disabled="!inputContent.trim()">发送</el-button>
@@ -125,10 +125,10 @@ interface Message {
 
 // 模拟聊天记录
 const messages = ref<Message[]>([
-  { 
-    role: 'admin', 
-    content: '您好，我是联想官方客服小联，请问有什么可以帮您？', 
-    time: dayjs().format('HH:mm') 
+  {
+    role: 'admin',
+    content: '您好，我是联想官方客服小联，请问有什么可以帮您？',
+    time: dayjs().format('HH:mm')
   }
 ])
 
@@ -161,7 +161,7 @@ const handleSend = () => {
     content: text,
     time: dayjs().format('HH:mm')
   })
-  
+
   inputContent.value = ''
   scrollToBottom()
 
@@ -189,18 +189,21 @@ onMounted(() => {
 
 <style scoped>
 .service-page {
-  width: 100%;
-  min-height: calc(100vh - 64px); /* 减去 Header 高度 */
+  width: auto; /* 改为 auto 尝试解决宽度异常 */
+  height: calc(100vh - 64px); /* 固定高度为视口高度减去头部，确保一页显示 */
   background-color: #f0f2f5;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 40px;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .chat-container {
-  width: 1000px;
-  height: 700px;
+  width: 100%;
+  max-width: 1000px;
+  height: 100%;
+  max-height: 800px; /* 限制最大高度 */
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
@@ -218,13 +221,13 @@ onMounted(() => {
 }
 
 .agent-card {
-  padding: 30px 20px;
+  padding: 20px; /* 减小高度 */
   text-align: center;
   border-bottom: 1px solid #eee;
 }
 
 .agent-info h3 {
-  margin: 15px 0 5px;
+  margin: 10px 0 5px; /* 减小间距 */
   font-size: 16px;
   color: #333;
 }
@@ -248,12 +251,12 @@ onMounted(() => {
 
 .faq-section {
   flex: 1;
-  padding: 20px;
+  padding: 15px; /* 减小内边距 */
   overflow-y: auto;
 }
 
 .faq-section h4 {
-  margin-bottom: 15px;
+  margin-bottom: 10px;
   font-size: 14px;
   color: #999;
 }
@@ -264,9 +267,9 @@ onMounted(() => {
 }
 
 .faq-list li {
-  padding: 10px 15px;
+  padding: 8px 12px; /* 减小内边距 */
   background: #fff;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   border-radius: 8px;
   font-size: 13px;
   color: #666;
@@ -282,7 +285,7 @@ onMounted(() => {
 }
 
 .sidebar-footer {
-  padding: 20px;
+  padding: 15px; /* 减小内边距 */
   text-align: center;
   font-size: 12px;
   color: #999;
@@ -295,10 +298,11 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background: #fff;
+  min-width: 0; /* 防止内容撑开 */
 }
 
 .chat-header {
-  height: 60px;
+  height: 50px; /* 减小头部高度 */
   padding: 0 20px;
   border-bottom: 1px solid #eee;
   display: flex;
@@ -350,7 +354,7 @@ onMounted(() => {
 }
 
 .bubble {
-  padding: 12px 16px;
+  padding: 10px 14px; /* 减小气泡内边距 */
   border-radius: 12px;
   font-size: 14px;
   line-height: 1.5;
@@ -373,7 +377,7 @@ onMounted(() => {
 
 /* --- 底部输入区 --- */
 .chat-input-area {
-  height: 160px;
+  height: 140px; /* 减小输入区高度 */
   border-top: 1px solid #eee;
   padding: 10px 20px;
   display: flex;
