@@ -7,7 +7,29 @@
       <span class="step-indicator">确认订单</span>
     </div>
 
-    <div class="settlement-container">
+    <div class="settlement-container loading-state" v-if="pageLoading">
+      <div class="loading-overlay">
+        <div class="loading-badge">
+          <el-icon class="is-loading"><Loading /></el-icon>
+          <span>正在加载订单信息...</span>
+        </div>
+      </div>
+      <div class="main-content">
+        <div class="section-card">
+          <el-skeleton :rows="3" animated />
+        </div>
+        <div class="section-card">
+          <el-skeleton :rows="5" animated />
+        </div>
+      </div>
+      <div class="sidebar-content">
+        <div class="section-card">
+          <el-skeleton :rows="8" animated />
+        </div>
+      </div>
+    </div>
+
+    <div class="settlement-container" v-else>
       <!-- Left Column: Address & Items -->
       <div class="main-content">
         <!-- Address Section -->
@@ -243,6 +265,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Loading } from '@element-plus/icons-vue'
 import { createOrdersFromCart, buyNowOrder } from '@/api/order'
 import type { AddressInfo } from '@/api/model/userModel'
 import { getAddressList, addAddress } from '@/api/user'
@@ -261,7 +284,7 @@ const vScrollReveal = {
           }
         })
       },
-      { threshold: 0.1 },
+      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' },
     )
     observer.observe(el)
   },
@@ -694,6 +717,7 @@ const route = useRoute()
 
 type CheckoutMode = 'direct' | 'cart'
 const checkoutMode = ref<CheckoutMode>('cart')
+const pageLoading = ref(true)
 
 onMounted(async () => {
   try {
@@ -758,6 +782,11 @@ onMounted(async () => {
     }
   } catch {
     // ignore
+  } finally {
+    // 延迟关闭 Loading，确保数据渲染就绪，避免动画闪烁
+    setTimeout(() => {
+      pageLoading.value = false
+    }, 400)
   }
 })
 
@@ -923,6 +952,8 @@ async function createOrder() {
           cartItemIds,
           buyerRemark: buyerRemark.value || null,
         })
+        const cartStore = useCartStore()
+        cartStore.getCloudCart()
       } catch (err) {
         ElMessage.error('创建购物车订单失败：' + (err as Error).message)
         return
@@ -967,7 +998,7 @@ async function createOrder() {
   0% {
     opacity: 0;
     transform: translateY(20px);
-    filter: blur(5px);
+    filter: blur(10px);
   }
   100% {
     opacity: 1;
@@ -977,10 +1008,34 @@ async function createOrder() {
 }
 
 .page-header,
-.section-card {
+.section-card,
+.settlement-item,
+.summary-row,
+.summary-total,
+.payment-method,
+.remark-section,
+.action-area {
   animation: slideFadeBlurIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   animation-play-state: paused;
 }
+
+/* 当卡片可见时，内部元素开始播放 */
+.section-card.is-visible .settlement-item,
+.section-card.is-visible .summary-row,
+.section-card.is-visible .summary-total,
+.section-card.is-visible .payment-method,
+.section-card.is-visible .remark-section,
+.section-card.is-visible .action-area {
+  animation-play-state: running;
+}
+
+/* 摘要栏延迟 */
+.summary-row:nth-child(2) { animation-delay: 0.1s; } /* h3 is first child? No, h3 is sibling */
+.summary-row:nth-child(3) { animation-delay: 0.15s; }
+.summary-total { animation-delay: 0.2s; }
+.payment-method { animation-delay: 0.25s; }
+.remark-section { animation-delay: 0.3s; }
+.action-area { animation-delay: 0.35s; }
 
 .is-visible {
   animation-play-state: running;
@@ -1465,5 +1520,40 @@ async function createOrder() {
 .addr-detail {
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+/* Loading State */
+.loading-state {
+  position: relative;
+  min-height: 400px;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(2px);
+  border-radius: 16px;
+}
+
+.loading-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #fff;
+  border-radius: 99px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  font-weight: 600;
+  color: var(--accent-color);
+  font-size: 14px;
+  border: 1px solid rgba(79, 70, 229, 0.1);
 }
 </style>

@@ -1,43 +1,53 @@
 <!-- 订单列表：从 mock storage 读取并展示 -->
 <template>
-  <div class="order-container">
-    <div class="order-header">
-      <h2>我的订单</h2>
+  <div class="modern-order-page">
+    <div class="page-header" v-scroll-reveal>
+      <h1 class="page-title">我的订单</h1>
+      <span class="step-indicator">{{ total }} 笔订单</span>
     </div>
 
-    <el-card>
-      <el-form inline style="margin-bottom:12px" :model="filters" label-width="60px" size="small">
-        <el-form-item label="状态">
-          <el-select v-model="filters.status" placeholder="全部" clearable style="width:100px" @change="onFilterChange">
-            <el-option v-for="opt in statusOptions" :key="opt.value ?? 'all'" :label="opt.label" :value="opt.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="日期">
-          <el-date-picker
-            v-model="filters.dateRange"
-            type="daterange"
-            range-separator="-"
-            start-placeholder="开始"
-            end-placeholder="结束"
-            value-format="YYYY-MM-DD"
-            style="width:220px"
-            @change="onFilterChange"
-          />
-        </el-form-item>
-        <el-form-item label-width="0">
-          <el-button type="primary" @click="applyFilters">筛选</el-button>
-          <el-button @click="resetFilters">重置</el-button>
-        </el-form-item>
-        <el-form-item label="每页" style="margin-left:12px">
-          <el-select v-model="pageSize" size="small" style="width:80px" @change="onPageSizeChange">
-            <el-option v-for="size in pageSizeOptions" :key="size" :label="`${size} 条`" :value="size" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <el-table :data="orders" class="order-table" style="width:100%" size="small">
-        <el-table-column prop="orderSn" label="订单号" width="150" />
-        <el-table-column prop="createdAt" label="创建时间" width="160" />
-        <el-table-column label="商品" min-width="220">
+    <div class="section-card" v-scroll-reveal>
+      <!-- Filters -->
+      <div class="filter-bar" v-scroll-reveal>
+        <div class="filter-left">
+          <div class="filter-group">
+            <span class="filter-label">状态</span>
+            <el-select v-model="filters.status" placeholder="全部" clearable class="filter-select" @change="onFilterChange">
+              <el-option v-for="opt in statusOptions" :key="opt.value ?? 'all'" :label="opt.label" :value="opt.value" />
+            </el-select>
+          </div>
+
+          <div class="filter-group">
+            <span class="filter-label">日期</span>
+            <el-date-picker
+              v-model="filters.dateRange"
+              type="daterange"
+              range-separator="-"
+              start-placeholder="开始"
+              end-placeholder="结束"
+              value-format="YYYY-MM-DD"
+              class="filter-date"
+              @change="onFilterChange"
+            />
+          </div>
+        </div>
+
+        <div class="filter-actions">
+          <button class="custom-btn primary" @click="applyFilters">筛选</button>
+          <button class="custom-btn" @click="resetFilters">重置</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <el-table
+        :data="orders"
+        class="modern-table"
+        style="width:100%"
+        :header-cell-style="{ background: '#f8fafc', color: '#64748b', fontWeight: '600', height: '50px' }"
+      >
+        <el-table-column prop="orderSn" label="订单号" width="170" />
+        <el-table-column prop="createdAt" label="创建时间" width="170" />
+        <el-table-column label="商品" min-width="250">
           <template #default="{ row }">
             <div class="cell-ellipsis">
               <span class="cell-text" :ref="(el) => setPreviewTextEl(row.orderSn, el as HTMLElement | null)">{{ formatPreview(row.previewItems) }}</span>
@@ -53,54 +63,53 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="statusText" label="状态" width="70">
+        <el-table-column prop="statusText" label="状态" width="80">
           <template #default="{ row }">
-            <span class="status-tag" :class="statusClass(row.statusText)">{{ row.statusText }}</span>
+            <span class="status-badge" :class="statusClass(row.statusText)">{{ row.statusText }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="payAmount" label="实付(¥)" width="90">
-          <template #default="{ row }">{{ (row.payAmount || row.totalAmount || 0).toFixed(2) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="160">
+        <el-table-column prop="payAmount" label="实付" width="100">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="viewDetail(row.orderSn)">查看详情</el-button>
-            <el-dropdown
-              trigger="click"
-              style="margin-left:8px"
-              @command="onMoreCommand($event, row)"
-            >
-              <el-button type="success" size="small" :disabled="availableMoreActions(row).length === 0">
-                更多
-                <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item
-                    v-for="act in availableMoreActions(row)"
-                    :key="act.command"
-                    :command="act.command"
-                  >
-                    {{ act.label }}
-                  </el-dropdown-item>
-                  <el-dropdown-item v-if="availableMoreActions(row).length === 0" disabled>暂无可用操作</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+            <span class="price-text">¥{{ (row.payAmount || row.totalAmount || 0).toFixed(2) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="110" fixed="right">
+          <template #default="{ row }">
+            <div class="action-group">
+              <span class="action-link" @click="viewDetail(row.orderSn)">详情</span>
+              <el-dropdown
+                trigger="click"
+                @command="onMoreCommand($event, row)"
+              >
+                <span class="action-link more-link" :class="{ disabled: availableMoreActions(row).length === 0 }">
+                  更多 <el-icon><ArrowDown /></el-icon>
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item
+                      v-for="act in availableMoreActions(row)"
+                      :key="act.command"
+                      :command="act.command"
+                    >
+                      {{ act.label }}
+                    </el-dropdown-item>
+                    <el-dropdown-item v-if="availableMoreActions(row).length === 0" disabled>暂无可用操作</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </template>
         </el-table-column>
       </el-table>
-      <el-dialog v-model="refundDialogVisible" title="申请退款" width="420px" :close-on-click-modal="false">
-        <el-form label-width="80px">
-          <el-form-item label="退款理由">
-            <el-input v-model="refundReason" type="textarea" :rows="3" placeholder="请填写退款理由" />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <el-button @click="refundDialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="refunding" @click="submitRefund">确定</el-button>
-        </template>
-      </el-dialog>
-      <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+
+      <!-- Pagination -->
+      <div class="pagination-bar">
+        <div class="page-size-selector">
+          <span>每页</span>
+          <el-select v-model="pageSize" size="small" style="width:80px" @change="onPageSizeChange">
+            <el-option v-for="size in pageSizeOptions" :key="size" :label="`${size} 条`" :value="size" />
+          </el-select>
+        </div>
         <el-pagination
           background
           layout="prev, pager, next"
@@ -110,7 +119,24 @@
           @current-change="onPageChange"
         />
       </div>
-    </el-card>
+    </div>
+
+    <!-- Refund Dialog -->
+    <el-dialog v-model="refundDialogVisible" title="申请退款" width="420px" :close-on-click-modal="false" class="custom-dialog">
+      <el-form label-width="80px" class="modern-form">
+        <el-form-item label="退款理由">
+          <el-input v-model="refundReason" type="textarea" :rows="3" placeholder="请填写退款理由" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <button class="custom-btn" @click="refundDialogVisible = false">取消</button>
+          <button class="custom-btn primary" :disabled="refunding" @click="submitRefund">
+            {{ refunding ? '提交中...' : '确定' }}
+          </button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -123,6 +149,25 @@ import type { OrderListItem, OrderPreviewItem } from '@/api/order'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 type OrderListView = OrderListItem & { statusText: string }
+
+// Scroll Reveal Directive
+const vScrollReveal = {
+  mounted: (el: HTMLElement) => {
+    el.classList.add('reveal-item')
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            el.classList.add('is-visible')
+            observer.unobserve(el)
+          }
+        })
+      },
+      { threshold: 0.1, rootMargin: '50px' }
+    )
+    observer.observe(el)
+  },
+}
 
 const statusOptions = [
   { label: '全部', value: null },
@@ -365,47 +410,360 @@ onMounted(load)
 </script>
 
 <style scoped>
-.order-container {
-  padding: 20px;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.modern-order-page {
+  --bg-color: #f8f9fc;
+  --card-bg: #ffffff;
+  --text-primary: #1a1b25;
+  --text-secondary: #5e6c84;
+  --text-tertiary: #94a3b8;
+  --accent-color: #4f46e5;
+  --accent-gradient: linear-gradient(135deg, #4f46e5, #9333ea);
+  --danger-color: #ef4444;
+  --border-color: #e2e8f0;
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+  --card-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  min-height: auto;
+  padding: 40px 20px;
+  box-sizing: border-box;
+}
+
+/* --- Animations --- */
+@keyframes slideFadeBlurIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.page-header,
+.section-card,
+.filter-bar {
+  animation: slideFadeBlurIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-play-state: paused;
+}
+
+/* 表格行交错动画 */
+.modern-table :deep(.el-table__row) {
+  animation: slideFadeBlurIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-play-state: paused;
+}
+
+/* 当卡片可见时，表格行开始播放 */
+.section-card.is-visible .modern-table :deep(.el-table__row) {
+  animation-play-state: running;
+}
+
+/* 延迟 */
+.modern-table :deep(.el-table__row:nth-child(1)) { animation-delay: 0.1s; }
+.modern-table :deep(.el-table__row:nth-child(2)) { animation-delay: 0.15s; }
+.modern-table :deep(.el-table__row:nth-child(3)) { animation-delay: 0.2s; }
+.modern-table :deep(.el-table__row:nth-child(4)) { animation-delay: 0.25s; }
+.modern-table :deep(.el-table__row:nth-child(5)) { animation-delay: 0.3s; }
+.modern-table :deep(.el-table__row:nth-child(6)) { animation-delay: 0.35s; }
+.modern-table :deep(.el-table__row:nth-child(7)) { animation-delay: 0.4s; }
+.modern-table :deep(.el-table__row:nth-child(n+8)) { animation-delay: 0.45s; }
+
+.is-visible {
+  animation-play-state: running;
+}
+
+/* --- Header --- */
+.page-header {
+  max-width: 1200px;
+  margin: 0 auto 30px;
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 15px;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin: 0;
+  background: linear-gradient(to right, #1a1b25, #4f46e5);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.step-indicator {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-color);
+  background: #eef2ff;
+  padding: 4px 12px;
+  border-radius: 99px;
+}
+
+/* --- Card --- */
+.section-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--card-shadow);
+  transition: all 0.3s ease;
   max-width: 1200px;
   margin: 0 auto;
 }
 
-.order-header {
+.section-card:hover {
+  box-shadow: var(--card-hover-shadow);
+}
+
+/* --- Filters --- */
+.filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.filter-left {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.filter-group {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  padding: 12px 0;
-  min-height: 50.5px;
+  gap: 10px;
 }
 
-.order-header h2 {
-  margin: 0;
-  font-size: 24px;
+.filter-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.filter-select {
+  width: 120px;
+}
+
+.filter-date {
+  width: 240px;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* --- Table --- */
+.modern-table {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+:deep(.modern-table .el-table__row) {
+  height: 64px;
+}
+
+:deep(.modern-table .el-table__cell) {
+  font-size: 14px;
+}
+
+.cell-ellipsis {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.cell-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: clip;
+  color: var(--text-primary);
+}
+
+.blue-ellipsis {
+  color: var(--accent-color) !important;
+  cursor: pointer;
+  padding-left: 4px;
+  flex-shrink: 0;
+}
+
+.price-text {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1;
-  color: #1f2329;
 }
 
-/* 固定行高 + 放大字体 */
-:deep(.order-table .el-table__row) { height: 56px; }
-:deep(.order-table .el-table__cell) { font-size: 14px; }
+.st-pending { background: #fff7ed; color: #c2410c; }
+.st-shipping { background: #eff6ff; color: #1d4ed8; }
+.st-receiving { background: #f0fdf4; color: #15803d; }
+.st-success { background: #f0fdf4; color: #15803d; }
+.st-cancel { background: #f1f5f9; color: #64748b; }
+.st-refund { background: #fff7ed; color: #c2410c; }
+.st-refund-success { background: #f0fdf4; color: #15803d; }
+.st-refund-fail { background: #fef2f2; color: #b91c1c; }
+.st-default { background: #f1f5f9; color: #64748b; }
 
-.cell-ellipsis { display: flex; align-items: center; white-space: nowrap; overflow: hidden; }
-.cell-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: clip; }
-.blue-ellipsis { color: #1677ff !important; cursor: pointer; padding-left: 4px; flex-shrink: 0; }
+/* Actions */
+.action-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 
-.status-tag { font-weight: 600; }
-.st-pending { color: #e6a23c; }
-.st-shipping { color: #409eff; }
-.st-receiving { color: #67c23a; }
-.st-success { color: #2e7d32; }
-.st-cancel { color: #909399; }
-.st-refund { color: #e6a23c; }
-.st-refund-success { color: #67c23a; }
-.st-refund-fail { color: #f56c6c; }
-.st-default { color: #606266; }
+.action-link {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent-color);
+  cursor: pointer;
+  transition: color 0.2s;
+}
 
+.action-link:hover {
+  color: #4338ca;
+  text-decoration: underline;
+}
 
+.more-link {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.more-link.disabled {
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+/* --- Pagination --- */
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.page-size-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* --- Buttons --- */
+.custom-btn {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: #fff;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.custom-btn.primary {
+  background: var(--accent-color);
+  border-color: transparent;
+  color: #fff;
+}
+
+.custom-btn.primary:hover {
+  background: #4338ca;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.custom-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --- Dialog --- */
+.custom-dialog :deep(.el-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.custom-dialog :deep(.el-dialog__header) {
+  margin: 0;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.custom-dialog :deep(.el-dialog__body) {
+  padding: 24px;
+}
+
+.custom-dialog :deep(.el-dialog__footer) {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  background: #f8fafc;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Form Styles */
+.modern-form :deep(.el-form-item__label) {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.modern-form :deep(.el-input__wrapper),
+.modern-form :deep(.el-textarea__inner) {
+  box-shadow: 0 0 0 1px var(--border-color) inset;
+  border-radius: 8px;
+  padding: 8px 12px;
+  transition: all 0.2s;
+}
+
+.modern-form :deep(.el-input__wrapper.is-focus),
+.modern-form :deep(.el-textarea__inner:focus) {
+  box-shadow: 0 0 0 2px var(--accent-color) inset !important;
+}
 </style>
