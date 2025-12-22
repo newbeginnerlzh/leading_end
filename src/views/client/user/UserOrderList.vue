@@ -35,9 +35,9 @@
         </el-form-item>
       </el-form>
       <el-table :data="orders" class="order-table" style="width:100%" size="small">
-        <el-table-column prop="orderSn" label="订单号" width="160" />
-        <el-table-column prop="createdAt" label="创建时间" width="180" />
-        <el-table-column label="商品" min-width="200">
+        <el-table-column prop="orderSn" label="订单号" width="150" />
+        <el-table-column prop="createdAt" label="创建时间" width="160" />
+        <el-table-column label="商品" min-width="220">
           <template #default="{ row }">
             <div class="cell-ellipsis">
               <span class="cell-text" :ref="(el) => setPreviewTextEl(row.orderSn, el as HTMLElement | null)">{{ formatPreview(row.previewItems) }}</span>
@@ -53,15 +53,15 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="statusText" label="状态" width="120">
+        <el-table-column prop="statusText" label="状态" width="70">
           <template #default="{ row }">
             <span class="status-tag" :class="statusClass(row.statusText)">{{ row.statusText }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="payAmount" label="实付(¥)" width="120">
+        <el-table-column prop="payAmount" label="实付(¥)" width="90">
           <template #default="{ row }">{{ (row.payAmount || row.totalAmount || 0).toFixed(2) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="260">
+        <el-table-column label="操作" width="160">
           <template #default="{ row }">
             <el-button type="primary" size="small" @click="viewDetail(row.orderSn)">查看详情</el-button>
             <el-dropdown

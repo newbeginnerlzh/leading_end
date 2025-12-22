@@ -1,50 +1,132 @@
 <!-- 支付页：显示订单信息并模拟支付 -->
 <template>
-  <div class="payment-page">
-    <el-card>
-      <h3>订单支付</h3>
-      <div v-if="loading">加载中...</div>
-      <div v-else-if="!order">未找到订单</div>
-      <div v-else>
-        <div>订单号：{{ order.orderSn }}</div>
-        <div>创建时间：{{ order.createdAt }}</div>
-        <div>收货人：{{ order.receiverName }}</div>
-        <div>手机号：{{ order.receiverPhone }}</div>
-        <div>地址：{{ order.receiverProvince }} {{ order.receiverCity }} {{ order.receiverDistrict }} {{ order.receiverDetail }}</div>
-        <div class="remark">备注：{{ order.buyerRemark ? order.buyerRemark : '（无）' }}</div>
-        <div v-if="remainingSeconds > 0" class="countdown">
-          <strong>支付倒计时：</strong>
-          <span v-if="remainingSeconds > 0">{{ minutes }}:{{ seconds }}</span>
-          <span v-else style="color:#e4393c">已超时（订单已过期）</span>
-        </div>
+  <div class="modern-payment-page">
+    <!-- Header -->
+    <div class="page-header" v-scroll-reveal>
+      <h2 class="page-title">收银台</h2>
+      <span class="step-indicator">安全支付</span>
+    </div>
 
-        <el-table :data="orderItems" style="width:100%;margin-top:12px" size="small">
-          <el-table-column prop="name" label="商品" />
-          <el-table-column prop="price" label="单价(¥)" width="120">
-            <template #default="{ row }">{{ (row.price || 0).toFixed(2) }}</template>
-          </el-table-column>
-          <el-table-column prop="count" label="数量" width="100" />
-        </el-table>
-
-        <div class="pay-actions">
-          <div class="pay-amount">应付金额：<span class="price-highlight">¥{{ (order.payAmount || order.totalAmount || 0).toFixed(2) }}</span></div>
-          <div class="buttons">
-            <el-button type="primary" @click="pay" :disabled="!isPending">立即支付</el-button>
-            <el-button @click="openCancel" :disabled="!isPending" :loading="canceling">放弃支付</el-button>
+    <div class="payment-container" v-if="!loading && order">
+      <!-- Left Column: Order Details -->
+      <div class="main-content">
+        <!-- Order Info Card -->
+        <section class="section-card info-card" v-scroll-reveal>
+          <h3>订单信息</h3>
+          <div class="info-row">
+            <span class="label">订单编号</span>
+            <span class="value">{{ order.orderSn }}</span>
           </div>
-        </div>
+          <div class="info-row">
+            <span class="label">下单时间</span>
+            <span class="value">{{ order.createdAt }}</span>
+          </div>
+          <div class="divider"></div>
+          <!-- Receiver -->
+          <div class="receiver-info">
+            <div class="icon">📍</div>
+            <div class="details">
+              <div class="name-row">
+                <span class="name">{{ order.receiverName }}</span>
+                <span class="phone">{{ order.receiverPhone }}</span>
+              </div>
+              <div class="address-row">
+                {{ order.receiverProvince }} {{ order.receiverCity }} {{ order.receiverDistrict }}
+                {{ order.receiverDetail }}
+              </div>
+            </div>
+          </div>
+          <div class="remark-row" v-if="order.buyerRemark">
+            <span class="label">备注:</span>
+            <span class="value">{{ order.buyerRemark }}</span>
+          </div>
+        </section>
+
+        <!-- Items Card -->
+        <section class="section-card items-card" v-scroll-reveal>
+          <h3>商品明细</h3>
+          <div class="items-list">
+            <div v-for="(item, index) in orderItems" :key="index" class="item-row">
+              <div class="item-name">{{ item.productName }}</div>
+              <div class="item-meta">
+                <span class="price">¥{{ (item.price || 0).toFixed(2) }}</span>
+                <span class="count">x{{ item.quantity }}</span>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
-    </el-card>
+
+      <!-- Right Column: Payment Action -->
+      <div class="sidebar-content">
+        <section class="section-card action-card" v-scroll-reveal>
+          <!-- Countdown -->
+          <div class="countdown-box" :class="{ expired: remainingSeconds <= 0 }">
+            <div class="label">{{ remainingSeconds > 0 ? '支付剩余时间' : '订单状态' }}</div>
+            <div class="timer" v-if="remainingSeconds > 0">{{ minutes }}:{{ seconds }}</div>
+            <div class="timer expired-text" v-else>已超时</div>
+          </div>
+
+          <div class="amount-box">
+            <span class="label">应付金额</span>
+            <span class="amount">¥{{ (order.payAmount || order.totalAmount || 0).toFixed(2) }}</span>
+          </div>
+
+          <div class="payment-method-display">
+            <span class="label">支付方式</span>
+            <span class="method-tag">在线支付</span>
+          </div>
+
+          <!-- Beam Button -->
+          <div class="beam-container" :class="{ disabled: !isPending }">
+            <div class="beam-border" v-if="isPending"></div>
+            <button class="primary-btn-beam full-width" @click="pay" :disabled="!isPending">
+              立即支付
+            </button>
+          </div>
+          <button class="text-btn cancel-btn" @click="openCancel" :disabled="!isPending">
+            放弃支付
+          </button>
+        </section>
+      </div>
+    </div>
+
+    <!-- Loading / Error States -->
+    <div v-else-if="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>正在加载订单信息...</p>
+    </div>
+    <div v-else class="error-state">
+      <p>未找到订单信息</p>
+      <button class="text-btn" @click="router.push('/')">返回首页</button>
+    </div>
+
     <!-- 放弃支付理由弹窗 -->
-    <el-dialog v-model="cancelDialogVisible" title="放弃支付" width="420px" :close-on-click-modal="false">
-      <el-form label-width="96px">
+    <el-dialog
+      v-model="cancelDialogVisible"
+      title="放弃支付"
+      width="420px"
+      :close-on-click-modal="false"
+      center
+      class="custom-dialog"
+    >
+      <el-form label-position="top" class="custom-form">
         <el-form-item label="放弃理由">
-          <el-input v-model="cancelReason" type="textarea" :rows="3" placeholder="请填写放弃支付理由" />
+          <el-input
+            v-model="cancelReason"
+            type="textarea"
+            :rows="3"
+            placeholder="请填写放弃支付理由（选填）"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="cancelDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="canceling" @click="submitCancel">确定</el-button>
+        <div class="dialog-footer">
+          <button class="cancel-btn-dialog" @click="cancelDialogVisible = false">取消</button>
+          <button class="confirm-btn-dialog" :disabled="canceling" @click="submitCancel">
+            {{ canceling ? '提交中...' : '确定放弃' }}
+          </button>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -53,11 +135,29 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { getOrderDetail, updateOrderStatus, OrderAction } from '@/api/order'
 import type { Order, OrderItem } from '@/api/model/orderModel'
 import { onBeforeRouteLeave } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
+
+// Scroll Reveal Directive
+const vScrollReveal = {
+  mounted: (el: HTMLElement) => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            el.classList.add('is-visible')
+            observer.unobserve(el)
+          }
+        })
+      },
+      { threshold: 0.1 },
+    )
+    observer.observe(el)
+  },
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -92,8 +192,9 @@ function setupCountdown() {
 
   // 优先使用后端过期时间字段（若存在）：expireAt / expiresAt
   const o = order.value as Order | null
-  const expireTs = parseDate((o as unknown as { expireAt?: string | number | Date })?.expireAt) ??
-                   parseDate((o as unknown as { expiresAt?: string | number | Date })?.expiresAt)
+  const expireTs =
+    parseDate((o as unknown as { expireAt?: string | number | Date })?.expireAt) ??
+    parseDate((o as unknown as { expiresAt?: string | number | Date })?.expiresAt)
   let endTs = expireTs ?? null
   if (!endTs) {
     // 没有明确过期时间时，按创建时间 +15 分钟作为默认支付时限
@@ -139,7 +240,7 @@ async function load() {
   }
   try {
     const res = await getOrderDetail(id)
-    const data = (res as { data?: { order?: Order, items?: OrderItem[] } }).data
+    const data = (res as { data?: { order?: Order; items?: OrderItem[] } }).data
     order.value = data?.order || null
     orderItems.value = data?.items || []
     orderSnRef.value = order.value?.orderSn || ''
@@ -175,7 +276,7 @@ async function pay() {
     const cartStore = useCartStore()
     cartStore.getCloudCart()
 
-    router.replace({ path: `/user/order/${order.value.orderSn}` , query: { fromPay: '1' } })
+    router.replace({ path: `/user/order/${order.value.orderSn}`, query: { fromPay: '1' } })
   } catch (err) {
     ElMessage.error((err as Error).message || '支付失败')
   } finally {
@@ -194,7 +295,10 @@ async function submitCancel() {
   canceling.value = true
   try {
     const reason = cancelReason.value?.trim() || null
-    await updateOrderStatus(order.value.orderSn || '', { action: OrderAction.CANCEL_ORDER, reason })
+    await updateOrderStatus(order.value.orderSn || '', {
+      action: OrderAction.CANCEL_ORDER,
+      reason,
+    })
     ElMessage.success('已取消订单')
     cancelDialogVisible.value = false
     router.replace({ path: '/' })
@@ -237,12 +341,396 @@ onBeforeRouteLeave((_to, _from, next) => {
 </script>
 
 <style scoped>
-.payment-page h3 { margin: 0 0 12px 0 }
-.countdown { margin-top: 8px; font-weight: 600; color: #e53935; }
-.pay-actions { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-top: 16px; }
-.pay-amount { font-size: 18px; font-weight: 700; color: #e53935; }
-.price-highlight { font-size: 20px; font-weight: 800; color: #e53935; }
-.buttons { display: flex; gap: 10px; }
-.remark { margin-top: 8px; color: #333; font-weight: 500; }
-:deep(.el-table__cell) { font-size: 14px; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.modern-payment-page {
+  --bg-color: #f8f9fc;
+  --card-bg: #ffffff;
+  --text-primary: #1a1b25;
+  --text-secondary: #5e6c84;
+  --text-tertiary: #94a3b8;
+  --accent-color: #4f46e5;
+  --accent-gradient: linear-gradient(135deg, #4f46e5, #9333ea);
+  --danger-color: #ef4444;
+  --border-color: #e2e8f0;
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+  --card-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 40px 20px;
+  box-sizing: border-box;
+}
+
+/* --- Animations --- */
+@keyframes slideFadeBlurIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.page-header,
+.section-card {
+  animation: slideFadeBlurIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-play-state: paused;
+}
+
+.is-visible {
+  animation-play-state: running;
+}
+
+/* --- Header --- */
+.page-header {
+  max-width: 1000px;
+  margin: 0 auto 30px;
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 15px;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin: 0;
+  background: linear-gradient(to right, #1a1b25, #4f46e5);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.step-indicator {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-color);
+  background: #eef2ff;
+  padding: 4px 12px;
+  border-radius: 99px;
+}
+
+/* --- Layout --- */
+.payment-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+}
+
+.main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.section-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--card-shadow);
+  transition: all 0.3s ease;
+}
+
+.section-card:hover {
+  box-shadow: var(--card-hover-shadow);
+}
+
+.section-card h3 {
+  margin: 0 0 20px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* --- Info Card --- */
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+.info-row .label {
+  color: var(--text-secondary);
+}
+.info-row .value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 16px 0;
+}
+
+.receiver-info {
+  display: flex;
+  gap: 12px;
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+.receiver-info .icon {
+  font-size: 20px;
+}
+.receiver-info .details {
+  flex: 1;
+}
+.name-row {
+  display: flex;
+  gap: 10px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+.address-row {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.remark-row {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: #fff7ed;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ffedd5;
+}
+.remark-row .label {
+  font-weight: 600;
+  color: #c2410c;
+  margin-right: 6px;
+}
+
+/* --- Items List --- */
+.items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+}
+.item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.item-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+}
+.item-meta .price {
+  font-weight: 600;
+}
+.item-meta .count {
+  color: var(--text-secondary);
+}
+
+/* --- Action Card --- */
+.action-card {
+  position: sticky;
+  top: 20px;
+  text-align: center;
+}
+
+.countdown-box {
+  background: #eef2ff;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  border: 1px solid #e0e7ff;
+}
+.countdown-box.expired {
+  background: #fef2f2;
+  border-color: #fee2e2;
+}
+.countdown-box .label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.countdown-box .timer {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--accent-color);
+  font-variant-numeric: tabular-nums;
+}
+.countdown-box.expired .timer {
+  color: var(--danger-color);
+  font-size: 24px;
+}
+
+.amount-box {
+  margin-bottom: 24px;
+}
+.amount-box .label {
+  display: block;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.amount-box .amount {
+  font-size: 36px;
+  font-weight: 800;
+  background: var(--accent-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.payment-method-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+}
+.method-tag {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* --- Buttons --- */
+.beam-container {
+  position: relative;
+  border-radius: 9999px;
+  padding: 3px;
+  overflow: hidden;
+  background: #e2e8f0;
+  margin-bottom: 12px;
+}
+.beam-container.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+.beam-border {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    transparent,
+    transparent 80deg,
+    #4f46e5 100deg,
+    #9333ea 140deg,
+    transparent 180deg
+  );
+  animation: rotateBeam 3s linear infinite;
+}
+@keyframes rotateBeam {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.primary-btn-beam {
+  position: relative;
+  background: var(--text-primary);
+  color: #fff;
+  border: none;
+  border-radius: 9999px;
+  padding: 14px 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  z-index: 1;
+  width: 100%;
+}
+.cancel-btn {
+  width: 100%;
+  padding: 10px;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+.cancel-btn:hover {
+  color: var(--danger-color);
+}
+
+/* --- Loading/Error --- */
+.loading-state,
+.error-state {
+  text-align: center;
+  padding: 100px 0;
+  color: var(--text-secondary);
+}
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-top-color: var(--accent-color);
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- Dialog --- */
+.custom-dialog :deep(.el-dialog__body) {
+  padding: 20px 30px;
+}
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.cancel-btn-dialog,
+.confirm-btn-dialog {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+}
+.cancel-btn-dialog {
+  background: #f1f5f9;
+  color: var(--text-secondary);
+}
+.confirm-btn-dialog {
+  background: var(--danger-color);
+  color: #fff;
+}
+.confirm-btn-dialog:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
 </style>
