@@ -21,23 +21,23 @@
 
               <div class="info-section">
                 <div class="info-grid">
-                  <div class="info-item">
+                  <div class="info-item" v-scroll-reveal>
                     <span class="label">用户名</span>
                     <span class="value">{{ userInfo.username || '-' }}</span>
                   </div>
-                  <div class="info-item">
+                  <div class="info-item" v-scroll-reveal>
                     <span class="label">手机号</span>
                     <span class="value">{{ userInfo.phone || '-' }}</span>
                   </div>
-                  <div class="info-item">
+                  <div class="info-item" v-scroll-reveal>
                     <span class="label">性别</span>
                     <span class="value">{{ userInfo.gender || '-' }}</span>
                   </div>
-                  <div class="info-item">
+                  <div class="info-item" v-scroll-reveal>
                     <span class="label">出生日期</span>
                     <span class="value">{{ userInfo.birthday || '-' }}</span>
                   </div>
-                  <div class="info-item">
+                  <div class="info-item" v-scroll-reveal>
                     <span class="label">邮箱</span>
                     <span class="value">{{ userInfo.email || '-' }}</span>
                   </div>
@@ -91,15 +91,15 @@
 
                 <div class="info-section">
                   <div class="form-grid">
-                    <el-form-item label="用户名" prop="username">
+                    <el-form-item label="用户名" prop="username" v-scroll-reveal>
                       <el-input v-model="editUserInfo.username" placeholder="请输入用户名"></el-input>
                     </el-form-item>
 
-                    <el-form-item label="手机号" prop="phone">
+                    <el-form-item label="手机号" prop="phone" v-scroll-reveal>
                       <el-input v-model="editUserInfo.phone" placeholder="请输入手机号"></el-input>
                     </el-form-item>
 
-                    <el-form-item label="性别" prop="gender">
+                    <el-form-item label="性别" prop="gender" v-scroll-reveal>
                       <el-radio-group v-model="editUserInfo.gender">
                         <el-radio label="男">男</el-radio>
                         <el-radio label="女">女</el-radio>
@@ -107,7 +107,7 @@
                       </el-radio-group>
                     </el-form-item>
 
-                    <el-form-item label="出生日期" prop="birthday">
+                    <el-form-item label="出生日期" prop="birthday" v-scroll-reveal>
                       <el-date-picker
                         v-model="editUserInfo.birthday"
                         type="date"
@@ -118,7 +118,7 @@
                       ></el-date-picker>
                     </el-form-item>
 
-                    <el-form-item label="邮箱" prop="email">
+                    <el-form-item label="邮箱" prop="email" v-scroll-reveal>
                       <el-input v-model="editUserInfo.email" placeholder="选填"></el-input>
                     </el-form-item>
                   </div>
@@ -712,10 +712,19 @@ onMounted(() => {
 }
 
 .page-header,
-.section-card {
+.section-card,
+.info-item,
+.edit-form :deep(.el-form-item) {
   animation: slideFadeBlurIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   animation-play-state: paused;
 }
+
+/* 交错延迟效果 */
+.info-item:nth-child(1), .edit-form :deep(.el-form-item:nth-child(1)) { animation-delay: 0.1s; }
+.info-item:nth-child(2), .edit-form :deep(.el-form-item:nth-child(2)) { animation-delay: 0.15s; }
+.info-item:nth-child(3), .edit-form :deep(.el-form-item:nth-child(3)) { animation-delay: 0.2s; }
+.info-item:nth-child(4), .edit-form :deep(.el-form-item:nth-child(4)) { animation-delay: 0.25s; }
+.info-item:nth-child(5), .edit-form :deep(.el-form-item:nth-child(5)) { animation-delay: 0.3s; }
 
 .is-visible {
   animation-play-state: running;

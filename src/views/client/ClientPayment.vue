@@ -7,7 +7,29 @@
       <span class="step-indicator">安全支付</span>
     </div>
 
-    <div class="payment-container" v-if="!loading && order">
+    <div class="payment-container loading-state" v-if="loading">
+      <div class="loading-overlay">
+        <div class="loading-badge">
+          <el-icon class="is-loading"><Loading /></el-icon>
+          <span>正在加载支付信息...</span>
+        </div>
+      </div>
+      <div class="main-content">
+        <div class="section-card">
+          <el-skeleton :rows="5" animated />
+        </div>
+        <div class="section-card">
+          <el-skeleton :rows="3" animated />
+        </div>
+      </div>
+      <div class="sidebar-content">
+        <div class="section-card">
+          <el-skeleton :rows="6" animated />
+        </div>
+      </div>
+    </div>
+
+    <div class="payment-container" v-else-if="order">
       <!-- Left Column: Order Details -->
       <div class="main-content">
         <!-- Order Info Card -->
@@ -91,11 +113,7 @@
       </div>
     </div>
 
-    <!-- Loading / Error States -->
-    <div v-else-if="loading" class="loading-state">
-      <div class="spinner"></div>
-      <p>正在加载订单信息...</p>
-    </div>
+    <!-- Error State -->
     <div v-else class="error-state">
       <p>未找到订单信息</p>
       <button class="text-btn" @click="router.push('/')">返回首页</button>
@@ -136,6 +154,7 @@
 import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Loading } from '@element-plus/icons-vue'
 import { getOrderDetail, updateOrderStatus, OrderAction } from '@/api/order'
 import type { Order, OrderItem } from '@/api/model/orderModel'
 import { onBeforeRouteLeave } from 'vue-router'
@@ -263,7 +282,9 @@ async function load() {
     setupCountdown()
   }
 
-  loading.value = false
+  setTimeout(() => {
+    loading.value = false
+  }, 400)
 }
 
 async function pay() {
@@ -379,14 +400,51 @@ onBeforeRouteLeave((_to, _from, next) => {
 }
 
 .page-header,
-.section-card {
+.section-card,
+.info-row,
+.receiver-info,
+.remark-row,
+.item-row,
+.countdown-box,
+.amount-box,
+.payment-method-display,
+.beam-container,
+.cancel-btn {
   animation: slideFadeBlurIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   animation-play-state: paused;
 }
 
-.is-visible {
+.is-visible,
+.section-card.is-visible .info-row,
+.section-card.is-visible .receiver-info,
+.section-card.is-visible .remark-row,
+.section-card.is-visible .item-row,
+.section-card.is-visible .countdown-box,
+.section-card.is-visible .amount-box,
+.section-card.is-visible .payment-method-display,
+.section-card.is-visible .beam-container,
+.section-card.is-visible .cancel-btn {
   animation-play-state: running;
 }
+
+/* Delays for Info Card */
+.info-card .info-row:nth-child(1) { animation-delay: 0.1s; }
+.info-card .info-row:nth-child(2) { animation-delay: 0.15s; }
+.info-card .receiver-info { animation-delay: 0.2s; }
+.info-card .remark-row { animation-delay: 0.25s; }
+
+/* Delays for Items Card */
+.items-list .item-row:nth-child(1) { animation-delay: 0.1s; }
+.items-list .item-row:nth-child(2) { animation-delay: 0.15s; }
+.items-list .item-row:nth-child(3) { animation-delay: 0.2s; }
+.items-list .item-row:nth-child(n+4) { animation-delay: 0.25s; }
+
+/* Delays for Action Card */
+.action-card .countdown-box { animation-delay: 0.1s; }
+.action-card .amount-box { animation-delay: 0.15s; }
+.action-card .payment-method-display { animation-delay: 0.2s; }
+.action-card .beam-container { animation-delay: 0.25s; }
+.action-card .cancel-btn { animation-delay: 0.3s; }
 
 /* --- Header --- */
 .page-header {
@@ -682,21 +740,57 @@ onBeforeRouteLeave((_to, _from, next) => {
 }
 
 /* --- Loading/Error --- */
-.loading-state,
+.loading-state {
+  position: relative;
+  min-height: 60vh;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(4px);
+  border-radius: 24px;
+}
+
+.loading-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 32px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border-radius: 9999px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 16px;
+  backdrop-filter: blur(12px);
+}
+
+.loading-badge .el-icon {
+  font-size: 22px;
+  color: var(--accent-color);
+  animation: spin 1s linear infinite;
+}
+
 .error-state {
   text-align: center;
   padding: 100px 0;
   color: var(--text-secondary);
 }
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #e2e8f0;
-  border-top-color: var(--accent-color);
-  border-radius: 50%;
-  margin: 0 auto 20px;
-  animation: spin 1s linear infinite;
-}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
