@@ -83,9 +83,9 @@
       <div class="sidebar-content">
         <section class="section-card action-card" v-scroll-reveal>
           <!-- Countdown -->
-          <div class="countdown-box" :class="{ expired: remainingSeconds <= 0 }">
-            <div class="label">{{ remainingSeconds > 0 ? '支付剩余时间' : '订单状态' }}</div>
-            <div class="timer" v-if="remainingSeconds > 0">{{ minutes }}:{{ seconds }}</div>
+          <div class="countdown-box" :class="{ expired: isExpired }">
+            <div class="label">{{ !isExpired ? '支付剩余时间' : '订单状态' }}</div>
+            <div class="timer" v-if="!isExpired">{{ minutes }}:{{ seconds }}</div>
             <div class="timer expired-text" v-else>已超时</div>
           </div>
 
@@ -100,15 +100,22 @@
           </div>
 
           <!-- Beam Button -->
-          <div class="beam-container" :class="{ disabled: !isPending }">
-            <div class="beam-border" v-if="isPending"></div>
-            <button class="primary-btn-beam full-width" @click="pay" :disabled="!isPending">
-              立即支付
+          <template v-if="!isExpired">
+            <div class="beam-container" :class="{ disabled: !canOperatePayment }">
+              <div class="beam-border" v-if="canOperatePayment"></div>
+              <button class="primary-btn-beam full-width" @click="pay" :disabled="!canOperatePayment">
+                立即支付
+              </button>
+            </div>
+            <button class="text-btn cancel-btn" @click="openCancel" :disabled="!canOperatePayment">
+              放弃支付
             </button>
-          </div>
-          <button class="text-btn cancel-btn" @click="openCancel" :disabled="!isPending">
-            放弃支付
-          </button>
+          </template>
+          <template v-else>
+            <button class="primary-btn-beam full-width back-btn" @click="goOrderList">
+              返回订单列表
+            </button>
+          </template>
         </section>
       </div>
     </div>
@@ -192,6 +199,8 @@ const cancelReason = ref('')
 
 const pendingStatuses = new Set(['待付款', '未支付'])
 const isPending = computed(() => pendingStatuses.has(order.value?.status || ''))
+const isExpired = computed(() => remainingSeconds.value <= 0)
+const canOperatePayment = computed(() => isPending.value && !isExpired.value)
 const orderSnRef = ref<string>('')
 let popHandler: (() => void) | null = null
 
@@ -234,6 +243,7 @@ function setupCountdown() {
     if (remainingSeconds.value > 0) {
       remainingSeconds.value -= 1
     } else {
+      remainingSeconds.value = 0
       clearInterval(timer as number)
       timer = null
     }
@@ -309,6 +319,10 @@ function openCancel() {
   if (!order.value) return
   cancelReason.value = ''
   cancelDialogVisible.value = true
+}
+
+function goOrderList() {
+  router.replace({ path: '/user/orders' })
 }
 
 async function submitCancel() {
@@ -724,6 +738,9 @@ onBeforeRouteLeave((_to, _from, next) => {
   cursor: pointer;
   z-index: 1;
   width: 100%;
+}
+.back-btn {
+  margin-top: 12px;
 }
 .cancel-btn {
   width: 100%;

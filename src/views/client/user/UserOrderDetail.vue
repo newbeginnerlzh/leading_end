@@ -26,8 +26,8 @@
       <div class="section-card status-section" v-scroll-reveal>
         <div class="status-header">
           <div class="status-info">
-            <div class="status-badge-large" :class="statusClass(order.status)">
-              {{ order.status }}
+            <div class="status-badge-large" :class="statusClass(displayStatus)">
+              {{ displayStatus }}
             </div>
             <div class="order-sn">订单号：{{ order.orderSn }}</div>
           </div>
@@ -40,7 +40,7 @@
             >申请退款</button>
 
             <button
-              v-if="order?.status === '待付款'"
+              v-if="canPay"
               class="custom-btn primary"
               :disabled="acting"
               @click="goPay"
@@ -66,7 +66,7 @@
         <!-- Alerts -->
         <div v-else class="status-alert">
            <el-alert
-             v-if="order.status === '已取消'"
+             v-if="displayStatus === '已取消'"
              title="订单已取消"
              :description="order.cancelReason ? `取消原因：${order.cancelReason}` : ''"
              type="info"
@@ -74,9 +74,17 @@
              :closable="false"
            />
            <el-alert
-             v-else-if="order.status && order.status.includes('退款')"
-             :title="order.status"
-             :description="order.cancelReason ? `退款原因：${order.cancelReason}` : ''"
+             v-else-if="displayStatus && displayStatus.includes('退款')"
+             :title="displayStatus"
+             :description="order.refundReason ? `退款原因：${order.refundReason}` : ''"
+             type="warning"
+             show-icon
+             :closable="false"
+           />
+           <el-alert
+             v-else-if="displayStatus === '已超时'"
+             title="订单已超时"
+             description="支付超时，请返回订单列表或重新下单"
              type="warning"
              show-icon
              :closable="false"
@@ -235,6 +243,7 @@ const deleting = ref(false)
 const refundDialogVisible = ref(false)
 const refundReason = ref('')
 const refunding = ref(false)
+const pendingStatuses = new Set(['待付款', '未支付'])
 
 // Scroll Reveal Directive
 const vScrollReveal = {
@@ -255,8 +264,18 @@ const vScrollReveal = {
 }
 
 // Computed Properties
+const isExpired = computed(() => {
+  const o = order.value
+  if (!o) return false
+  const status = o.status || ''
+  if (!pendingStatuses.has(status)) return false
+  return isOrderExpired(o)
+})
+
+const displayStatus = computed(() => (isExpired.value ? '已超时' : order.value?.status || ''))
+
 const activeStep = computed(() => {
-  const s = order.value?.status
+  const s = displayStatus.value
   if (!s) return 0
   switch (s) {
     case '待付款': return 1
@@ -268,9 +287,11 @@ const activeStep = computed(() => {
 })
 
 const showSteps = computed(() => {
-  const s = order.value?.status
+  const s = displayStatus.value
   return ['待付款', '待发货', '待收货', '已完成'].includes(s || '')
 })
+
+const canPay = computed(() => !!order.value && pendingStatuses.has(order.value.status || '') && !isExpired.value)
 
 const timelineItems = computed(() => {
   const o = order.value
@@ -308,6 +329,13 @@ function formatAddress(o: Order | null) {
   return parts.length ? parts.join(' ') : ''
 }
 
+function parseDate(val?: Date | string | number | null): number | null {
+  if (!val) return null
+  const d = new Date(val)
+  const t = d.getTime()
+  return Number.isNaN(t) ? null : t
+}
+
 function formatDate(val?: Date | string | number | null) {
   if (!val) return ''
   const d = new Date(val)
@@ -319,6 +347,21 @@ function formatDate(val?: Date | string | number | null) {
   const mi = String(d.getMinutes()).padStart(2, '0')
   const ss = String(d.getSeconds()).padStart(2, '0')
   return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`
+}
+
+function isOrderExpired(record: { createdAt?: Date | string | number | null; expireAt?: Date | string | number | null; expiresAt?: Date | string | number | null }) {
+  const expireTs =
+    parseDate((record as { expireAt?: Date | string | number | null }).expireAt) ??
+    parseDate((record as { expiresAt?: Date | string | number | null }).expiresAt)
+  let endTs = expireTs ?? null
+  if (!endTs) {
+    const createdTs = parseDate(record.createdAt)
+    if (createdTs) {
+      endTs = createdTs + 15 * 60 * 1000
+    }
+  }
+  if (!endTs) return false
+  return Date.now() >= endTs
 }
 
 // 收紧规格类型，移除 any
@@ -339,6 +382,7 @@ function statusClass(text?: string | null) {
     case '退款中': return 'st-refund'
     case '退款成功': return 'st-refund-success'
     case '退款失败': return 'st-refund-fail'
+    case '已超时': return 'st-expired'
     default: return 'st-default'
   }
 }
@@ -367,7 +411,7 @@ async function load() {
 }
 
 async function goPay() {
-  if (!order.value || acting.value) return
+  if (!order.value || acting.value || isExpired.value) return
   acting.value = true
   try {
     router.push({ path: '/payment', query: { orderId: order.value.orderSn || '' } })
@@ -398,6 +442,13 @@ async function submitRefund() {
   }
 }
 
+function listQueryParams() {
+  const q: Record<string, string> = {}
+  if (route.query.page) q.page = String(route.query.page)
+  if (route.query.pageSize) q.pageSize = String(route.query.pageSize)
+  return q
+}
+
 onMounted(load)
 
 async function onDelete() {
@@ -426,7 +477,7 @@ async function onDelete() {
   try {
     await deleteOrder(order.value.orderSn || '')
     ElMessage.success('已删除订单')
-    router.replace({ path: '/user/orders' })
+    router.replace({ path: '/user/orders', query: listQueryParams() })
   } catch (err) {
     ElMessage.error((err as Error).message || '删除失败')
   } finally {
@@ -435,7 +486,7 @@ async function onDelete() {
 }
 
 function onBack() {
-  router.push({ path: '/user/orders' })
+  router.push({ path: '/user/orders', query: listQueryParams() })
 }
 </script>
 
@@ -555,6 +606,7 @@ function onBack() {
 .status-badge-large.st-success { background: #f0fdf4; color: #15803d; }
 .status-badge-large.st-cancel { background: #f1f5f9; color: #64748b; }
 .status-badge-large.st-refund { background: #fff7ed; color: #d97706; }
+.status-badge-large.st-expired { background: #fff7ed; color: #ea580c; }
 
 .order-sn {
   color: #94a3b8;

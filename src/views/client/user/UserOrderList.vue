@@ -142,7 +142,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { getOrderList, updateOrderStatus, deleteOrder, OrderAction, type GetOrderListParams } from '@/api/order'
 import type { OrderListItem, OrderPreviewItem } from '@/api/order'
@@ -192,11 +192,15 @@ const statusNumberMap: Record<number, string> = {
   7: '退款失败',
 }
 
-const orders = ref<OrderListView[]>([])
-const currentPage = ref(1)
-const pageSize = ref(7)
-const total = ref(0)
+const pendingStatusTexts = new Set(['待付款', '未支付'])
+
 const router = useRouter()
+const route = useRoute()
+
+const orders = ref<OrderListView[]>([])
+const currentPage = ref(Number(route.query.page) > 0 ? Number(route.query.page) : 1)
+const pageSize = ref(Number(route.query.pageSize) > 0 ? Number(route.query.pageSize) : 7)
+const total = ref(0)
 
 const pageSizeOptions = [7, 10, 20, 50]
 
@@ -212,6 +216,34 @@ function statusTextOf(status?: string | number): string {
   if (typeof status === 'number') return statusNumberMap[status] || `${status}`
   if (typeof status === 'string') return status
   return ''
+}
+
+function parseDate(input?: string | number | Date | null): number | null {
+  if (!input) return null
+  const d = new Date(input as string | number | Date)
+  const t = d.getTime()
+  return Number.isNaN(t) ? null : t
+}
+
+function isOrderExpired(record: { createdAt?: string | number | Date; expireAt?: string | number | Date; expiresAt?: string | number | Date }): boolean {
+  const expireTs =
+    parseDate((record as { expireAt?: string | number | Date }).expireAt) ??
+    parseDate((record as { expiresAt?: string | number | Date }).expiresAt)
+  let endTs = expireTs ?? null
+  if (!endTs) {
+    const createdTs = parseDate(record.createdAt as string | number | Date)
+    if (createdTs) {
+      endTs = createdTs + 15 * 60 * 1000
+    }
+  }
+  if (!endTs) return false
+  return Date.now() >= endTs
+}
+
+function calcStatusText(order: OrderListItem): string {
+  const base = statusTextOf(order.status)
+  if (pendingStatusTexts.has(base) && isOrderExpired(order)) return '已超时'
+  return base
 }
 
 function formatPreview(items?: OrderPreviewItem[]): string {
@@ -238,6 +270,8 @@ function statusClass(text?: string): string {
       return 'st-refund-success'
     case '退款失败':
       return 'st-refund-fail'
+    case '已超时':
+      return 'st-expired'
     default:
       return 'st-default'
   }
@@ -348,6 +382,10 @@ function setPreviewTextEl(key: string, el: HTMLElement | null) {
   measure()
 }
 
+function updateListQuery(page = currentPage.value, size = pageSize.value) {
+  router.replace({ path: '/user/orders', query: { ...route.query, page: String(page), pageSize: String(size) } })
+}
+
 async function load() {
   try {
     const params: GetOrderListParams = { page: currentPage.value, pageSize: pageSize.value }
@@ -359,8 +397,9 @@ async function load() {
 
     const res = await getOrderList(params)
     const list = (res.data?.orders || []) as OrderListItem[]
-    orders.value = list.map((o) => ({ ...o, statusText: statusTextOf((o as OrderListItem).status) }))
+    orders.value = list.map((o) => ({ ...o, statusText: calcStatusText(o) }))
     total.value = res.data?.total ?? 0
+    updateListQuery(currentPage.value, pageSize.value)
   } catch {
     orders.value = []
     total.value = 0
@@ -368,7 +407,7 @@ async function load() {
 }
 
 function viewDetail(orderSn: string) {
-  router.push({ path: `/user/order/${orderSn}` })
+  router.push({ path: `/user/order/${orderSn}`, query: { page: String(currentPage.value), pageSize: String(pageSize.value) } })
 }
 
 function toPay(orderSn: string) {
@@ -377,12 +416,14 @@ function toPay(orderSn: string) {
 
 function onPageChange(page: number) {
   currentPage.value = page
+  updateListQuery(currentPage.value, pageSize.value)
   load()
 }
 
 function onPageSizeChange(size: number) {
   pageSize.value = size
   currentPage.value = 1
+  updateListQuery(currentPage.value, pageSize.value)
   load()
 }
 
@@ -629,6 +670,7 @@ onMounted(load)
 .st-refund { background: #fff7ed; color: #c2410c; }
 .st-refund-success { background: #f0fdf4; color: #15803d; }
 .st-refund-fail { background: #fef2f2; color: #b91c1c; }
+.st-expired { background: #fff7ed; color: #ea580c; }
 .st-default { background: #f1f5f9; color: #64748b; }
 
 /* Actions */
