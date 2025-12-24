@@ -12,8 +12,19 @@
         <div class="filter-left">
           <div class="filter-group">
             <span class="filter-label">状态</span>
-            <el-select v-model="filters.status" placeholder="全部" clearable class="filter-select" @change="onFilterChange">
-              <el-option v-for="opt in statusOptions" :key="opt.value ?? 'all'" :label="opt.label" :value="opt.value" />
+            <el-select
+              v-model="filters.status"
+              placeholder="全部"
+              clearable
+              class="filter-select"
+              @change="onFilterChange"
+            >
+              <el-option
+                v-for="opt in statusOptions"
+                :key="opt.value ?? 'all'"
+                :label="opt.label"
+                :value="opt.value"
+              />
             </el-select>
           </div>
 
@@ -42,15 +53,24 @@
       <el-table
         :data="orders"
         class="modern-table"
-        style="width:100%"
-        :header-cell-style="{ background: '#f8fafc', color: '#64748b', fontWeight: '600', height: '50px' }"
+        style="width: 100%"
+        :header-cell-style="{
+          background: '#f8fafc',
+          color: '#64748b',
+          fontWeight: '600',
+          height: '50px',
+        }"
       >
         <el-table-column prop="orderSn" label="订单号" width="170" />
         <el-table-column prop="createdAt" label="创建时间" width="170" />
         <el-table-column label="商品" min-width="250">
           <template #default="{ row }">
             <div class="cell-ellipsis">
-              <span class="cell-text" :ref="(el) => setPreviewTextEl(row.orderSn, el as HTMLElement | null)">{{ formatPreview(row.previewItems) }}</span>
+              <span
+                class="cell-text"
+                :ref="(el) => setPreviewTextEl(row.orderSn, el as HTMLElement | null)"
+                >{{ formatPreview(row.previewItems) }}</span
+              >
               <el-tooltip
                 v-if="overflowFlags[row.orderSn]"
                 :content="formatPreview(row.previewItems)"
@@ -65,23 +85,27 @@
         </el-table-column>
         <el-table-column prop="statusText" label="状态" width="80">
           <template #default="{ row }">
-            <span class="status-badge" :class="statusClass(row.statusText)">{{ row.statusText }}</span>
+            <span class="status-badge" :class="statusClass(row.statusText)">{{
+              row.statusText
+            }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="payAmount" label="实付" width="100">
           <template #default="{ row }">
-            <span class="price-text">¥{{ (row.payAmount || row.totalAmount || 0).toFixed(2) }}</span>
+            <span class="price-text"
+              >¥{{ (row.payAmount || row.totalAmount || 0).toFixed(2) }}</span
+            >
           </template>
         </el-table-column>
         <el-table-column label="操作" width="110" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-group">
               <span class="action-link" @click="viewDetail(row.orderSn)">详情</span>
-              <el-dropdown
-                trigger="click"
-                @command="onMoreCommand($event, row)"
-              >
-                <span class="action-link more-link" :class="{ disabled: availableMoreActions(row).length === 0 }">
+              <el-dropdown trigger="click" @command="onMoreCommand($event, row)">
+                <span
+                  class="action-link more-link"
+                  :class="{ disabled: availableMoreActions(row).length === 0 }"
+                >
                   更多 <el-icon><ArrowDown /></el-icon>
                 </span>
                 <template #dropdown>
@@ -93,7 +117,9 @@
                     >
                       {{ act.label }}
                     </el-dropdown-item>
-                    <el-dropdown-item v-if="availableMoreActions(row).length === 0" disabled>暂无可用操作</el-dropdown-item>
+                    <el-dropdown-item v-if="availableMoreActions(row).length === 0" disabled
+                      >暂无可用操作</el-dropdown-item
+                    >
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -106,8 +132,13 @@
       <div class="pagination-bar">
         <div class="page-size-selector">
           <span>每页</span>
-          <el-select v-model="pageSize" size="small" style="width:80px" @change="onPageSizeChange">
-            <el-option v-for="size in pageSizeOptions" :key="size" :label="`${size} 条`" :value="size" />
+          <el-select v-model="pageSize" size="small" style="width: 80px" @change="onPageSizeChange">
+            <el-option
+              v-for="size in pageSizeOptions"
+              :key="size"
+              :label="`${size} 条`"
+              :value="size"
+            />
           </el-select>
         </div>
         <el-pagination
@@ -122,7 +153,13 @@
     </div>
 
     <!-- Refund Dialog -->
-    <el-dialog v-model="refundDialogVisible" title="申请退款" width="420px" :close-on-click-modal="false" class="custom-dialog">
+    <el-dialog
+      v-model="refundDialogVisible"
+      title="申请退款"
+      width="420px"
+      :close-on-click-modal="false"
+      class="custom-dialog"
+    >
       <el-form label-width="80px" class="modern-form">
         <el-form-item label="退款理由">
           <el-input v-model="refundReason" type="textarea" :rows="3" placeholder="请填写退款理由" />
@@ -144,7 +181,13 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ArrowDown } from '@element-plus/icons-vue'
-import { getOrderList, updateOrderStatus, deleteOrder, OrderAction, type GetOrderListParams } from '@/api/order'
+import {
+  getOrderList,
+  updateOrderStatus,
+  deleteOrder,
+  OrderAction,
+  type GetOrderListParams,
+} from '@/api/order'
 import type { OrderListItem, OrderPreviewItem } from '@/api/order'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -163,7 +206,7 @@ const vScrollReveal = {
           }
         })
       },
-      { threshold: 0.1, rootMargin: '50px' }
+      { threshold: 0.1, rootMargin: '50px' },
     )
     observer.observe(el)
   },
@@ -199,12 +242,15 @@ const route = useRoute()
 
 const orders = ref<OrderListView[]>([])
 const currentPage = ref(Number(route.query.page) > 0 ? Number(route.query.page) : 1)
-const pageSize = ref(Number(route.query.pageSize) > 0 ? Number(route.query.pageSize) : 7)
+const pageSize = ref(Number(route.query.pageSize) > 0 ? Number(route.query.pageSize) : 10)
 const total = ref(0)
 
 const pageSizeOptions = [10, 20, 50]
 
-const filters = ref<{ status: number | null; dateRange: string[] | [] }>({ status: null, dateRange: [] })
+const filters = ref<{ status: number | null; dateRange: string[] | [] }>({
+  status: null,
+  dateRange: [],
+})
 const overflowFlags = ref<Record<string, boolean>>({})
 const previewObservers = new Map<string, ResizeObserver>()
 const refundDialogVisible = ref(false)
@@ -225,7 +271,11 @@ function parseDate(input?: string | number | Date | null): number | null {
   return Number.isNaN(t) ? null : t
 }
 
-function isOrderExpired(record: { createdAt?: string | number | Date; expireAt?: string | number | Date; expiresAt?: string | number | Date }): boolean {
+function isOrderExpired(record: {
+  createdAt?: string | number | Date
+  expireAt?: string | number | Date
+  expiresAt?: string | number | Date
+}): boolean {
   const expireTs =
     parseDate((record as { expireAt?: string | number | Date }).expireAt) ??
     parseDate((record as { expiresAt?: string | number | Date }).expiresAt)
@@ -316,7 +366,9 @@ async function submitRefund() {
     const reason = refundReason.value?.trim() || null
     await updateOrderStatus(refundTargetSn.value, { action: OrderAction.APPLY_REFUND, reason })
 
-    orders.value = orders.value.map((o) => (o.orderSn === refundTargetSn.value ? { ...o, statusText: '退款中', status: '退款中' } : o))
+    orders.value = orders.value.map((o) =>
+      o.orderSn === refundTargetSn.value ? { ...o, statusText: '退款中', status: '退款中' } : o,
+    )
     refundDialogVisible.value = false
     ElMessage.success('已提交退款，状态更新为退款中')
   } catch (err) {
@@ -329,10 +381,14 @@ async function submitRefund() {
 async function onDeleteFromList(row: OrderListView) {
   // 和详情页一致：仅“已完成/已取消/退款成功”可删
   if (!isDeletable(row.statusText)) {
-    await ElMessageBox.alert('仅状态为“已完成/已取消/退款成功”的订单可以删除。当前状态不支持删除。', '无法删除', {
-      confirmButtonText: '我知道了',
-      type: 'info'
-    })
+    await ElMessageBox.alert(
+      '仅状态为“已完成/已取消/退款成功”的订单可以删除。当前状态不支持删除。',
+      '无法删除',
+      {
+        confirmButtonText: '我知道了',
+        type: 'info',
+      },
+    )
     return
   }
 
@@ -340,7 +396,7 @@ async function onDeleteFromList(row: OrderListView) {
     await ElMessageBox.confirm('确认删除该订单？删除后不可恢复。', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '再想想',
-      type: 'warning'
+      type: 'warning',
     })
   } catch {
     return
@@ -383,7 +439,10 @@ function setPreviewTextEl(key: string, el: HTMLElement | null) {
 }
 
 function updateListQuery(page = currentPage.value, size = pageSize.value) {
-  router.replace({ path: '/user/orders', query: { ...route.query, page: String(page), pageSize: String(size) } })
+  router.replace({
+    path: '/user/orders',
+    query: { ...route.query, page: String(page), pageSize: String(size) },
+  })
 }
 
 async function load() {
@@ -407,7 +466,10 @@ async function load() {
 }
 
 function viewDetail(orderSn: string) {
-  router.push({ path: `/user/order/${orderSn}`, query: { page: String(currentPage.value), pageSize: String(pageSize.value) } })
+  router.push({
+    path: `/user/order/${orderSn}`,
+    query: { page: String(currentPage.value), pageSize: String(pageSize.value) },
+  })
 }
 
 function toPay(orderSn: string) {
@@ -507,14 +569,30 @@ onMounted(load)
 }
 
 /* 延迟 */
-.modern-table :deep(.el-table__row:nth-child(1)) { animation-delay: 0.1s; }
-.modern-table :deep(.el-table__row:nth-child(2)) { animation-delay: 0.15s; }
-.modern-table :deep(.el-table__row:nth-child(3)) { animation-delay: 0.2s; }
-.modern-table :deep(.el-table__row:nth-child(4)) { animation-delay: 0.25s; }
-.modern-table :deep(.el-table__row:nth-child(5)) { animation-delay: 0.3s; }
-.modern-table :deep(.el-table__row:nth-child(6)) { animation-delay: 0.35s; }
-.modern-table :deep(.el-table__row:nth-child(7)) { animation-delay: 0.4s; }
-.modern-table :deep(.el-table__row:nth-child(n+8)) { animation-delay: 0.45s; }
+.modern-table :deep(.el-table__row:nth-child(1)) {
+  animation-delay: 0.1s;
+}
+.modern-table :deep(.el-table__row:nth-child(2)) {
+  animation-delay: 0.15s;
+}
+.modern-table :deep(.el-table__row:nth-child(3)) {
+  animation-delay: 0.2s;
+}
+.modern-table :deep(.el-table__row:nth-child(4)) {
+  animation-delay: 0.25s;
+}
+.modern-table :deep(.el-table__row:nth-child(5)) {
+  animation-delay: 0.3s;
+}
+.modern-table :deep(.el-table__row:nth-child(6)) {
+  animation-delay: 0.35s;
+}
+.modern-table :deep(.el-table__row:nth-child(7)) {
+  animation-delay: 0.4s;
+}
+.modern-table :deep(.el-table__row:nth-child(n + 8)) {
+  animation-delay: 0.45s;
+}
 
 .is-visible {
   animation-play-state: running;
@@ -662,16 +740,46 @@ onMounted(load)
   line-height: 1;
 }
 
-.st-pending { background: #fff7ed; color: #c2410c; }
-.st-shipping { background: #eff6ff; color: #1d4ed8; }
-.st-receiving { background: #f0fdf4; color: #15803d; }
-.st-success { background: #f0fdf4; color: #15803d; }
-.st-cancel { background: #f1f5f9; color: #64748b; }
-.st-refund { background: #fff7ed; color: #c2410c; }
-.st-refund-success { background: #f0fdf4; color: #15803d; }
-.st-refund-fail { background: #fef2f2; color: #b91c1c; }
-.st-expired { background: #fff7ed; color: #ea580c; }
-.st-default { background: #f1f5f9; color: #64748b; }
+.st-pending {
+  background: #fff7ed;
+  color: #c2410c;
+}
+.st-shipping {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.st-receiving {
+  background: #f0fdf4;
+  color: #15803d;
+}
+.st-success {
+  background: #f0fdf4;
+  color: #15803d;
+}
+.st-cancel {
+  background: #f1f5f9;
+  color: #64748b;
+}
+.st-refund {
+  background: #fff7ed;
+  color: #c2410c;
+}
+.st-refund-success {
+  background: #f0fdf4;
+  color: #15803d;
+}
+.st-refund-fail {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+.st-expired {
+  background: #fff7ed;
+  color: #ea580c;
+}
+.st-default {
+  background: #f1f5f9;
+  color: #64748b;
+}
 
 /* Actions */
 .action-group {
