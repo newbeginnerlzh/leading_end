@@ -479,10 +479,10 @@ button {
   transition: 0.5s;
 }
 /* 鼠标滑过时一道光扫过 */
-.cart-item:hover::after {
+/*.cart-item:hover::after {
   left: 150%;
   transition: 0.7s ease-in-out;
-}
+}*/
 
 /* --- Columns --- */
 .col-checkbox {
@@ -490,11 +490,13 @@ button {
   justify-content: center;
 }
 .col-product {
-  padding-right: 20px;
   display: flex;
   align-items: center;
   gap: 20px;
   cursor: pointer;
+}
+.list-header .col-product {
+  justify-content: center;
 }
 .col-price,
 .col-quantity,
@@ -505,7 +507,7 @@ button {
 
 /* --- Product Info --- */
 .img-wrapper {
-  width: 80px;
+  min-width: 100px;
   height: 80px;
   border-radius: 8px;
   overflow: hidden;
