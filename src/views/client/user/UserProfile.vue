@@ -728,7 +728,7 @@ onMounted(() => {
   background-color: var(--bg-color);
   color: var(--text-primary);
   min-height: auto;
-  padding: 40px 20px;
+  padding: 18px 0;
   box-sizing: border-box;
 }
 
@@ -747,8 +747,8 @@ onMounted(() => {
 @keyframes slideFadeBlurIn {
   0% {
     opacity: 0;
-    transform: translateY(20px);
-    filter: blur(10px);
+    transform: translateY(10px);
+    filter: blur(5px);
   }
   100% {
     opacity: 1;
@@ -796,7 +796,6 @@ onMounted(() => {
 
 /* --- Header --- */
 .page-header {
-  max-width: 1000px;
   margin: 0 auto 30px;
   display: flex;
   align-items: baseline;
@@ -827,7 +826,6 @@ onMounted(() => {
 
 /* --- Content --- */
 .profile-content {
-  max-width: 1000px;
   margin: 0 auto;
 }
 

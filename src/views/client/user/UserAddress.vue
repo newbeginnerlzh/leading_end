@@ -51,12 +51,7 @@
               </span>
             </div>
             <div class="actions-right">
-              <el-button
-                type="primary"
-                link
-                class="action-btn"
-                @click.stop="handleEdit(address)"
-              >
+              <el-button type="primary" link class="action-btn" @click.stop="handleEdit(address)">
                 <el-icon><Edit /></el-icon> 编辑
               </el-button>
               <el-button
@@ -109,7 +104,7 @@
             :props="{
               label: 'name',
               value: 'code',
-              children: 'children'
+              children: 'children',
             }"
             @change="handleRegionChange"
             placeholder="请选择省/市/区"
@@ -203,7 +198,7 @@ const addressForm = reactive<AddressInfo>({
   district: '',
   detail: '',
   postal_code: null,
-  isDefault: false
+  isDefault: false,
 })
 
 // 省市区选择器
@@ -223,7 +218,11 @@ function buildNodes(parentCode: string): RegionNode[] {
 regionOptions.value = buildNodes('86')
 
 // find codes by province/city/district names (reverse mapping)
-function findCodesByNames(provinceName?: string, cityName?: string, districtName?: string): string[] {
+function findCodesByNames(
+  provinceName?: string,
+  cityName?: string,
+  districtName?: string,
+): string[] {
   if (!provinceName) return []
   const provinces = rawArea['86'] || {}
   const provEntry = Object.entries(provinces).find(([, name]) => name === provinceName)
@@ -247,20 +246,16 @@ function findCodesByNames(provinceName?: string, cityName?: string, districtName
 
 // 验证规则
 const addressRules = reactive({
-  name: [
-    { required: true, message: '请输入收货人姓名', trigger: 'blur' }
-  ],
+  name: [{ required: true, message: '请输入收货人姓名', trigger: 'blur' }],
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' },
   ],
-  province: [
-    { required: true, message: '请选择所在地区', trigger: 'change' }
-  ],
+  province: [{ required: true, message: '请选择所在地区', trigger: 'change' }],
   detail: [
     { required: true, message: '请输入详细地址', trigger: 'blur' },
-    { min: 5, message: '详细地址不能少于5个字符', trigger: 'blur' }
-  ]
+    { min: 5, message: '详细地址不能少于5个字符', trigger: 'blur' },
+  ],
 })
 
 // 获取地址列表
@@ -268,7 +263,9 @@ const fetchAddressList = async () => {
   try {
     const res = await getAddressList()
     // 默认地址排在最前
-    addressList.value = (res.data || []).sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0))
+    addressList.value = (res.data || []).sort(
+      (a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0),
+    )
   } catch (error) {
     console.error('获取地址列表失败:', error)
     ElMessage.error('获取地址列表失败')
@@ -307,7 +304,7 @@ const handleAdd = () => {
     district: '',
     detail: '',
     postal_code: null,
-    isDefault: false
+    isDefault: false,
   })
   regionValue.value = []
 
@@ -328,7 +325,7 @@ const handleEdit = (address: AddressInfo) => {
     district: address.district,
     detail: address.detail,
     postal_code: address.postal_code,
-    isDefault: address.isDefault
+    isDefault: address.isDefault,
   })
 
   // 解析省市区code，使用反向映射以回显级联选择器
@@ -348,7 +345,7 @@ const handleSave = async () => {
       // 编辑地址
       await updateAddress({
         id: currentAddressId.value,
-        ...addressForm
+        ...addressForm,
       })
       ElMessage.success('地址修改成功')
     } else {
@@ -369,7 +366,7 @@ const handleSave = async () => {
 const handleSetDefault = async (id: number) => {
   try {
     // 先取消其他默认地址
-    addressList.value.forEach(item => {
+    addressList.value.forEach((item) => {
       if (item.isDefault) {
         item.isDefault = false
       }
@@ -379,13 +376,13 @@ const handleSetDefault = async (id: number) => {
     await updateAddress({
       id,
       isDefault: true,
-      name: addressList.value.find(item => item.id === id)?.name || '',
-      phone: addressList.value.find(item => item.id === id)?.phone || '',
-      province: addressList.value.find(item => item.id === id)?.province || '',
-      city: addressList.value.find(item => item.id === id)?.city || '',
-      district: addressList.value.find(item => item.id === id)?.district || '',
-      detail: addressList.value.find(item => item.id === id)?.detail || '',
-      postal_code: addressList.value.find(item => item.id === id)?.postal_code || null
+      name: addressList.value.find((item) => item.id === id)?.name || '',
+      phone: addressList.value.find((item) => item.id === id)?.phone || '',
+      province: addressList.value.find((item) => item.id === id)?.province || '',
+      city: addressList.value.find((item) => item.id === id)?.city || '',
+      district: addressList.value.find((item) => item.id === id)?.district || '',
+      detail: addressList.value.find((item) => item.id === id)?.detail || '',
+      postal_code: addressList.value.find((item) => item.id === id)?.postal_code || null,
     })
 
     ElMessage.success('已设为默认地址')
@@ -399,15 +396,11 @@ const handleSetDefault = async (id: number) => {
 // 删除地址
 const handleDelete = async (id: number) => {
   try {
-    await ElMessageBox.confirm(
-      '确定要删除这个地址吗？',
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
+    await ElMessageBox.confirm('确定要删除这个地址吗？', '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
 
     await deleteAddress(id)
     ElMessage.success('地址已删除')
@@ -446,7 +439,7 @@ onMounted(() => {
   background-color: var(--bg-color);
   color: var(--text-primary);
   min-height: auto;
-  padding: 40px 20px;
+  padding: 18px 0;
   box-sizing: border-box;
 }
 
@@ -454,8 +447,8 @@ onMounted(() => {
 @keyframes slideFadeBlurIn {
   0% {
     opacity: 0;
-    transform: translateY(20px);
-    filter: blur(10px);
+    transform: translateY(10px);
+    filter: blur(5px);
   }
   100% {
     opacity: 1;
@@ -494,7 +487,6 @@ onMounted(() => {
 
 /* --- Header --- */
 .page-header {
-  max-width: 1200px;
   margin: 0 auto 30px;
   display: flex;
   justify-content: space-between;
@@ -531,7 +523,6 @@ onMounted(() => {
 
 /* --- Content --- */
 .address-content {
-  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -654,6 +645,7 @@ onMounted(() => {
   /* 控制显示宽度和行数 */
   max-width: 100%;
   display: -webkit-box;
+  line-clamp: 2;
   -webkit-line-clamp: 2; /* 限制显示 2 行 */
   -webkit-box-orient: vertical;
   overflow: hidden;

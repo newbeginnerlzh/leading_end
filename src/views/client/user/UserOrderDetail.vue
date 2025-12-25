@@ -32,24 +32,20 @@
             <div class="order-sn">订单号：{{ order.orderSn }}</div>
           </div>
           <div class="status-actions">
-             <button
+            <button
               v-if="isRefundable(order?.status)"
               class="custom-btn"
               :disabled="refunding"
               @click="openRefund"
-            >申请退款</button>
+            >
+              申请退款
+            </button>
 
-            <button
-              v-if="canPay"
-              class="custom-btn primary"
-              :disabled="acting"
-              @click="goPay"
-            >去支付</button>
+            <button v-if="canPay" class="custom-btn primary" :disabled="acting" @click="goPay">
+              去支付
+            </button>
 
-            <button
-               class="custom-btn danger"
-               @click="onDelete"
-            >删除订单</button>
+            <button class="custom-btn danger" @click="onDelete">删除订单</button>
           </div>
         </div>
 
@@ -65,30 +61,30 @@
 
         <!-- Alerts -->
         <div v-else class="status-alert">
-           <el-alert
-             v-if="displayStatus === '已取消'"
-             title="订单已取消"
-             :description="order.cancelReason ? `取消原因：${order.cancelReason}` : ''"
-             type="info"
-             show-icon
-             :closable="false"
-           />
-           <el-alert
-             v-else-if="displayStatus && displayStatus.includes('退款')"
-             :title="displayStatus"
-             :description="order.refundReason ? `退款原因：${order.refundReason}` : ''"
-             type="warning"
-             show-icon
-             :closable="false"
-           />
-           <el-alert
-             v-else-if="displayStatus === '已超时'"
-             title="订单已超时"
-             description="支付超时，请返回订单列表或重新下单"
-             type="warning"
-             show-icon
-             :closable="false"
-           />
+          <el-alert
+            v-if="displayStatus === '已取消'"
+            title="订单已取消"
+            :description="order.cancelReason ? `取消原因：${order.cancelReason}` : ''"
+            type="info"
+            show-icon
+            :closable="false"
+          />
+          <el-alert
+            v-else-if="displayStatus && displayStatus.includes('退款')"
+            :title="displayStatus"
+            :description="order.refundReason ? `退款原因：${order.refundReason}` : ''"
+            type="warning"
+            show-icon
+            :closable="false"
+          />
+          <el-alert
+            v-else-if="displayStatus === '已超时'"
+            title="订单已超时"
+            description="支付超时，请返回订单列表或重新下单"
+            type="warning"
+            show-icon
+            :closable="false"
+          />
         </div>
       </div>
 
@@ -113,7 +109,9 @@
               <span class="label">配送</span>
               <div class="value">
                 <div>{{ order.shippingMethod || '—' }}</div>
-                <div v-if="order.trackingNumber" class="tracking-no">单号：{{ order.trackingNumber }}</div>
+                <div v-if="order.trackingNumber" class="tracking-no">
+                  单号：{{ order.trackingNumber }}
+                </div>
               </div>
             </div>
             <div class="info-item" v-if="order.buyerRemark">
@@ -125,18 +123,18 @@
 
         <!-- Timeline -->
         <div class="section-card info-card" v-scroll-reveal>
-           <h3 class="card-title">订单追踪</h3>
-           <el-timeline class="custom-timeline">
-              <el-timeline-item
-                v-for="(activity, index) in timelineItems"
-                :key="index"
-                :type="index === timelineItems.length - 1 ? 'primary' : ''"
-                :timestamp="activity.timestamp"
-                :hollow="index !== timelineItems.length - 1"
-              >
-                {{ activity.content }}
-              </el-timeline-item>
-           </el-timeline>
+          <h3 class="card-title">订单追踪</h3>
+          <el-timeline class="custom-timeline">
+            <el-timeline-item
+              v-for="(activity, index) in timelineItems"
+              :key="index"
+              :type="index === timelineItems.length - 1 ? 'primary' : ''"
+              :timestamp="activity.timestamp"
+              :hollow="index !== timelineItems.length - 1"
+            >
+              {{ activity.content }}
+            </el-timeline-item>
+          </el-timeline>
         </div>
 
         <!-- Price Info -->
@@ -162,7 +160,9 @@
             <div class="summary-divider"></div>
             <div class="summary-row total">
               <span class="label">实付款</span>
-              <span class="value final-price">{{ formatMoney(order.payAmount ?? order.totalAmount) }}</span>
+              <span class="value final-price">{{
+                formatMoney(order.payAmount ?? order.totalAmount)
+              }}</span>
             </div>
           </div>
         </div>
@@ -171,12 +171,22 @@
       <!-- Product List -->
       <div class="section-card product-section" v-scroll-reveal>
         <h3 class="card-title">商品清单</h3>
-        <el-table :data="items" class="modern-table" style="width: 100%" :header-cell-style="{ background: '#f8fafc', color: '#64748b', fontWeight: '600', height: '50px' }">
+        <el-table
+          :data="items"
+          class="modern-table"
+          style="width: 100%"
+          :header-cell-style="{
+            background: '#f8fafc',
+            color: '#64748b',
+            fontWeight: '600',
+            height: '50px',
+          }"
+        >
           <el-table-column label="商品详情" min-width="240">
             <template #default="{ row }">
               <div class="goods-info">
                 <div class="img-wrapper">
-                   <img :src="row.mainImage" class="goods-thumb" alt="Product" />
+                  <img :src="row.mainImage" class="goods-thumb" alt="Product" />
                 </div>
                 <div class="goods-meta">
                   <div class="goods-name">{{ row.productName }}</div>
@@ -193,35 +203,46 @@
           <el-table-column prop="quantity" label="数量" width="100" align="center" />
           <el-table-column label="小计" width="140" align="center">
             <template #default="{ row }">
-              <span class="subtotal">{{ formatMoney(row.totalPrice ?? (row.price || 0) * (row.quantity || 0)) }}</span>
+              <span class="subtotal">{{
+                formatMoney(row.totalPrice ?? (row.price || 0) * (row.quantity || 0))
+              }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="afterSaleStatus" label="售后" width="100" align="center">
-             <template #default="{ row }">
-                <span v-if="row.afterSaleStatus" class="status-tag-small">{{ row.afterSaleStatus }}</span>
-                <span v-else class="text-gray">-</span>
-             </template>
+            <template #default="{ row }">
+              <span v-if="row.afterSaleStatus" class="status-tag-small">{{
+                row.afterSaleStatus
+              }}</span>
+              <span v-else class="text-gray">-</span>
+            </template>
           </el-table-column>
         </el-table>
       </div>
     </div>
 
     <!-- Dialog -->
-    <el-dialog v-model="refundDialogVisible" title="申请退款" width="420px" :close-on-click-modal="false" destroy-on-close class="custom-dialog">
-        <el-form label-width="80px" class="modern-form">
-          <el-form-item label="退款理由">
-            <el-input v-model="refundReason" type="textarea" :rows="3" placeholder="请填写退款理由" />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <div class="dialog-footer">
-            <button class="custom-btn" @click="refundDialogVisible = false">取消</button>
-            <button class="custom-btn primary" :disabled="refunding" @click="submitRefund">
-              {{ refunding ? '提交中...' : '确定' }}
-            </button>
-          </div>
-        </template>
-      </el-dialog>
+    <el-dialog
+      v-model="refundDialogVisible"
+      title="申请退款"
+      width="420px"
+      :close-on-click-modal="false"
+      destroy-on-close
+      class="custom-dialog"
+    >
+      <el-form label-width="80px" class="modern-form">
+        <el-form-item label="退款理由">
+          <el-input v-model="refundReason" type="textarea" :rows="3" placeholder="请填写退款理由" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <button class="custom-btn" @click="refundDialogVisible = false">取消</button>
+          <button class="custom-btn primary" :disabled="refunding" @click="submitRefund">
+            {{ refunding ? '提交中...' : '确定' }}
+          </button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -257,7 +278,7 @@ const vScrollReveal = {
           }
         })
       },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' },
     )
     observer.observe(el)
   },
@@ -278,11 +299,16 @@ const activeStep = computed(() => {
   const s = displayStatus.value
   if (!s) return 0
   switch (s) {
-    case '待付款': return 1
-    case '待发货': return 2
-    case '待收货': return 3
-    case '已完成': return 4
-    default: return 0
+    case '待付款':
+      return 1
+    case '待发货':
+      return 2
+    case '待收货':
+      return 3
+    case '已完成':
+      return 4
+    default:
+      return 0
   }
 })
 
@@ -291,7 +317,9 @@ const showSteps = computed(() => {
   return ['待付款', '待发货', '待收货', '已完成'].includes(s || '')
 })
 
-const canPay = computed(() => !!order.value && pendingStatuses.has(order.value.status || '') && !isExpired.value)
+const canPay = computed(
+  () => !!order.value && pendingStatuses.has(order.value.status || '') && !isExpired.value,
+)
 
 const timelineItems = computed(() => {
   const o = order.value
@@ -303,7 +331,7 @@ const timelineItems = computed(() => {
     { content: '确认收货', timestamp: formatDate(o.confirmTime), show: !!o.confirmTime },
     { content: '订单取消', timestamp: formatDate(o.cancelTime), show: !!o.cancelTime },
   ]
-  return list.filter(i => i.show)
+  return list.filter((i) => i.show)
 })
 
 function formatMoney(val?: number | null) {
@@ -325,7 +353,9 @@ function formatPayment(method?: string | null) {
 
 function formatAddress(o: Order | null) {
   if (!o) return ''
-  const parts = [o.receiverProvince, o.receiverCity, o.receiverDistrict, o.receiverDetail].filter(Boolean)
+  const parts = [o.receiverProvince, o.receiverCity, o.receiverDistrict, o.receiverDetail].filter(
+    Boolean,
+  )
   return parts.length ? parts.join(' ') : ''
 }
 
@@ -349,7 +379,11 @@ function formatDate(val?: Date | string | number | null) {
   return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`
 }
 
-function isOrderExpired(record: { createdAt?: Date | string | number | null; expireAt?: Date | string | number | null; expiresAt?: Date | string | number | null }) {
+function isOrderExpired(record: {
+  createdAt?: Date | string | number | null
+  expireAt?: Date | string | number | null
+  expiresAt?: Date | string | number | null
+}) {
   const expireTs =
     parseDate((record as { expireAt?: Date | string | number | null }).expireAt) ??
     parseDate((record as { expiresAt?: Date | string | number | null }).expiresAt)
@@ -374,16 +408,26 @@ function formatSpecs(specs: SkuSpecs) {
 
 function statusClass(text?: string | null) {
   switch (text) {
-    case '待付款': return 'st-pending'
-    case '待发货': return 'st-shipping'
-    case '待收货': return 'st-receiving'
-    case '已完成': return 'st-success'
-    case '已取消': return 'st-cancel'
-    case '退款中': return 'st-refund'
-    case '退款成功': return 'st-refund-success'
-    case '退款失败': return 'st-refund-fail'
-    case '已超时': return 'st-expired'
-    default: return 'st-default'
+    case '待付款':
+      return 'st-pending'
+    case '待发货':
+      return 'st-shipping'
+    case '待收货':
+      return 'st-receiving'
+    case '已完成':
+      return 'st-success'
+    case '已取消':
+      return 'st-cancel'
+    case '退款中':
+      return 'st-refund'
+    case '退款成功':
+      return 'st-refund-success'
+    case '退款失败':
+      return 'st-refund-fail'
+    case '已超时':
+      return 'st-expired'
+    default:
+      return 'st-default'
   }
 }
 
@@ -400,7 +444,7 @@ async function load() {
   }
   try {
     const res = await getOrderDetail(id)
-    const data = (res as { data?: { order?: Order, items?: OrderItem[] } }).data
+    const data = (res as { data?: { order?: Order; items?: OrderItem[] } }).data
     order.value = data?.order || null
     items.value = data?.items || []
   } catch {
@@ -456,10 +500,14 @@ async function onDelete() {
   const allowed = new Set(['已完成', '已取消', '退款成功'])
   const status = order.value.status || ''
   if (!allowed.has(status)) {
-    await ElMessageBox.alert('仅状态为已完成/已取消/退款成功的订单可以删除。当前状态不支持删除。', '无法删除', {
-      confirmButtonText: '我知道了',
-      type: 'info'
-    })
+    await ElMessageBox.alert(
+      '仅状态为已完成/已取消/退款成功的订单可以删除。当前状态不支持删除。',
+      '无法删除',
+      {
+        confirmButtonText: '我知道了',
+        type: 'info',
+      },
+    )
     return
   }
 
@@ -467,7 +515,7 @@ async function onDelete() {
     await ElMessageBox.confirm('确认删除该订单？删除后不可恢复。', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '再想想',
-      type: 'warning'
+      type: 'warning',
     })
   } catch {
     return
@@ -492,12 +540,17 @@ function onBack() {
 
 <style scoped>
 .modern-detail-page {
-  padding: 40px 20px;
-  max-width: 1200px;
+  padding: 18px 0;
   margin: 0 auto;
-  background-color: #f8f9fc;
+  background-color: transparent;
   min-height: 100vh;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
 }
 
 /* Header */
@@ -538,6 +591,7 @@ function onBack() {
   font-weight: 800;
   margin: 0;
   background: linear-gradient(to right, #1a1b25, #4f46e5);
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: -0.5px;
@@ -561,10 +615,14 @@ function onBack() {
   background: #ffffff;
   border-radius: 16px;
   padding: 24px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03);
   margin-bottom: 24px;
   border: 1px solid #f1f5f9;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 .section-card:hover {
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
@@ -600,13 +658,34 @@ function onBack() {
   background: #f1f5f9;
   color: #64748b;
 }
-.status-badge-large.st-pending { background: #fff7ed; color: #ea580c; }
-.status-badge-large.st-shipping { background: #eff6ff; color: #2563eb; }
-.status-badge-large.st-receiving { background: #f0fdf4; color: #16a34a; }
-.status-badge-large.st-success { background: #f0fdf4; color: #15803d; }
-.status-badge-large.st-cancel { background: #f1f5f9; color: #64748b; }
-.status-badge-large.st-refund { background: #fff7ed; color: #d97706; }
-.status-badge-large.st-expired { background: #fff7ed; color: #ea580c; }
+.status-badge-large.st-pending {
+  background: #fff7ed;
+  color: #ea580c;
+}
+.status-badge-large.st-shipping {
+  background: #eff6ff;
+  color: #2563eb;
+}
+.status-badge-large.st-receiving {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+.status-badge-large.st-success {
+  background: #f0fdf4;
+  color: #15803d;
+}
+.status-badge-large.st-cancel {
+  background: #f1f5f9;
+  color: #64748b;
+}
+.status-badge-large.st-refund {
+  background: #fff7ed;
+  color: #d97706;
+}
+.status-badge-large.st-expired {
+  background: #fff7ed;
+  color: #ea580c;
+}
 
 .order-sn {
   color: #94a3b8;
@@ -846,9 +925,15 @@ function onBack() {
 }
 
 /* Info Cards 交错延迟 */
-.info-card:nth-child(1) { animation-delay: 0.1s; }
-.info-card:nth-child(2) { animation-delay: 0.2s; }
-.info-card:nth-child(3) { animation-delay: 0.3s; }
+.info-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.info-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.info-card:nth-child(3) {
+  animation-delay: 0.3s;
+}
 
 /* 表格行交错动画 */
 .modern-table :deep(.el-table__row) {
@@ -862,11 +947,21 @@ function onBack() {
 }
 
 /* 表格行延迟 */
-.modern-table :deep(.el-table__row:nth-child(1)) { animation-delay: 0.1s; }
-.modern-table :deep(.el-table__row:nth-child(2)) { animation-delay: 0.15s; }
-.modern-table :deep(.el-table__row:nth-child(3)) { animation-delay: 0.2s; }
-.modern-table :deep(.el-table__row:nth-child(4)) { animation-delay: 0.25s; }
-.modern-table :deep(.el-table__row:nth-child(n+5)) { animation-delay: 0.3s; }
+.modern-table :deep(.el-table__row:nth-child(1)) {
+  animation-delay: 0.1s;
+}
+.modern-table :deep(.el-table__row:nth-child(2)) {
+  animation-delay: 0.15s;
+}
+.modern-table :deep(.el-table__row:nth-child(3)) {
+  animation-delay: 0.2s;
+}
+.modern-table :deep(.el-table__row:nth-child(4)) {
+  animation-delay: 0.25s;
+}
+.modern-table :deep(.el-table__row:nth-child(n + 5)) {
+  animation-delay: 0.3s;
+}
 
 .is-visible {
   animation-play-state: running;

@@ -61,9 +61,9 @@
           height: '50px',
         }"
       >
-        <el-table-column prop="orderSn" label="订单号" width="170" />
-        <el-table-column prop="createdAt" label="创建时间" width="170" />
-        <el-table-column label="商品" min-width="250">
+        <el-table-column prop="orderSn" label="订单号" width="170" align="center" />
+        <el-table-column prop="createdAt" label="创建时间" width="170" align="center" />
+        <el-table-column label="商品" min-width="250" align="center">
           <template #default="{ row }">
             <div class="cell-ellipsis">
               <span
@@ -83,14 +83,14 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="statusText" label="状态" width="80">
+        <el-table-column prop="statusText" label="状态" width="80" align="center">
           <template #default="{ row }">
             <span class="status-badge" :class="statusClass(row.statusText)">{{
               row.statusText
             }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="payAmount" label="实付" width="100">
+        <el-table-column prop="payAmount" label="实付" width="100" align="center">
           <template #default="{ row }">
             <span class="price-text"
               >¥{{ (row.payAmount || row.totalAmount || 0).toFixed(2) }}</span
@@ -532,7 +532,7 @@ onMounted(load)
   background-color: var(--bg-color);
   color: var(--text-primary);
   min-height: auto;
-  padding: 40px 20px;
+  padding: 18px 0;
   box-sizing: border-box;
 }
 
@@ -600,7 +600,6 @@ onMounted(load)
 
 /* --- Header --- */
 .page-header {
-  max-width: 1200px;
   margin: 0 auto 30px;
   display: flex;
   align-items: baseline;
@@ -637,7 +636,6 @@ onMounted(load)
   padding: 24px;
   box-shadow: var(--card-shadow);
   transition: all 0.3s ease;
-  max-width: 1200px;
   margin: 0 auto;
 }
 
