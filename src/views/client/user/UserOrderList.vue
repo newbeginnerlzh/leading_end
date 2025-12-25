@@ -129,17 +129,34 @@
       </el-table>
 
       <!-- Pagination -->
-      <div class="pagination-bar">
+      <div class="pagination-bar" v-scroll-reveal>
         <div class="page-size-selector">
-          <span>每页</span>
-          <el-select v-model="pageSize" size="small" style="width: 80px" @change="onPageSizeChange">
-            <el-option
-              v-for="size in pageSizeOptions"
-              :key="size"
-              :label="`${size} 条`"
-              :value="size"
-            />
-          </el-select>
+          <span class="label">每页显示</span>
+          <div
+            class="custom-select-wrapper"
+            @mouseenter="showPageSizeDropdown = true"
+            @mouseleave="showPageSizeDropdown = false"
+          >
+            <div class="select-trigger">
+              <span class="current-value">{{ pageSize }} 条</span>
+              <el-icon class="arrow-icon" :class="{ 'is-rotated': showPageSizeDropdown }">
+                <ArrowDown />
+              </el-icon>
+            </div>
+            <Transition name="dropdown-fade">
+              <div v-show="showPageSizeDropdown" class="custom-dropdown-menu">
+                <div
+                  v-for="size in pageSizeOptions"
+                  :key="size"
+                  class="dropdown-item"
+                  :class="{ 'is-active': pageSize === size }"
+                  @click="onPageSizeChange(size); showPageSizeDropdown = false"
+                >
+                  <span class="item-text">{{ size }} 条</span>
+                </div>
+              </div>
+            </Transition>
+          </div>
         </div>
         <el-pagination
           background
@@ -178,7 +195,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ArrowDown } from '@element-plus/icons-vue'
 import {
@@ -244,8 +261,25 @@ const orders = ref<OrderListView[]>([])
 const currentPage = ref(Number(route.query.page) > 0 ? Number(route.query.page) : 1)
 const pageSize = ref(Number(route.query.pageSize) > 0 ? Number(route.query.pageSize) : 10)
 const total = ref(0)
+const showPageSizeDropdown = ref(false)
 
 const pageSizeOptions = [10, 20, 50]
+
+// 监听路由参数变化，处理从其他页面跳转回来或点击导航栏的情况
+watch(
+  () => route.query,
+  (newQuery) => {
+    if (route.path !== '/user/orders') return
+    const p = Number(newQuery.page) || 1
+    const s = Number(newQuery.pageSize) || 10
+    if (p !== currentPage.value || s !== pageSize.value) {
+      currentPage.value = p
+      pageSize.value = s
+      load()
+    }
+  },
+  { deep: true },
+)
 
 const filters = ref<{ status: number | null; dateRange: string[] | [] }>({
   status: null,
@@ -442,6 +476,7 @@ function updateListQuery(page = currentPage.value, size = pageSize.value) {
   router.replace({
     path: '/user/orders',
     query: { ...route.query, page: String(page), pageSize: String(size) },
+    state: { noScroll: true },
   })
 }
 
@@ -458,7 +493,6 @@ async function load() {
     const list = (res.data?.orders || []) as OrderListItem[]
     orders.value = list.map((o) => ({ ...o, statusText: calcStatusText(o) }))
     total.value = res.data?.total ?? 0
-    updateListQuery(currentPage.value, pageSize.value)
   } catch {
     orders.value = []
     total.value = 0
@@ -477,30 +511,25 @@ function toPay(orderSn: string) {
 }
 
 function onPageChange(page: number) {
-  currentPage.value = page
-  updateListQuery(currentPage.value, pageSize.value)
-  load()
+  updateListQuery(page, pageSize.value)
 }
 
 function onPageSizeChange(size: number) {
-  pageSize.value = size
-  currentPage.value = 1
-  updateListQuery(currentPage.value, pageSize.value)
-  load()
+  updateListQuery(1, size)
 }
 
 function onFilterChange() {
-  currentPage.value = 1
+  // 仅更新状态，不立即加载，等待点击“筛选”按钮
 }
 
 function applyFilters() {
-  currentPage.value = 1
-  load()
+  updateListQuery(1, pageSize.value)
+  load() // 筛选需要手动触发 load，因为 query 可能没变（如果已经在第一页）
 }
 
 function resetFilters() {
   filters.value = { status: null, dateRange: [] }
-  currentPage.value = 1
+  updateListQuery(1, pageSize.value)
   load()
 }
 
@@ -817,17 +846,181 @@ onMounted(load)
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 24px;
-  padding-top: 16px;
+  margin-top: 28px;
+  padding-top: 20px;
   border-top: 1px solid var(--border-color);
 }
 
 .page-size-selector {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 12px;
+  font-size: 14px;
   color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* --- Custom Select --- */
+.custom-select-wrapper {
+  position: relative;
+  z-index: 10;
+}
+
+.select-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 85px;
+  justify-content: space-between;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.select-trigger:hover {
+  border-color: var(--accent-color);
+}
+
+.current-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.arrow-icon {
+  font-size: 12px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--text-tertiary);
+}
+
+.arrow-icon.is-rotated {
+  transform: rotate(180deg);
+  color: var(--accent-color);
+}
+
+.custom-dropdown-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  min-width: 100px;
+  padding: 6px;
+  background: var(--bg-color);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  z-index: 1000;
+  transform-origin: bottom center;
+}
+
+/* 桥接层 */
+.custom-dropdown-menu::before {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  background: transparent;
+}
+
+.dropdown-item {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 2px 0;
+  text-align: center;
+  position: relative;
+  user-select: none;
+  border: 1px solid transparent;
+}
+
+.dropdown-item:hover {
+  background: var(--hover-bg);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.dropdown-item.is-active {
+  background: rgba(79, 70, 229, 0.05);
+  color: var(--accent-color);
+  font-weight: 700;
+}
+
+/* Dropdown Fade Animation */
+.dropdown-fade-enter-active,
+.dropdown-fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dropdown-fade-enter-from,
+.dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scaleY(0.9) scaleX(0.95);
+  filter: blur(4px);
+}
+
+.dropdown-fade-enter-to,
+.dropdown-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0) scaleY(1) scaleX(1);
+  filter: blur(0);
+}
+
+:deep(.el-pagination) {
+  background: #f8f9fc;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 4px;
+}
+
+:deep(.el-pagination.is-background .el-pager li) {
+  background-color: #fff;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-weight: 600;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  min-width: 28px;
+  height: 28px;
+  line-height: 28px;
+  margin: 0 2px;
+}
+
+:deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
+  background: var(--accent-color) !important;
+  color: #fff;
+}
+
+:deep(.el-pagination.is-background .el-pager li:not(.is-disabled):hover) {
+  background: var(--accent-color);
+  color: #fff;
+}
+
+:deep(.el-pagination.is-background .btn-prev),
+:deep(.el-pagination.is-background .btn-next) {
+  background-color: #fff;
+  border: none;
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  margin: 0 2px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s;
+}
+
+:deep(.el-pagination.is-background .btn-prev:hover:not(:disabled)),
+:deep(.el-pagination.is-background .btn-next:hover:not(:disabled)) {
+  background: var(--accent-color);
+  color: #fff;
 }
 
 /* --- Buttons --- */

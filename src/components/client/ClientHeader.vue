@@ -37,44 +37,46 @@
       <!-- 3. 右侧：用户操作区 -->
       <div class="right-section">
         <template v-if="isLogin">
-          <div class="action-item cart-item" @click="goCart">
-            <el-badge :value="cartStore.totalCount" class="cart-badge" :max="99">
-              <div class="icon-wrapper">
-                <el-icon :size="22"><ShoppingCart /></el-icon>
-              </div>
+          <div class="nav-item cart-item" :class="{ 'is-active': isCartActive }" @click="goCart">
+            <el-badge :value="cartStore.totalCount" :max="99" class="cart-badge">
+              <span class="nav-text">购物车</span>
             </el-badge>
-            <span class="action-text">购物车</span>
           </div>
 
-          <el-dropdown trigger="hover" @command="handleUserCommand" popper-class="custom-dropdown">
+          <div
+            class="user-menu-wrapper"
+            @mouseenter="showDropdown = true"
+            @mouseleave="showDropdown = false"
+          >
             <div class="action-item user-profile">
               <div class="avatar-mini">
-                <el-icon :size="18"><User /></el-icon>
+                <el-image v-if="userAvatar" :src="userAvatar" class="image-avatar" fit="cover" />
+                <el-icon v-else :size="18"><User /></el-icon>
               </div>
               <span class="action-text username">{{ username }}</span>
-              <el-icon class="arrow-icon"><ArrowDown /></el-icon>
+              <el-icon class="arrow-icon" :class="{ 'is-rotated': showDropdown }"
+                ><ArrowDown
+              /></el-icon>
             </div>
-            <template #dropdown>
-              <el-dropdown-menu class="modern-dropdown">
-                <el-dropdown-item command="center">
-                  <el-icon><User /></el-icon>
-                  个人中心
-                </el-dropdown-item>
-                <el-dropdown-item command="address">
-                  <el-icon><Location /></el-icon>
-                  地址管理
-                </el-dropdown-item>
-                <el-dropdown-item command="orders">
-                  <el-icon><List /></el-icon>
-                  我的订单
-                </el-dropdown-item>
-                <el-dropdown-item divided command="logout" class="logout-item">
-                  <el-icon><SwitchButton /></el-icon>
-                  退出登录
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+
+            <Transition name="dropdown-fade">
+              <div v-show="showDropdown" class="custom-dropdown-menu">
+                <div class="dropdown-item" @click="handleMenuClick('center')">
+                  <span class="item-text">个人中心</span>
+                </div>
+                <div class="dropdown-item" @click="handleMenuClick('address')">
+                  <span class="item-text">地址管理</span>
+                </div>
+                <div class="dropdown-item" @click="handleMenuClick('orders')">
+                  <span class="item-text">我的订单</span>
+                </div>
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-item logout-item" @click="handleMenuClick('logout')">
+                  <span class="item-text">退出登录</span>
+                </div>
+              </div>
+            </Transition>
+          </div>
         </template>
 
         <template v-else>
@@ -101,29 +103,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  Search,
-  ShoppingCart,
-  User,
-  ArrowDown,
-  Headset,
-  Location,
-  List,
-  SwitchButton,
-} from '@element-plus/icons-vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { Search, User, ArrowDown, Headset } from '@element-plus/icons-vue'
 import { useCartStore } from '@/stores/cart'
 
 const router = useRouter()
+const route = useRoute()
 const cartStore = useCartStore()
+
+const isCartActive = computed(() => route.path === '/cart')
 
 const keyword = ref('')
 const isLogin = ref(false)
 const username = ref('')
+const userAvatar = ref('')
+const showDropdown = ref(false)
 
 // 悬浮按钮拖拽逻辑
-const pos = ref({ x: 0, y: 0 })
+const pos = ref({
+  x: typeof window !== 'undefined' ? window.innerWidth - 110 : 1130,
+  y: typeof window !== 'undefined' ? window.innerHeight - 110 : 590,
+})
 const startPos = ref({ x: 0, y: 0 })
 let isMoved = false
 
@@ -198,7 +199,8 @@ const handleSearch = () => {
   })
 }
 
-const handleUserCommand = (command: string) => {
+const handleMenuClick = (command: string) => {
+  showDropdown.value = false
   switch (command) {
     case 'center':
       router.push('/user/profile')
@@ -232,13 +234,19 @@ const updateUsernameFromStorage = () => {
     const raw = localStorage.getItem('userInfo')
     if (!raw) {
       username.value = ''
+      userAvatar.value = ''
+      isLogin.value = false
       return
     }
     const info = JSON.parse(raw) as Record<string, unknown>
     username.value = (info.nickname as string) || (info.username as string) || ''
-    if (username.value) isLogin.value = true
+    userAvatar.value = (info.avatar as string) || ''
+    // 只要有用户信息，就认为是登录状态
+    isLogin.value = !!(username.value || info.id)
   } catch {
     username.value = ''
+    userAvatar.value = ''
+    isLogin.value = false
   }
 }
 
@@ -277,14 +285,14 @@ onUnmounted(() => {
 
   font-family: 'Inter', sans-serif;
   width: 100%;
-  height: 72px;
+  height: 64px;
   background: var(--bg-color);
   border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
   z-index: 999;
   backdrop-filter: blur(12px);
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.75);
 }
 
 .content-wrapper {
@@ -310,10 +318,6 @@ onUnmounted(() => {
   gap: 8px;
   cursor: pointer;
   transition: transform 0.3s ease;
-}
-
-.logo:hover {
-  transform: scale(1.02);
 }
 
 .logo-text {
@@ -394,7 +398,7 @@ onUnmounted(() => {
   box-shadow: none !important;
   border: 1px solid transparent;
   transition: all 0.3s ease;
-  height: 42px;
+  height: 28px;
 }
 
 :deep(.round-input .el-input__wrapper:hover) {
@@ -403,7 +407,6 @@ onUnmounted(() => {
 
 :deep(.round-input .el-input__wrapper.is-focus) {
   background-color: #fff;
-  border-color: var(--accent-color);
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1) !important;
 }
 
@@ -451,22 +454,10 @@ onUnmounted(() => {
 
 .action-item:hover {
   color: var(--accent-color);
-  background: var(--hover-bg);
 }
 
-.icon-wrapper {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.action-item:not(.cart-item):hover {
   background: var(--hover-bg);
-  border-radius: 10px;
-  transition: all 0.2s ease;
-}
-
-.action-item:hover .icon-wrapper {
-  background: #eef2ff;
 }
 
 .action-text {
@@ -474,11 +465,27 @@ onUnmounted(() => {
   font-size: 14px;
 }
 
+.action-text.router-link-exact-active {
+  color: var(--accent-color);
+  background: #eef2ff;
+}
+
+.action-text.router-link-exact-active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translatex(-50%);
+  width: 20px;
+  height: 3px;
+  background: var(--accent-color);
+  border-radius: 2px;
+}
+
 .cart-badge :deep(.el-badge__content) {
-  height: 18px;
-  line-height: 18px;
-  padding: 0 6px;
-  font-size: 11px;
+  height: 16px;
+  line-height: 16px;
+  font-size: 10px;
   font-weight: 600;
   border: none;
   background: var(--accent-color);
@@ -499,6 +506,13 @@ onUnmounted(() => {
   border-radius: 50%;
   color: var(--accent-color);
   transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.image-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .user-profile:hover .avatar-mini {
@@ -521,6 +535,28 @@ onUnmounted(() => {
 
 .user-profile:hover .arrow-icon {
   transform: rotate(180deg);
+}
+
+/* --- Cart Item Active --- */
+.cart-item {
+  cursor: pointer;
+}
+
+.cart-item.is-active {
+  color: var(--accent-color);
+  background: #eef2ff;
+}
+
+.cart-item.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  background: var(--accent-color);
+  border-radius: 2px;
 }
 
 /* --- Login Auth --- */
@@ -559,42 +595,100 @@ onUnmounted(() => {
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
 }
 
-/* --- Dropdown Styles --- */
-:deep(.el-dropdown-menu) {
-  padding: 8px;
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+/* --- Custom Dropdown Menu --- */
+.user-menu-wrapper {
+  position: relative;
 }
 
-:deep(.el-dropdown-menu__item) {
-  padding: 10px 16px;
-  border-radius: 8px;
+.arrow-icon {
+  font-size: 12px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.arrow-icon.is-rotated {
+  transform: rotate(180deg);
+}
+
+.custom-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  min-width: 100px;
+  padding: 8px;
+  background: var(--bg-color);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  transform-origin: top center;
+}
+
+/* 桥接层：防止鼠标移动到菜单时因 12px 间隙导致菜单消失 */
+.custom-dropdown-menu::before {
+  content: '';
+  position: absolute;
+  top: -14px;
+  left: 0;
+  width: 100%;
+  height: 14px;
+  background: transparent;
+}
+
+.dropdown-item {
+  padding: 10px 12px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 500;
   color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  cursor: pointer;
   transition: all 0.2s ease;
+  margin: 2px 0;
+  text-align: center;
+  position: relative;
+  user-select: none;
+  border: 1px solid transparent;
 }
 
-:deep(.el-dropdown-menu__item:hover) {
+.dropdown-item:hover {
   background: var(--hover-bg);
+  border-color: var(--accent-color);
   color: var(--accent-color);
 }
 
-:deep(.el-dropdown-menu__item .el-icon) {
-  font-size: 16px;
+.dropdown-divider {
+  height: 1px;
+  background: rgba(226, 232, 240, 0.5);
+  margin: 8px 8px;
 }
 
-:deep(.el-dropdown-menu__item.logout-item) {
+.dropdown-item.logout-item:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: var(--danger-color);
   color: var(--danger-color);
 }
 
-:deep(.el-dropdown-menu__item.logout-item:hover) {
-  background: #fef2f2;
-  color: var(--danger-color);
+.item-text {
+  display: block;
+}
+
+/* Dropdown Fade Animation */
+.dropdown-fade-enter-active,
+.dropdown-fade-leave-active {
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dropdown-fade-enter-from,
+.dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-12px) scaleY(0.9) scaleX(0.95);
+  filter: blur(8px);
+}
+
+.dropdown-fade-enter-to,
+.dropdown-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0) scaleY(1) scaleX(1);
+  filter: blur(0);
 }
 
 :deep(.el-dropdown :focus-visible) {
@@ -610,24 +704,24 @@ onUnmounted(() => {
   position: fixed;
   width: 60px;
   height: 60px;
-  background: var(--accent-gradient);
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.35);
+  background: #ffffff;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.2);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--accent-color);
   cursor: move;
   z-index: 9999;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.3s ease;
   user-select: none;
 }
 
 .floating-service-btn:hover {
-  transform: scale(1.08) translateY(-3px);
-  box-shadow: 0 8px 30px rgba(79, 70, 229, 0.5);
-  border-radius: 20px;
+  border-color: var(--hover-bg);
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.3);
 }
 
 .btn-text {

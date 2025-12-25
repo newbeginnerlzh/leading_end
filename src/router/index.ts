@@ -74,10 +74,13 @@ const router = createRouter({
     // 如果有保存的位置（例如浏览器前进/后退），使用保存的位置
     if (savedPosition) {
       return savedPosition
-    } else {
-      // 否则滚动到顶部
-      return { top: 0 }
     }
+    // 如果 state 中明确标记了不需要滚动（例如分页操作），则返回 false
+    if (history.state?.noScroll) {
+      return false
+    }
+    // 否则滚动到顶部
+    return { top: 0 }
   },
 })
 

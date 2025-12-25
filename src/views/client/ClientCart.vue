@@ -494,6 +494,7 @@ button {
   align-items: center;
   gap: 20px;
   cursor: pointer;
+  font-size: 14px;
 }
 .list-header .col-product {
   justify-content: center;
@@ -503,6 +504,7 @@ button {
 .col-subtotal,
 .col-action {
   text-align: center;
+  font-size: 14px;
 }
 
 /* --- Product Info --- */
@@ -552,7 +554,7 @@ button {
 
 /* --- Price --- */
 .unit-price {
-  font-size: 15px;
+  font-size: 16px;
   color: var(--text-secondary);
   font-weight: 500;
 }
@@ -594,7 +596,7 @@ button {
 .qty-val {
   width: 36px;
   text-align: center;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -604,7 +606,7 @@ button {
   background: transparent;
   border: none;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: 16px;
   cursor: pointer;
   transition: color 0.2s;
   font-weight: 600;
