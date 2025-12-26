@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
-import { ArrowRight } from '@element-plus/icons-vue' 
+import { ArrowRight } from '@element-plus/icons-vue'
 import type { ProductSimple } from '@/api/model/productModel'
 import { getHomeBanners, getHomeCategories } from '@/api/home'
 
@@ -34,8 +34,8 @@ interface Floor extends Category {
 // --- 1. 响应式数据 ---
 const router = useRouter()
 const bannerHeight = ref('480px') // 统一管理高度
-const bannerList = ref<Banner[]>([]) 
-const categoryList = ref<Category[]>([]) 
+const bannerList = ref<Banner[]>([])
+const categoryList = ref<Category[]>([])
 const floorList = ref<Floor[]>([])
 
 // --- 2. 初始化数据 ---
@@ -49,8 +49,8 @@ const initData = async () => {
     bannerList.value = resBanners.data
 
     const dbCats = resCats.data
-    const seckillCat = { 
-      id: 1, 
+    const seckillCat = {
+      id: 1,
       name: '联想秒杀',
       subTitle: '限时特惠 手慢无',
       themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)'
@@ -63,7 +63,7 @@ const initData = async () => {
       ...cat,
       products: [] as ProductSimple[]
     }))
-    
+
     floorList.value = floors
 
     // 随后异步加载商品
@@ -76,17 +76,17 @@ const initData = async () => {
 
 // --- 3. 获取各楼层商品数据 ---
 const fetchProductDataForFloors = async () => {
-  const token = localStorage.getItem('token') || ''; 
+  const token = localStorage.getItem('token') || '';
   const requests = floorList.value.map(async (floor) => {
     try {
       const res = await axios.get('/api/products', {
         headers: { 'Authorization': `Bearer ${token}` },
         params: {
-          keyword: ' ', 
-          categoryId: floor.id, 
+          keyword: ' ',
+          categoryId: floor.id,
           page: 1,
-          pageSize: 4,        
-          sort: 'price_asc'   
+          pageSize: 4,
+          sort: 'price_asc'
         }
       });
 
@@ -103,8 +103,8 @@ const fetchProductDataForFloors = async () => {
         id: item.id,
         name: item.name,
         price: Number(item.price),
-        imgUrl: item.image || item.imgUrl || '', 
-        tags: item.tag ? [item.tag] : [] 
+        imgUrl: item.image || item.imgUrl || '',
+        tags: item.tag ? [item.tag] : []
       }));
     } catch (err) {
       console.error(`❌ 楼层 [${floor.name}] 商品加载失败`, err);
@@ -113,8 +113,8 @@ const fetchProductDataForFloors = async () => {
   await Promise.all(requests);
 }
 
-onMounted(() => { 
-  initData() 
+onMounted(() => {
+  initData()
 })
 
 // --- 4. 交互方法 ---
@@ -132,16 +132,16 @@ const scrollToFloor = (id: number) => {
 
 <template>
   <div class="main-view">
-    
+
     <!-- 1. 全屏通栏轮播区 -->
     <div class="banner-container">
-      
+
       <!-- 底层：轮播图 -->
-      <el-carousel 
-        trigger="click" 
-        :height="bannerHeight" 
-        :interval="5000" 
-        arrow="hover" 
+      <el-carousel
+        trigger="click"
+        :height="bannerHeight"
+        :interval="5000"
+        arrow="hover"
         class="full-width-carousel"
       >
         <el-carousel-item v-for="(item, index) in bannerList" :key="index">
@@ -153,10 +153,10 @@ const scrollToFloor = (id: number) => {
       <div class="banner-content-wrapper">
         <div class="category-sidebar">
           <ul class="category-list">
-            <li 
-              v-for="cat in categoryList" 
-              :key="cat.id" 
-              class="category-item" 
+            <li
+              v-for="cat in categoryList"
+              :key="cat.id"
+              class="category-item"
               @click="scrollToFloor(cat.id)"
             >
               <span class="cat-name">{{ cat.name }}</span>
@@ -182,21 +182,21 @@ const scrollToFloor = (id: number) => {
           </div>
           <div class="brand-tag">LENOVO</div>
         </div>
-        
+
         <!-- 楼层商品网格 -->
         <div class="floor-grid">
           <!-- 假设你已经定义并引入了 ProductCard 组件 -->
-          <ProductCard 
-            v-for="product in floor.products" 
-            :key="product.id" 
-            :product="product" 
-            class="floor-product-card" 
+          <ProductCard
+            v-for="product in floor.products"
+            :key="product.id"
+            :product="product"
+            class="floor-product-card"
           />
           <!-- 空状态 -->
-          <el-empty 
-            v-if="floor.products.length === 0" 
-            description="暂无商品" 
-            style="grid-column: span 4; width: 100%;" 
+          <el-empty
+            v-if="floor.products.length === 0"
+            description="暂无商品"
+            style="grid-column: span 4; width: 100%;"
           />
         </div>
       </div>
@@ -214,7 +214,6 @@ const scrollToFloor = (id: number) => {
   height: v-bind(bannerHeight); /* 使用 JS 定义的高度 */
   background-color: #000;
   margin-bottom: 30px;
-  border-radius: 16px;
   overflow: hidden;
 }
 
@@ -248,41 +247,40 @@ const scrollToFloor = (id: number) => {
 .category-sidebar {
   width: 240px;
   height: 100%; /* 关键：继承 wrapper 的 100% 高度 */
-  background: rgba(255, 255, 255, 0.95); 
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   pointer-events: auto; /* 恢复点击 */
   box-shadow: 4px 0 12px rgba(0, 0, 0, 0.08);
-  border-radius: 16px 0 0 16px;
 }
 
-.category-list { 
-  list-style: none; 
-  padding: 0; 
-  margin: 0; 
-  display: flex; 
+.category-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
   flex-direction: column; /* 纵向排列 */
   height: 100%; /* 填充整个 sidebar */
 }
 
-.category-item { 
+.category-item {
   flex: 1; /* 核心：平分高度，确保菜单底边始终对齐轮播图底边 */
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between; 
-  padding: 0 30px; 
-  cursor: pointer; 
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30px;
+  cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  color: #333; 
+  color: #333;
   font-size: 15px;
   border-bottom: 1px solid rgba(0,0,0,0.03);
 }
 
 .category-item:last-child { border-bottom: none; }
 
-.category-item:hover { 
+.category-item:hover {
   background-color: #fff;
-  color: #4f46e5; 
-  padding-left: 40px; 
+  color: #4f46e5;
+  padding-left: 40px;
   font-weight: bold;
 }
 
