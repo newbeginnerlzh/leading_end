@@ -1,8 +1,6 @@
 <script setup lang="ts">
-// 显式引入 Vue API，防止 TS 报错
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-// 引入您的类型定义
 import type { ProductSimple } from '@/api/model/productModel'
 
 const props = defineProps<{
@@ -15,170 +13,127 @@ const navigateToDetail = () => {
   router.push(`/product/${props.product.id}`)
 }
 
-// 格式化价格
 const formattedPrice = computed(() => {
-  return props.product.price.toLocaleString('zh-CN', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  })
+  return props.product.price.toFixed(2)
 })
+
+// const hasTag = computed(() => {
+//   return props.product.tags && props.product.tags.length > 0
+// })
+
+// const firstTag = computed(() => {
+//   return hasTag.value ? props.product.tags![0] : ''
+// })
 </script>
 
 <template>
-  <el-card 
-    class="product-card" 
-    shadow="hover" 
-    :body-style="{ padding: '0px' }"
-    @click="navigateToDetail"
-  >
-    <!-- 图片容器 -->
-    <div class="image-wrapper">
-      <el-image 
-        :src="product.imgUrl" 
+  <div class="product-card" @click="navigateToDetail">
+    <div class="card-image-wrapper">
+      <img
+        :src="product.imgUrl"
+        :alt="product.name"
+        class="product-image"
         loading="lazy"
-        fit="cover"
-        class="product-img"
-      >
-        <!-- 加载失败占位 -->
-        <template #error>
-          <div class="image-slot">
-            <span>暂无图片</span>
-          </div>
-        </template>
-        <!-- 加载中占位 -->
-        <template #placeholder>
-          <div class="image-slot loading">Loading...</div>
-        </template>
-      </el-image>
-
-      <!-- 标签浮层 -->
-      <div v-if="product.tags && product.tags.length" class="tags-container">
-        <el-tag 
-          v-for="tag in product.tags" 
-          :key="tag" 
-          effect="dark" 
-          size="small" 
-          type="danger"
-          class="tag-item"
-        >
-          {{ tag }}
-        </el-tag>
-      </div>
+      />
+      <!-- <div v-if="hasTag" class="product-tag">{{ firstTag }}</div> -->
     </div>
 
-    <!-- 内容区域 -->
     <div class="card-content">
-      <h3 class="product-name" :title="product.name">
-        {{ product.name }}
-      </h3>
-      
-      <div class="bottom-info">
-        <span class="currency">¥</span>
-        <span class="price">{{ formattedPrice }}</span>
+      <h3 class="product-name" :title="product.name">{{ product.name }}</h3>
+      <div class="product-price">
+        <span class="price-symbol">¥</span>
+        <span class="price-value">{{ formattedPrice }}</span>
       </div>
     </div>
-  </el-card>
+  </div>
 </template>
 
 <style scoped>
-/* 这里已改为标准 CSS，无需安装 Sass */
-
 .product-card {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
   cursor: pointer;
-  transition: transform 0.3s;
-  border: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid #f0f0f0;
+  position: relative;
 }
 
-/* 悬停卡片上浮 */
 .product-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+  border-color: #667eea;
 }
 
-/* 悬停时标题变色 */
-.product-card:hover .product-name {
-  color: var(--el-color-primary);
-}
-
-.image-wrapper {
+.card-image-wrapper {
   position: relative;
   width: 100%;
-  padding-top: 100%; /* 1:1 正方形 */
+  padding-top: 100%;
+  background: #f8f9fa;
   overflow: hidden;
-  background-color: #f5f7fa;
 }
 
-.product-img {
+.product-image {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  transition: transform 0.3s;
+  object-fit: cover;
+  transition: transform 0.3s ease;
 }
 
-/* 悬停图片放大 */
-.image-wrapper:hover .product-img {
+.product-card:hover .product-image {
   transform: scale(1.05);
 }
 
-.tags-container {
+.product-tag {
   position: absolute;
   bottom: 8px;
-  left: 8px;
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  z-index: 1;
-}
-
-.tag-item {
-  font-size: 10px;
-  height: 20px;
-  padding: 0 4px;
+  right: 8px;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 12px;
+  letter-spacing: 0.5px;
+  z-index: 2;
 }
 
 .card-content {
-  padding: 12px;
+  padding: 12px 16px 16px;
 }
 
 .product-name {
-  margin: 0;
+  margin: 0 0 8px 0;
   font-size: 14px;
-  line-height: 1.4;
-  height: 40px; /* 限制两行高度 */
-  color: var(--el-text-color-primary);
-  /* 多行省略 */
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  font-weight: 500;
+  color: #1a1a1a;
+  line-height: 1.5;
+  height: 42px;
   overflow: hidden;
-  margin-bottom: 8px;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
-.bottom-info {
+.product-price {
   display: flex;
   align-items: baseline;
-  color: var(--el-color-danger);
 }
 
-.currency {
-  font-size: 12px;
+.price-symbol {
+  font-size: 18px;
+  font-weight: 600;
   margin-right: 2px;
 }
 
-.price {
+.price-value {
   font-size: 18px;
-  font-weight: bold;
-}
-
-.image-slot {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  height: 100%;
-  background: var(--el-fill-color-light);
-  color: var(--el-text-color-secondary);
-  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 </style>

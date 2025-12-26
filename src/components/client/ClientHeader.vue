@@ -22,7 +22,7 @@
         <div class="search-box">
           <el-input
             v-model="keyword"
-            placeholder="搜索 ThinkBook 14+ ..."
+            placeholder="搜索"
             class="round-input"
             clearable
             @keyup.enter="handleSearch"
@@ -483,12 +483,15 @@ onUnmounted(() => {
 }
 
 .cart-badge :deep(.el-badge__content) {
-  height: 16px;
-  line-height: 16px;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
   font-size: 10px;
   font-weight: 600;
   border: none;
   background: var(--accent-color);
+  border-radius: 50%;
+  padding: 0;
 }
 
 /* --- User Profile --- */

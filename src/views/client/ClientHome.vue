@@ -2,11 +2,11 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
-import { ArrowRight, Hot, Star } from '@element-plus/icons-vue' 
+import { ArrowRight } from '@element-plus/icons-vue'
 import type { ProductSimple } from '@/api/model/productModel'
 import { getHomeBanners, getHomeCategories } from '@/api/home'
+import ProductCard from '@/components/client/ProductCard.vue'
 
-// --- 0. 类型定义 ---
 interface ApiProduct {
   id: number
   name: string
@@ -31,14 +31,13 @@ interface Floor extends Category {
   products: ProductSimple[]
 }
 
-// --- 1. 响应式数据 ---
 const router = useRouter()
-const bannerHeight = ref('480px') // 统一管理高度
+const bannerHeight = ref('520px')
 const bannerList = ref<Banner[]>([])
 const categoryList = ref<Category[]>([])
 const floorList = ref<Floor[]>([])
+const isDataLoaded = ref(false)
 
-// --- 2. 初始化数据 ---
 const initData = async () => {
   try {
     const [resBanners, resCats] = await Promise.all([
@@ -49,9 +48,9 @@ const initData = async () => {
     bannerList.value = resBanners.data
 
     const dbCats = resCats.data
-    const seckillCat = { 
-      id: 1, 
-      name: '热卖秒杀',
+    const seckillCat = {
+      id: 1,
+      name: '限时秒杀',
       subTitle: '每日特惠 限时抢购',
       themeColor: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
       badge: 'HOT'
@@ -59,7 +58,6 @@ const initData = async () => {
 
     categoryList.value = [seckillCat, ...dbCats]
 
-    // 初始化楼层结构
     const floors = [seckillCat, ...dbCats].map((cat, index) => ({
       ...cat,
       products: [] as ProductSimple[],
@@ -68,15 +66,13 @@ const initData = async () => {
 
     floorList.value = floors
 
-    // 随后异步加载商品
     await fetchProductDataForFloors()
-
+    isDataLoaded.value = true
   } catch (error) {
     console.error('初始化数据失败:', error)
   }
 }
 
-// --- 3. 获取各楼层商品数据 ---
 const fetchProductDataForFloors = async () => {
   const token = localStorage.getItem('token') || '';
   const requests = floorList.value.map(async (floor) => {
@@ -95,12 +91,10 @@ const fetchProductDataForFloors = async () => {
       const resData = res.data;
       let productList: ApiProduct[] = [];
 
-      // 兼容不同的后端返回结构
       if (resData?.data?.ProductSimple) productList = resData.data.ProductSimple;
       else if (resData?.data?.productSimple) productList = resData.data.productSimple;
       else if (Array.isArray(resData?.data)) productList = resData.data;
 
-      // 映射为统一的 ProductSimple 类型
       floor.products = productList.map((item: ApiProduct) => ({
         id: item.id,
         name: item.name,
@@ -109,7 +103,7 @@ const fetchProductDataForFloors = async () => {
         tags: item.tag ? [item.tag] : []
       }));
     } catch (err) {
-      console.error(`❌ 楼层 [${floor.name}] 商品加载失败`, err);
+      console.error(`楼层 [${floor.name}] 商品加载失败`, err);
     }
   });
   await Promise.all(requests);
@@ -119,7 +113,6 @@ onMounted(() => {
   initData()
 })
 
-// --- 4. 交互方法 ---
 const goToCategory = (id: number) => {
   router.push({ path: '/products', query: { category: id } })
 }
@@ -131,86 +124,87 @@ const scrollToFloor = (id: number) => {
   }
 }
 
-// 获取楼层背景色（参考华为商城风格）
 const getFloorBgColor = (index: number) => {
   const colors = [
-    'linear-gradient(135deg, #f5f7fa 0%, #f9fafc 100%)',
-    'linear-gradient(135deg, #fafbfc 0%, #f5f7fa 100%)',
+    'linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%)',
+    'linear-gradient(180deg, #fafbfc 0%, #ffffff 100%)',
   ]
   return colors[index % colors.length]
 }
 </script>
 
 <template>
-  <div class="main-view">
+  <div class="home-page">
+    <div class="hero-section">
+      <div class="hero-container">
+        <el-carousel
+          trigger="click"
+          :height="bannerHeight"
+          :interval="5000"
+          arrow="hover"
+          class="hero-carousel"
+        >
+          <el-carousel-item v-for="(item, index) in bannerList" :key="index">
+            <img :src="item.imgUrl" alt="banner" class="carousel-image" />
+          </el-carousel-item>
+        </el-carousel>
 
-    <!-- 1. 全屏通栏轮播区 -->
-    <div class="banner-container">
-
-      <!-- 底层：轮播图 -->
-      <el-carousel
-        trigger="click"
-        :height="bannerHeight"
-        :interval="5000"
-        arrow="hover"
-        class="full-width-carousel"
-      >
-        <el-carousel-item v-for="(item, index) in bannerList" :key="index">
-          <img :src="item.imgUrl" alt="banner" class="banner-img" />
-        </el-carousel-item>
-      </el-carousel>
-
-      <!-- 顶层：居中内容限制层 (高度始终 100%) -->
-      <div class="banner-content-wrapper">
-        <div class="category-sidebar">
-          <ul class="category-list">
-            <li
-              v-for="cat in categoryList"
-              :key="cat.id"
-              class="category-item"
-              @click="scrollToFloor(cat.id)"
-            >
-              <span class="cat-name">{{ cat.name }}</span>
-              <el-icon class="arrow-icon"><ArrowRight /></el-icon>
-            </li>
-          </ul>
-        </div>
+        <transition name="sidebar-fade" appear>
+          <div class="category-sidebar" v-if="isDataLoaded">
+            <div class="sidebar-header">
+              <h3 class="sidebar-title">商品分类</h3>
+            </div>
+            <ul class="category-menu">
+              <li
+                v-for="cat in categoryList"
+                :key="cat.id"
+                class="category-item"
+                @click="scrollToFloor(cat.id)"
+              >
+                <span class="category-name">{{ cat.name }}</span>
+                <el-icon class="category-arrow"><ArrowRight /></el-icon>
+              </li>
+            </ul>
+          </div>
+        </transition>
       </div>
-
     </div>
 
-    <!-- 3. 商品楼层区 - 参考华为商城楼层设计 -->
-    <div class="floor-container">
-      <div v-for="floor in floorList" :key="floor.id" :id="`floor-${floor.id}`" class="floor-section" :style="{ background: floor.backgroundColor }">
-        <!-- 楼层标题栏 -->
-        <div class="floor-header" :style="{ backgroundImage: floor.themeColor }">
-          <div class="floor-header-left">
-            <div class="floor-badge" v-if="floor.badge">{{ floor.badge }}</div>
-            <h2 class="floor-header-title">{{ floor.name }}</h2>
-            <p class="floor-header-subtitle">{{ floor.subTitle }}</p>
-          </div>
-          <div class="floor-header-right">
-            <el-button type="primary" @click="goToCategory(floor.id)" class="view-all-btn">
-              查看全部 <el-icon><ArrowRight /></el-icon>
+    <div class="floor-section">
+      <div class="floor-container">
+        <div
+          v-for="floor in floorList"
+          :key="floor.id"
+          :id="`floor-${floor.id}`"
+          class="floor"
+          :style="{ background: getFloorBgColor(floorList.indexOf(floor)) }"
+        >
+          <div class="floor-header" :style="{ background: floor.themeColor }">
+            <div class="floor-header-content">
+              <div class="floor-badge" v-if="'badge' in floor && floor.badge">{{ floor.badge }}</div>
+              <h2 class="floor-title">{{ floor.name }}</h2>
+              <p class="floor-subtitle">{{ floor.subTitle }}</p>
+            </div>
+            <el-button type="primary" @click="goToCategory(floor.id)" class="view-more-btn">
+              查看更多 <el-icon><ArrowRight /></el-icon>
             </el-button>
           </div>
-        </div>
 
-        <!-- 楼层商品网格 -->
-        <div class="floor-products-wrapper">
-          <div class="floor-grid">
-            <ProductCard 
-              v-for="product in floor.products" 
-              :key="product.id" 
-              :product="product" 
-              class="floor-product-card" 
+          <div class="floor-content">
+            <div class="product-grid">
+              <ProductCard
+                v-for="product in floor.products"
+                :key="product.id"
+                :product="product"
+                class="grid-item"
+              />
+            </div>
+            <el-empty
+              v-if="floor.products.length === 0"
+              description="暂无商品"
+              class="empty-state"
             />
           </div>
-          <el-empty 
-            v-if="floor.products.length === 0" 
-            description="暂无商品" 
-            class="floor-empty" 
-          />
         </div>
       </div>
     </div>
@@ -218,150 +212,156 @@ const getFloorBgColor = (index: number) => {
 </template>
 
 <style scoped>
-.main-view { 
-  width: 100%; 
-  padding: 0; 
-  background-color: #ffffff; 
+.home-page {
+  width: 100%;
+  background: #fff;
   padding-bottom: 60px;
 }
 
-/* --- 1. 顶部导航栏 - 参考华为商城风格 --- */
-.top-nav-bar {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: #ffffff;
-  border-bottom: 1px solid #f0f0f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+.sidebar-fade-enter-active {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.nav-container {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 0 20px;
+.sidebar-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-50%) translateX(-20px);
 }
 
-.nav-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0;
+.sidebar-fade-enter-to {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
 }
 
-.nav-item {
-  flex: 0 0 auto;
-  padding: 12px 18px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border-bottom: 3px solid transparent;
-  font-size: 14px;
-  color: #333;
-  font-weight: 500;
+.hero-section {
+  width: 100%;
   position: relative;
+  margin-bottom: 40px;
 }
 
-.nav-item:hover {
-  color: #ff6b6b;
-  border-bottom-color: #ff6b6b;
-}
-
-.nav-text {
-  white-space: nowrap;
-}
-
-/* --- 2. 轮播容器 --- */
-.banner-container {
+.hero-container {
   position: relative;
   width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
   height: v-bind(bannerHeight);
-  background-color: #000;
-  margin-bottom: 0;
-  overflow: hidden;
-  border-radius: 0;
 }
 
-.full-width-carousel {
+.hero-carousel {
   width: 100%;
   height: 100%;
 }
 
-.banner-img {
+.carousel-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center;
-  display: block;
 }
 
-/* --- 3. 楼层容器和全局样式 --- */
-.floor-container {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 30px 20px;
+.category-sidebar {
+  position: absolute;
+  left: 100px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 200px;
+  background: rgba(255, 255, 255);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-radius: 16px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
+  overflow: visible;
   display: flex;
   flex-direction: column;
-  gap: 0;
 }
 
-/* --- 侧边栏菜单 --- */
-.category-sidebar {
-  width: 240px;
-  height: 100%; /* 关键：继承 wrapper 的 100% 高度 */
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  pointer-events: auto; /* 恢复点击 */
-  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.08);
+.sidebar-header {
+  padding: 14px 18px;
+  text-align: center;
 }
 
-.category-list {
-  list-style: none;
-  padding: 0;
+.sidebar-title {
   margin: 0;
-  display: flex;
-  flex-direction: column; /* 纵向排列 */
-  height: 100%; /* 填充整个 sidebar */
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.category-menu {
+  list-style: none;
+  padding: 8px 0;
+  margin: 0;
+  overflow-y: hidden;
 }
 
 .category-item {
-  flex: 1; /* 核心：平分高度，确保菜单底边始终对齐轮播图底边 */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 30px;
+  padding: 12px 18px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  margin: 4px 12px;
   color: #333;
-  font-size: 15px;
-  border-bottom: 1px solid rgba(0,0,0,0.03);
+  font-size: 14px;
+  font-weight: 700;
+  background: transparent;
+}
+
+.category-item:hover {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.05);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.category-name {
+  flex: 1;
+}
+
+.category-arrow {
+  opacity: 0.5;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.category-item:hover .category-arrow {
+  opacity: 1;
+  transform: translateX(4px);
+  color: #667eea;
+}
+
 .floor-section {
-  background: #fff;
-  border-radius: 8px;
+  width: 100%;
+}
+
+.floor-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.floor {
+  border-radius: 16px;
   overflow: hidden;
-  margin-bottom: 24px;
-  border: 1px solid #f0f0f0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
   scroll-margin-top: 80px;
 }
 
-.floor-section:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-  border-color: #e8e8e8;
+.floor:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
-.floor-section:last-child {
-  margin-bottom: 0;
-}
-
-/* --- 楼层头部 - 参考华为商城设计 --- */
 .floor-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 28px 30px;
-  color: #ffffff;
-  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  padding: 32px 40px;
+  color: #fff;
   position: relative;
   overflow: hidden;
 }
@@ -369,10 +369,10 @@ const getFloorBgColor = (index: number) => {
 .floor-header::before {
   content: '';
   position: absolute;
-  right: -50px;
-  top: -50px;
-  width: 200px;
-  height: 200px;
+  right: -60px;
+  top: -60px;
+  width: 240px;
+  height: 240px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 50%;
 }
@@ -380,18 +380,18 @@ const getFloorBgColor = (index: number) => {
 .floor-header::after {
   content: '';
   position: absolute;
-  left: -30px;
-  bottom: -30px;
-  width: 150px;
-  height: 150px;
+  left: -40px;
+  bottom: -40px;
+  width: 180px;
+  height: 180px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 50%;
 }
 
-.floor-header-left {
+.floor-header-content {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   position: relative;
   z-index: 2;
 }
@@ -399,184 +399,197 @@ const getFloorBgColor = (index: number) => {
 .floor-badge {
   display: inline-block;
   width: fit-content;
-  padding: 2px 10px;
-  background: rgba(255, 255, 255, 0.3);
+  padding: 4px 14px;
+  background: rgba(255, 255, 255, 0.25);
   border-radius: 20px;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 1px;
-  margin-bottom: 4px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
 }
 
-.floor-header-title {
-  font-size: 28px;
-  font-weight: 700;
+.floor-title {
   margin: 0;
+  font-size: 32px;
+  font-weight: 700;
   letter-spacing: 0.5px;
 }
 
-.floor-header-subtitle {
-  font-size: 13px;
+.floor-subtitle {
   margin: 0;
+  font-size: 14px;
   opacity: 0.9;
+  font-weight: 400;
 }
 
-.floor-header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+:deep(.view-more-btn) {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  color: #fff !important;
+  padding: 10px 24px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  border-radius: 24px !important;
+  transition: all 0.3s ease !important;
   position: relative;
   z-index: 2;
 }
 
-:deep(.view-all-btn) {
-  background: rgba(255, 255, 255, 0.2) !important;
-  border: 1px solid rgba(255, 255, 255, 0.4) !important;
-  color: #fff !important;
-  padding: 8px 20px !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-  transition: all 0.3s ease !important;
-}
-
-:deep(.view-all-btn:hover) {
-  background: rgba(255, 255, 255, 0.3) !important;
+:deep(.view-more-btn:hover) {
+  background: rgba(255, 255, 255, 0.35) !important;
   border-color: rgba(255, 255, 255, 0.6) !important;
+  transform: translateY(-2px);
 }
 
-/* --- 楼层商品区 --- */
-.floor-products-wrapper {
-  padding: 24px;
-  background: linear-gradient(135deg, #fafbfc 0%, #f5f7fa 100%);
+.floor-content {
+  padding: 32px 40px;
+  background: #fff;
 }
 
-.floor-grid {
+.product-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  min-height: 300px;
+  gap: 20px;
+  min-height: 320px;
 }
 
-.floor-product-card {
+.grid-item {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: #fff;
-  border-radius: 8px;
-  border: 1px solid transparent;
 }
 
-.floor-product-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
-  border-color: #ff6b6b;
-}
-
-.category-item:hover {
-  background-color: #fff;
-  color: #4f46e5;
-  padding-left: 40px;
-  font-weight: bold;
-.floor-empty {
+.empty-state {
   grid-column: 1 / -1;
   padding: 80px 20px;
 }
 
-/* --- 响应式设计 --- */
+:deep(.el-carousel__indicators--horizontal) {
+  bottom: 20px;
+}
+
+:deep(.el-carousel__button) {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.4);
+  transition: all 0.3s ease;
+}
+
+:deep(.el-carousel__button:hover) {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+:deep(.el-carousel__button.active) {
+  background: #fff;
+  width: 48px;
+}
+
+@media (max-width: 1400px) {
+  .hero-container {
+    max-width: 1240px;
+  }
+
+  .floor-container {
+    max-width: 1240px;
+  }
+}
+
 @media (max-width: 1200px) {
-  .floor-grid {
+  .product-grid {
     grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .category-sidebar {
+    width: 220px;
   }
 }
 
 @media (max-width: 992px) {
-  .floor-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
   }
 
   .floor-header {
-    padding: 20px 24px;
+    padding: 24px 28px;
   }
 
-  .floor-header-title {
-    font-size: 24px;
+  .floor-title {
+    font-size: 26px;
   }
 
-  .floor-products-wrapper {
-    padding: 16px;
+  .floor-content {
+    padding: 24px 28px;
+  }
+
+  .category-sidebar {
+    width: 200px;
+  }
+
+  .sidebar-title {
+    font-size: 16px;
+  }
+
+  .category-item {
+    padding: 14px 20px;
+    font-size: 14px;
   }
 }
 
 @media (max-width: 768px) {
-  .nav-list {
-    gap: 0;
+  .hero-container {
+    height: 420px;
   }
 
-  .nav-item {
-    padding: 10px 14px;
-    font-size: 13px;
-  }
-
-  .floor-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .category-sidebar {
+    display: none;
   }
 
   .floor-header {
     flex-direction: column;
     align-items: flex-start;
-    padding: 16px 20px;
+    padding: 20px 24px;
   }
 
-  .floor-header-title {
-    font-size: 20px;
+  .floor-title {
+    font-size: 22px;
   }
 
-  .floor-header-right {
+  .floor-header :deep(.view-more-btn) {
     align-self: flex-end;
     margin-top: 12px;
   }
 
-  .floor-container {
-    padding: 16px 12px;
+  .floor-content {
+    padding: 20px 24px;
   }
 
-  .floor-section {
-    margin-bottom: 16px;
+  .floor-container {
+    padding: 0 16px;
+    gap: 24px;
   }
 }
 
 @media (max-width: 480px) {
-  .floor-grid {
+  .product-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    gap: 12px;
   }
 
-  .floor-header-title {
-    font-size: 18px;
+  .floor-title {
+    font-size: 20px;
   }
 
-  .nav-item {
-    padding: 8px 10px;
-    font-size: 12px;
+  .floor-subtitle {
+    font-size: 13px;
   }
 
-  .top-nav-bar {
-    font-size: 12px;
+  .floor-header {
+    padding: 16px 20px;
   }
-}
 
-/* --- Element Plus 样式覆盖 --- */
-:deep(.el-carousel__indicators--horizontal) {
-  bottom: 16px;
-}
-
-:deep(.el-carousel__button) {
-  width: 32px;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.4);
-}
-
-:deep(.el-carousel__button.active) {
-  background: #fff;
+  .floor-content {
+    padding: 16px 20px;
+  }
 }
 </style>

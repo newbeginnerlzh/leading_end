@@ -2,8 +2,26 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
-import { Filter, Sort, ArrowDown, ArrowUp, Search, Goods } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowUp, Search } from '@element-plus/icons-vue'
 import type { ProductSimple } from '@/api/model/productModel'
+
+// Scroll Reveal Directive
+const vScrollReveal = {
+  mounted: (el: HTMLElement) => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            el.classList.add('is-visible')
+            observer.unobserve(el)
+          }
+        })
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' },
+    )
+    observer.observe(el)
+  },
+}
 
 // --- 1. 分类配置 ---
 interface Category {
@@ -14,12 +32,12 @@ interface Category {
 }
 
 const categories = ref<Category[]>([
-  { id: 0, name: '全部商品', themeColor: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', subTitle: '探索全系科技产品' },
-  { id: 25, name: '拯救者系列', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '为战而生 极致性能' },
-  { id: 26, name: '小新系列', themeColor: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', subTitle: '年轻 就要出色' },
-  { id: 27, name: 'YOGA系列', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '品质 匠心 优雅随行' },
-  { id: 28, name: 'ThinkBook系列', themeColor: 'linear-gradient(135deg, #6d28d9 0%, #581c87 100%)', subTitle: '新青年 创造力' },
-  { id: 29, name: 'ThinkPad系列', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '思考 进化 商务旗舰' }
+  { id: 0, name: '全部商品', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '探索联想全系科技产品' },
+  { id: 25, name: '拯救者', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '为战而生 极致性能' },
+  { id: 26, name: '小新', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '年轻 就要出色' },
+  { id: 27, name: 'YOGA', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '品质 匠心 优雅随行' },
+  { id: 28, name: 'ThinkBook', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '新青年 创造力' },
+  { id: 29, name: 'ThinkPad', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '思考 进化 商务旗舰' }
 ])
 
 const route = useRoute()
@@ -27,10 +45,11 @@ const router = useRouter()
 
 // --- 状态定义 ---
 const currentCategoryId = ref<number>(0)
-const sortType = ref('default') 
-const allProducts = ref<ProductSimple[]>([]) 
-const searchKeyword = ref('') 
+const sortType = ref('default')
+const allProducts = ref<ProductSimple[]>([])
+const searchKeyword = ref('')
 const loading = ref(false)
+const isFirstLoad = ref(true)
 
 // --- 计算属性 ---
 const currentCategoryInfo = computed<Category>(() => {
@@ -43,7 +62,7 @@ const currentCategoryInfo = computed<Category>(() => {
     }
   }
   const found = categories.value.find(c => c.id === currentCategoryId.value)
-  return found || categories.value[0]! 
+  return found || categories.value[0]!
 })
 
 // --- 2. 获取分类 (模拟/真实) ---
@@ -52,27 +71,27 @@ const fetchCategories = async () => {
     const res = await axios.get('/api/products/categories')
     const rawCats = Array.isArray(res.data) ? res.data : (res.data.data || [])
     if (rawCats.length > 0) {
-      const dbCategories = rawCats.map((item: any) => ({
+      const dbCategories = rawCats.map((item: Category) => ({
         id: item.id,
         name: item.name,
-        themeColor: item.themeColor || item.theme_color || 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
-        subTitle: item.subTitle || item.sub_title || '联想精选'
+        themeColor: item.themeColor || 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
+        subTitle: item.subTitle || '联想精选'
       }))
       categories.value = [categories.value[0], ...dbCategories]
     }
   } catch (err) {
-    console.warn('使用默认分类配置')
+    console.warn('使用默认分类配置', err)
   }
 }
 const fetchProductList = async () => {
   loading.value = true
   const token = localStorage.getItem('token') || ''
-  
+
   try {
-    const params: any = {
-      keyword: searchKeyword.value.trim() || ' ', 
+    const params: Record<string, string | number> = {
+      keyword: searchKeyword.value.trim() || ' ',
       page: 1,
-      pageSize: 50, 
+      pageSize: 50,
       sort: sortType.value === 'default' ? '' : sortType.value
     }
 
@@ -87,7 +106,7 @@ const fetchProductList = async () => {
 
     const resData = res.data
     let rawList = []
-    
+
     if (resData?.data?.ProductSimple) rawList = resData.data.ProductSimple
     else if (resData?.data?.productSimple) rawList = resData.data.productSimple
     else if (Array.isArray(resData?.data)) rawList = resData.data
@@ -97,7 +116,7 @@ const fetchProductList = async () => {
       if (item.imgUrl) finalImg = item.imgUrl
       else if (item.image) finalImg = item.image
       else if (item.main_images) {
-          try { finalImg = JSON.parse(item.main_images)[0] } catch(e) {}
+          try { finalImg = JSON.parse(item.main_images)[0] } catch(e) {console.error('解析图片失败:', e)}
       }
 
       return {
@@ -113,13 +132,14 @@ const fetchProductList = async () => {
     console.error('获取商品列表失败:', err)
   } finally {
     loading.value = false
+    isFirstLoad.value = false
   }
 }
 
 // --- 事件处理 ---
 const handleCategoryChange = (id: number) => {
   currentCategoryId.value = id
-  searchKeyword.value = '' 
+  searchKeyword.value = ''
   router.push({ query: { category: id === 0 ? undefined : id } })
   fetchProductList()
   window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -144,7 +164,7 @@ watch(() => route.query, (query) => {
   let needsFetch = false
   if (query.keyword) {
     searchKeyword.value = query.keyword as string
-    currentCategoryId.value = 0 
+    currentCategoryId.value = 0
     needsFetch = true
   } else if (!query.keyword && searchKeyword.value) {
     searchKeyword.value = ''
@@ -177,27 +197,15 @@ onMounted(async () => {
 
 <template>
   <div class="product-list-page">
-    <!-- 顶部导航栏 - 与 ClientHome 保持一致 -->
-    <div class="top-nav-bar">
-      <div class="nav-container">
-        <ul class="nav-list">
-          <li v-for="cat in categories" :key="cat.id" class="nav-item" @click="handleCategoryChange(cat.id)"
-            :class="{ active: currentCategoryId === cat.id }">
-            <span class="nav-text">{{ cat.name }}</span>
-          </li>
-        </ul>
-      </div>
-    </div>
-
     <div class="container">
-      
+
       <!-- 1. 左侧侧边导航 (美化卡片) -->
-      <aside class="sidebar">
+      <aside class="sidebar" v-scroll-reveal>
         <!-- 搜索框区域 -->
         <div class="sidebar-search">
           <el-input
             v-model="searchKeyword"
-            placeholder="搜全站..."
+            placeholder="搜索"
             class="custom-input"
             clearable
             @keyup.enter="handleSidebarSearch"
@@ -210,13 +218,12 @@ onMounted(async () => {
         </div>
 
         <div class="sidebar-header">
-          <el-icon><Goods /></el-icon>
           <span>商品分类</span>
         </div>
 
         <ul class="nav-menu">
-          <li 
-            v-for="cat in categories" 
+          <li
+            v-for="cat in categories"
             :key="cat.id"
             class="nav-item"
             :class="{ active: currentCategoryId === cat.id }"
@@ -229,39 +236,38 @@ onMounted(async () => {
       </aside>
 
       <!-- 2. 右侧主要内容区 -->
-      <main class="main-content">
-        
-        <!-- A. 顶部主题横幅 (参考 ClientHome 风格) -->
-        <div class="category-header" :style="{ backgroundImage: currentCategoryInfo?.themeColor }">
+      <main class="main-content" :key="currentCategoryId" v-scroll-reveal>
+
+        <!-- A. 顶部主题横幅 (卡片式) -->
+        <div class="category-header" >
           <div class="header-content">
             <h1 class="fade-in-up">{{ currentCategoryInfo?.name }}</h1>
             <p class="fade-in-up delay-1">{{ currentCategoryInfo?.subTitle }}</p>
           </div>
-          <!-- 装饰圆形背景 -->
-          <div class="header-circle header-circle-1"></div>
-          <div class="header-circle header-circle-2"></div>
+          <!-- 巨大的装饰性背景字 -->
+          <div class="bg-watermark">{{ currentCategoryInfo?.name === '全部商品' ? 'ALL' : currentCategoryInfo?.name.startsWith('搜') ? 'RESULT' : currentCategoryInfo?.name === '拯救者' ? 'LEGION': currentCategoryInfo?.name === '小新' ? 'XIAOXIN' : currentCategoryInfo?.name.toUpperCase() }}</div>
         </div>
 
         <!-- B. 排序筛选工具栏 (悬浮感) -->
         <div class="toolbar">
           <div class="sort-group">
             <span class="sort-label">排序方式：</span>
-            <div 
-              class="sort-item" 
+            <div
+              class="sort-item"
               :class="{ active: sortType === 'default' }"
               @click="handleSortChange('default')"
             >
               综合
             </div>
-            <div 
-              class="sort-item" 
+            <div
+              class="sort-item"
               :class="{ active: sortType === 'sales' }"
               @click="handleSortChange('sales')"
             >
               销量
             </div>
-            <div 
-              class="sort-item price-item" 
+            <div
+              class="sort-item price-item"
               :class="{ active: sortType.includes('price') }"
               @click="handleSortChange('price')"
             >
@@ -272,7 +278,7 @@ onMounted(async () => {
               </div>
             </div>
           </div>
-          
+
           <div class="total-count">
             共 <span class="count-num">{{ allProducts.length }}</span> 件商品
           </div>
@@ -281,13 +287,13 @@ onMounted(async () => {
         <!-- C. 商品列表网格 -->
         <div v-loading="loading" class="product-grid-wrapper">
           <div class="product-grid" v-if="allProducts.length > 0">
-            <ProductCard 
-              v-for="item in allProducts" 
-              :key="item.id" 
-              :product="item" 
+            <ProductCard
+              v-for="item in allProducts"
+              :key="item.id"
+              :product="item"
             />
           </div>
-          
+
           <el-empty v-else description="暂无相关商品" :image-size="200" />
         </div>
 
@@ -299,61 +305,10 @@ onMounted(async () => {
 <style scoped>
 /* 页面背景 */
 .product-list-page {
-  background-color: #ffffff;
+  background-color: #f7f9fa; /* 更柔和的灰 */
   min-height: 100vh;
+  padding-top: 30px;
   padding-bottom: 60px;
-}
-
-/* --- 顶部导航栏 - 与 ClientHome 保持一致 --- */
-.top-nav-bar {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: #ffffff;
-  border-bottom: 1px solid #f0f0f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.nav-container {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-.nav-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0;
-}
-
-.nav-item {
-  flex: 0 0 auto;
-  padding: 12px 18px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border-bottom: 3px solid transparent;
-  font-size: 14px;
-  color: #333;
-  font-weight: 500;
-  position: relative;
-}
-
-.nav-item:hover {
-  color: #ff6b6b;
-  border-bottom-color: #ff6b6b;
-}
-
-.nav-item.active {
-  color: #4f46e5;
-  border-bottom-color: #4f46e5;
-  font-weight: 600;
-}
-
-.nav-text {
-  white-space: nowrap;
 }
 
 .container {
@@ -361,7 +316,7 @@ onMounted(async () => {
   margin: 0 auto;
   display: flex;
   gap: 24px;
-  padding: 30px 20px;
+  padding: 0 20px;
   align-items: flex-start;
 }
 
@@ -369,14 +324,13 @@ onMounted(async () => {
 .sidebar {
   width: 260px;
   background: #fff;
-  border-radius: 12px;
+  border-radius: 16px; /* 更大的圆角 */
   position: sticky;
-  top: 80px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  top: 84px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.04); /* 更柔和的阴影 */
   overflow: hidden;
   flex-shrink: 0;
   border: 1px solid #f0f0f0;
-  transition: all 0.3s ease;
 }
 
 .sidebar-search {
@@ -389,7 +343,7 @@ onMounted(async () => {
 :deep(.custom-input .el-input__wrapper) {
   border-radius: 20px;
   background-color: #f5f7fa;
-  box-shadow: none !important;
+  box-shadow: none !important; /* 去掉默认边框 */
   padding-left: 15px;
 }
 :deep(.custom-input .el-input__wrapper.is-focus) {
@@ -398,15 +352,13 @@ onMounted(async () => {
 }
 
 .sidebar-header {
-  padding: 16px 24px;
-  font-size: 15px;
-  font-weight: 700;
+  padding: 15px 24px;
+  font-size: 16px;
+  font-weight: 800;
   color: #333;
   display: flex;
   align-items: center;
   gap: 8px;
-  border-bottom: 1px solid #f5f5f5;
-  background: linear-gradient(135deg, #f9fafc 0%, #ffffff 100%);
 }
 
 .nav-menu {
@@ -415,33 +367,32 @@ onMounted(async () => {
   margin: 0;
 }
 
-.sidebar .nav-item {
-  height: 44px;
+.nav-item {
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 15px;
-  margin-bottom: 2px;
-  border-radius: 8px;
+  margin-bottom: 4px;
+  border-radius: 8px; /* 菜单项也是圆角 */
   cursor: pointer;
   color: #666;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 700;
   transition: all 0.2s ease;
 }
 
-.sidebar .nav-item:hover {
+.nav-item:hover {
   background-color: #f5f7fa;
   color: #333;
 }
 
-.sidebar .nav-item.active {
-  background: linear-gradient(135deg, #eef2ff 0%, #f5f7ff 100%);
+.nav-item.active {
+  background-color: #eef2ff; /* 激活态浅蓝背景 */
   color: #4f46e5;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.1);
 }
 
-.sidebar .nav-item.active .arrow-icon {
+.nav-item.active .arrow-icon {
   color: #4f46e5;
   opacity: 1;
 }
@@ -460,39 +411,18 @@ onMounted(async () => {
   gap: 20px;
 }
 
-/* 顶部横幅美化 - 参考 ClientHome 风格 */
+/* 顶部横幅美化 */
 .category-header {
   height: 140px;
-  border-radius: 0;
+  border-radius: 16px;
   color: #fff;
   padding: 0 50px;
   display: flex;
   align-items: center;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.15);
-}
-
-.header-circle {
-  position: absolute;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.header-circle-1 {
-  width: 200px;
-  height: 200px;
-  right: -50px;
-  top: -50px;
-}
-
-.header-circle-2 {
-  width: 150px;
-  height: 150px;
-  left: -30px;
-  bottom: -30px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  background: #ffffff;
 }
 
 .header-content {
@@ -503,15 +433,38 @@ onMounted(async () => {
 .header-content h1 {
   margin: 0;
   font-size: 32px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #1a1a1a;
 }
 
 .header-content p {
   margin: 8px 0 0;
   opacity: 0.9;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 300;
+  color: #666;
+}
+
+/* 装饰性大水印 */
+.bg-watermark {
+  position: absolute;
+  right: -10px;
+  bottom: -40px;
+  font-size: 120px;
+  font-weight: 900;
+  color: #f5f5f5;
+  opacity: 1;
+  font-family: Arial, sans-serif;
+  pointer-events: none;
+  font-style: italic;
+  -webkit-text-stroke: 1px #8b5cf6;
+  /* text-stroke: 2px #8b5cf6; */
+  text-shadow:
+    0 0 10px rgba(139, 92, 246, 0.5),
+    0 0 20px rgba(139, 92, 246, 0.4),
+    0 0 30px rgba(139, 92, 246, 0.3),
+    0 0 40px rgba(139, 92, 246, 0.2);
 }
 
 /* 动画效果 */
@@ -522,14 +475,13 @@ onMounted(async () => {
 /* 筛选工具栏美化 */
 .toolbar {
   background: #fff;
-  padding: 14px 24px;
-  border-radius: 8px;
+  padding: 12px 24px;
+  border-radius: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
   border: 1px solid #f0f0f0;
-  transition: all 0.3s ease;
 }
 
 .sort-group {
@@ -546,13 +498,12 @@ onMounted(async () => {
 
 .sort-item {
   padding: 6px 16px;
-  font-size: 13px;
+  font-size: 14px;
   color: #555;
-  border-radius: 18px;
+  border-radius: 20px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
   background-color: #f5f7fa;
-  border: 1px solid transparent;
 }
 
 .sort-item:hover {
@@ -561,11 +512,10 @@ onMounted(async () => {
 }
 
 .sort-item.active {
-  background-color: #4f46e5;
+  background-color: #4f46e5; /* 选中变成紫蓝色块 */
   color: #fff;
   font-weight: 500;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
-  border-color: #4f46e5;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
 
 .price-item {
@@ -606,54 +556,59 @@ onMounted(async () => {
 }
 
 /* 商品网格 */
-.product-grid-wrapper { 
-  min-height: 300px;
-  background: linear-gradient(135deg, #fafbfc 0%, #f5f7fa 100%);
-  padding: 24px;
-  border-radius: 8px;
-  border: 1px solid #f0f0f0;
-}
-
+.product-grid-wrapper { min-height: 300px; }
 .product-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  gap: 20px; /* 间距加大 */
 }
 
 /* 响应式 */
-@media (max-width: 1200px) { 
-  .product-grid { grid-template-columns: repeat(3, 1fr); }
-}
-
-@media (max-width: 992px) {
-  .product-grid { grid-template-columns: repeat(3, 1fr); }
-  .category-header { padding: 0 30px; }
-  .header-content h1 { font-size: 28px; }
-}
-
-@media (max-width: 900px) { 
-  .container { flex-direction: column; } 
+@media (max-width: 1200px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px) {
+  .container { flex-direction: column; }
   .sidebar { width: 100%; position: static; margin-bottom: 20px;}
   .product-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-@media (max-width: 768px) {
-  .top-nav-bar {
-    font-size: 12px;
-  }
-  .nav-item {
-    padding: 10px 14px;
-    font-size: 13px;
-  }
-  .category-header {
-    padding: 0 20px;
-    height: 120px;
-  }
-  .header-content h1 { font-size: 24px; }
-  .container { padding: 20px 12px; }
+/* 动画效果 */
+.sidebar,
+.main-content {
+  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@media (max-width: 480px) {
-  .product-grid { grid-template-columns: repeat(2, 1fr); }
+.is-visible {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* 侧边栏动画 */
+.sidebar {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+/* 右侧内容动画 */
+.main-content {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+/* 淡入上浮动画 */
+.fade-in-up {
+  animation: fadeInUp 0.6s ease forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.delay-1 {
+  animation-delay: 0.1s;
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
