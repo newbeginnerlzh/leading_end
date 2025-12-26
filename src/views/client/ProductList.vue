@@ -14,11 +14,11 @@ interface Category {
 }
 
 const categories = ref<Category[]>([
-  { id: 0, name: '全部商品', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '探索联想全系科技产品' },
+  { id: 0, name: '全部商品', themeColor: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', subTitle: '探索全系科技产品' },
   { id: 25, name: '拯救者系列', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '为战而生 极致性能' },
-  { id: 26, name: '小新系列', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '年轻 就要出色' },
+  { id: 26, name: '小新系列', themeColor: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', subTitle: '年轻 就要出色' },
   { id: 27, name: 'YOGA系列', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '品质 匠心 优雅随行' },
-  { id: 28, name: 'ThinkBook系列', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '新青年 创造力' },
+  { id: 28, name: 'ThinkBook系列', themeColor: 'linear-gradient(135deg, #6d28d9 0%, #581c87 100%)', subTitle: '新青年 创造力' },
   { id: 29, name: 'ThinkPad系列', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '思考 进化 商务旗舰' }
 ])
 
@@ -177,6 +177,18 @@ onMounted(async () => {
 
 <template>
   <div class="product-list-page">
+    <!-- 顶部导航栏 - 与 ClientHome 保持一致 -->
+    <div class="top-nav-bar">
+      <div class="nav-container">
+        <ul class="nav-list">
+          <li v-for="cat in categories" :key="cat.id" class="nav-item" @click="handleCategoryChange(cat.id)"
+            :class="{ active: currentCategoryId === cat.id }">
+            <span class="nav-text">{{ cat.name }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <div class="container">
       
       <!-- 1. 左侧侧边导航 (美化卡片) -->
@@ -219,14 +231,15 @@ onMounted(async () => {
       <!-- 2. 右侧主要内容区 -->
       <main class="main-content">
         
-        <!-- A. 顶部主题横幅 (卡片式) -->
-        <div class="category-header" :style="{ background: currentCategoryInfo?.themeColor }">
+        <!-- A. 顶部主题横幅 (参考 ClientHome 风格) -->
+        <div class="category-header" :style="{ backgroundImage: currentCategoryInfo?.themeColor }">
           <div class="header-content">
             <h1 class="fade-in-up">{{ currentCategoryInfo?.name }}</h1>
             <p class="fade-in-up delay-1">{{ currentCategoryInfo?.subTitle }}</p>
           </div>
-          <!-- 巨大的装饰性背景字 -->
-          <div class="bg-watermark">{{ currentCategoryInfo?.name === '全部商品' ? 'ALL' : currentCategoryInfo?.name.substring(0,4).toUpperCase() }}</div>
+          <!-- 装饰圆形背景 -->
+          <div class="header-circle header-circle-1"></div>
+          <div class="header-circle header-circle-2"></div>
         </div>
 
         <!-- B. 排序筛选工具栏 (悬浮感) -->
@@ -286,10 +299,61 @@ onMounted(async () => {
 <style scoped>
 /* 页面背景 */
 .product-list-page {
-  background-color: #f7f9fa; /* 更柔和的灰 */
+  background-color: #ffffff;
   min-height: 100vh;
-  padding-top: 30px;
   padding-bottom: 60px;
+}
+
+/* --- 顶部导航栏 - 与 ClientHome 保持一致 --- */
+.top-nav-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #ffffff;
+  border-bottom: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.nav-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.nav-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.nav-item {
+  flex: 0 0 auto;
+  padding: 12px 18px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-bottom: 3px solid transparent;
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+  position: relative;
+}
+
+.nav-item:hover {
+  color: #ff6b6b;
+  border-bottom-color: #ff6b6b;
+}
+
+.nav-item.active {
+  color: #4f46e5;
+  border-bottom-color: #4f46e5;
+  font-weight: 600;
+}
+
+.nav-text {
+  white-space: nowrap;
 }
 
 .container {
@@ -297,7 +361,7 @@ onMounted(async () => {
   margin: 0 auto;
   display: flex;
   gap: 24px;
-  padding: 0 20px;
+  padding: 30px 20px;
   align-items: flex-start;
 }
 
@@ -305,13 +369,14 @@ onMounted(async () => {
 .sidebar {
   width: 260px;
   background: #fff;
-  border-radius: 16px; /* 更大的圆角 */
+  border-radius: 12px;
   position: sticky;
-  top: 84px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.04); /* 更柔和的阴影 */
+  top: 80px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
   overflow: hidden;
   flex-shrink: 0;
   border: 1px solid #f0f0f0;
+  transition: all 0.3s ease;
 }
 
 .sidebar-search {
@@ -324,7 +389,7 @@ onMounted(async () => {
 :deep(.custom-input .el-input__wrapper) {
   border-radius: 20px;
   background-color: #f5f7fa;
-  box-shadow: none !important; /* 去掉默认边框 */
+  box-shadow: none !important;
   padding-left: 15px;
 }
 :deep(.custom-input .el-input__wrapper.is-focus) {
@@ -333,13 +398,15 @@ onMounted(async () => {
 }
 
 .sidebar-header {
-  padding: 15px 24px;
-  font-size: 16px;
-  font-weight: 800;
+  padding: 16px 24px;
+  font-size: 15px;
+  font-weight: 700;
   color: #333;
   display: flex;
   align-items: center;
   gap: 8px;
+  border-bottom: 1px solid #f5f5f5;
+  background: linear-gradient(135deg, #f9fafc 0%, #ffffff 100%);
 }
 
 .nav-menu {
@@ -348,32 +415,33 @@ onMounted(async () => {
   margin: 0;
 }
 
-.nav-item {
-  height: 48px;
+.sidebar .nav-item {
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 15px;
-  margin-bottom: 4px;
-  border-radius: 8px; /* 菜单项也是圆角 */
+  margin-bottom: 2px;
+  border-radius: 8px;
   cursor: pointer;
   color: #666;
-  font-size: 14px;
+  font-size: 13px;
   transition: all 0.2s ease;
 }
 
-.nav-item:hover {
+.sidebar .nav-item:hover {
   background-color: #f5f7fa;
   color: #333;
 }
 
-.nav-item.active {
-  background-color: #eef2ff; /* 激活态浅蓝背景 */
+.sidebar .nav-item.active {
+  background: linear-gradient(135deg, #eef2ff 0%, #f5f7ff 100%);
   color: #4f46e5;
-  font-weight: 700;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.1);
 }
 
-.nav-item.active .arrow-icon {
+.sidebar .nav-item.active .arrow-icon {
   color: #4f46e5;
   opacity: 1;
 }
@@ -392,17 +460,39 @@ onMounted(async () => {
   gap: 20px;
 }
 
-/* 顶部横幅美化 */
+/* 顶部横幅美化 - 参考 ClientHome 风格 */
 .category-header {
   height: 140px;
-  border-radius: 16px;
+  border-radius: 0;
   color: #fff;
   padding: 0 50px;
   display: flex;
   align-items: center;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.15);
+}
+
+.header-circle {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.header-circle-1 {
+  width: 200px;
+  height: 200px;
+  right: -50px;
+  top: -50px;
+}
+
+.header-circle-2 {
+  width: 150px;
+  height: 150px;
+  left: -30px;
+  bottom: -30px;
 }
 
 .header-content {
@@ -413,29 +503,15 @@ onMounted(async () => {
 .header-content h1 {
   margin: 0;
   font-size: 32px;
-  font-weight: 800;
-  letter-spacing: 1px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 
 .header-content p {
   margin: 8px 0 0;
   opacity: 0.9;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 300;
-}
-
-/* 装饰性大水印 */
-.bg-watermark {
-  position: absolute;
-  right: -10px;
-  bottom: -40px;
-  font-size: 120px;
-  font-weight: 900;
-  color: #fff;
-  opacity: 0.15;
-  font-family: Arial, sans-serif;
-  pointer-events: none;
-  font-style: italic;
 }
 
 /* 动画效果 */
@@ -446,13 +522,14 @@ onMounted(async () => {
 /* 筛选工具栏美化 */
 .toolbar {
   background: #fff;
-  padding: 12px 24px;
-  border-radius: 12px;
+  padding: 14px 24px;
+  border-radius: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
   border: 1px solid #f0f0f0;
+  transition: all 0.3s ease;
 }
 
 .sort-group {
@@ -469,12 +546,13 @@ onMounted(async () => {
 
 .sort-item {
   padding: 6px 16px;
-  font-size: 14px;
+  font-size: 13px;
   color: #555;
-  border-radius: 20px;
+  border-radius: 18px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   background-color: #f5f7fa;
+  border: 1px solid transparent;
 }
 
 .sort-item:hover {
@@ -483,10 +561,11 @@ onMounted(async () => {
 }
 
 .sort-item.active {
-  background-color: #4f46e5; /* 选中变成紫蓝色块 */
+  background-color: #4f46e5;
   color: #fff;
   font-weight: 500;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+  border-color: #4f46e5;
 }
 
 .price-item {
@@ -527,18 +606,54 @@ onMounted(async () => {
 }
 
 /* 商品网格 */
-.product-grid-wrapper { min-height: 300px; }
+.product-grid-wrapper { 
+  min-height: 300px;
+  background: linear-gradient(135deg, #fafbfc 0%, #f5f7fa 100%);
+  padding: 24px;
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+}
+
 .product-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 20px; /* 间距加大 */
+  gap: 16px;
 }
 
 /* 响应式 */
-@media (max-width: 1200px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 1200px) { 
+  .product-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 992px) {
+  .product-grid { grid-template-columns: repeat(3, 1fr); }
+  .category-header { padding: 0 30px; }
+  .header-content h1 { font-size: 28px; }
+}
+
 @media (max-width: 900px) { 
   .container { flex-direction: column; } 
-  .sidebar { width: 100%; position: static; margin-bottom: 20px;} 
-  .product-grid { grid-template-columns: repeat(2, 1fr); } 
+  .sidebar { width: 100%; position: static; margin-bottom: 20px;}
+  .product-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .top-nav-bar {
+    font-size: 12px;
+  }
+  .nav-item {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  .category-header {
+    padding: 0 20px;
+    height: 120px;
+  }
+  .header-content h1 { font-size: 24px; }
+  .container { padding: 20px 12px; }
+}
+
+@media (max-width: 480px) {
+  .product-grid { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
