@@ -2,26 +2,12 @@
 import { useCartStore, type CartItem } from '@/stores/cart'
 import { useRouter } from 'vue-router'
 import { ref } from 'vue'
+import { ElMessage } from 'element-plus'
 
 const cartStore = useCartStore()
 const router = useRouter()
 
 // --- Custom UI Logic ---
-
-// Toast System
-interface Toast {
-  id: number
-  msg: string
-  type: 'success' | 'error' | 'warning'
-}
-const toasts = ref<Toast[]>([])
-const showToast = (msg: string, type: 'success' | 'error' | 'warning' = 'success') => {
-  const id = Date.now()
-  toasts.value.push({ id, msg, type })
-  setTimeout(() => {
-    toasts.value = toasts.value.filter((t) => t.id !== id)
-  }, 3000)
-}
 
 // Confirm Dialog System
 const confirmState = ref({
@@ -81,9 +67,9 @@ const handleDelete = async (skuId: number) => {
 
   try {
     await cartStore.removeFromCart(skuId)
-    showToast('商品已删除', 'success')
+    ElMessage.success('商品已删除')
   } catch {
-    showToast('删除失败，请重试', 'error')
+    ElMessage.error('删除失败，请重试')
   }
 }
 
@@ -93,17 +79,17 @@ const handleClear = async () => {
 
   try {
     await cartStore.clearCart()
-    showToast('购物车已清空', 'success')
+    ElMessage.success('购物车已清空')
   } catch (error: unknown) {
     if (error) {
-      showToast('清空失败，请重试', 'error')
+      ElMessage.error('清空失败，请重试')
     }
   }
 }
 
 const handleCheckout = () => {
   if (cartStore.selectedTotalCount === 0) {
-    showToast('请至少选择一件商品', 'warning')
+    ElMessage.warning('请至少选择一件商品')
     return
   }
   router.push('/checkout')
@@ -111,13 +97,13 @@ const handleCheckout = () => {
 
 const decreaseQuantity = async (item: CartItem) => {
   if (item.count <= 1) {
-    showToast('最低限购一件！', 'warning')
+    ElMessage.warning('最低限购一件！')
     return
   }
   try {
     await cartStore.updateQuantity(item.skuId, item.count - 1)
   } catch {
-    showToast('更新数量失败', 'error')
+    ElMessage.error('更新数量失败')
   }
 }
 
@@ -125,7 +111,7 @@ const increaseQuantity = async (item: CartItem) => {
   try {
     await cartStore.updateQuantity(item.skuId, item.count + 1)
   } catch {
-    showToast('更新数量失败', 'error')
+    ElMessage('更新数量失败')
   }
 }
 
@@ -134,7 +120,7 @@ const handleSelectAllChange = async (e: Event) => {
   try {
     await cartStore.toggleSelectAll(target.checked)
   } catch {
-    showToast('操作失败', 'error')
+    ElMessage('操作失败')
   }
 }
 
@@ -283,26 +269,20 @@ const handleMouseMove = (e: MouseEvent) => {
       </div>
     </div>
 
-    <!-- Custom Toast Container -->
-    <div class="toast-container">
-      <transition-group name="toast-fade">
-        <div v-for="toast in toasts" :key="toast.id" class="toast-msg" :class="toast.type">
-          {{ toast.msg }}
-        </div>
-      </transition-group>
-    </div>
 
     <!-- Custom Confirm Modal -->
-    <transition name="modal-fade">
+    <transition name="overlay-fade">
       <div v-if="confirmState.visible" class="modal-overlay">
-        <div class="modal-content">
-          <h3>确认</h3>
-          <p>{{ confirmState.message }}</p>
-          <div class="modal-actions">
-            <button class="cancel-btn" @click="handleConfirmAction(false)">取消</button>
-            <button class="confirm-btn" @click="handleConfirmAction(true)">确认</button>
+        <transition name="modal-fade">
+          <div class="modal-content" v-if="confirmState.visible">
+            <h3>确认</h3>
+            <p>{{ confirmState.message }}</p>
+            <div class="modal-actions">
+              <button class="cancel-btn" @click="handleConfirmAction(false)">取消</button>
+              <button class="confirm-btn" @click="handleConfirmAction(true)">确认</button>
+            </div>
           </div>
-        </div>
+        </transition>
       </div>
     </transition>
   </div>
@@ -696,7 +676,7 @@ button {
   color: var(--text-tertiary);
   cursor: pointer;
   transition: 0.2s;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 .text-btn:hover {
@@ -815,52 +795,7 @@ button {
   z-index: 1;
 }
 
-/* --- Toast (Light Mode) --- */
-.toast-container {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.toast-msg {
-  padding: 12px 24px;
-  border-radius: 12px;
-  color: #1e293b;
-  font-size: 14px;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e2e8f0;
-  display: flex;
-  align-items: center;
-}
-.toast-msg.success {
-  border-left: 4px solid #10b981;
-  color: #059669;
-}
-.toast-msg.error {
-  border-left: 4px solid #ef4444;
-  color: #dc2626;
-}
-.toast-msg.warning {
-  border-left: 4px solid #f59e0b;
-  color: #d97706;
-}
 
-.toast-fade-enter-active,
-.toast-fade-leave-active {
-  transition: all 0.3s ease;
-}
-.toast-fade-enter-from,
-.toast-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-20px);
-}
 
 /* --- Modal (Light Mode) --- */
 .modal-overlay {
@@ -936,6 +871,15 @@ button {
 .modal-fade-leave-to {
   opacity: 0;
   transform: scale(0.95);
+}
+
+.overlay-fade-enter-active,
+.overlay-fade-leave-active {
+  transition: opacity 0.3s;
+}
+.overlay-fade-enter-from,
+.overlay-fade-leave-to {
+  opacity: 0;
 }
 
 /* Empty State */
