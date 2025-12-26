@@ -193,6 +193,20 @@ const handleBuyNow = () => {
   }
 }
 
+// --- 数量控制逻辑 ---
+const decreaseCount = () => {
+  if (count.value > 1) {
+    count.value--
+  }
+}
+
+const increaseCount = () => {
+  const maxStock = currentSku.value?.stock || 5
+  if (count.value < maxStock) {
+    count.value++
+  }
+}
+
 // --- 图片画廊逻辑 ---
 const setActiveImage = (index: number) => {
   activeImageIndex.value = index
@@ -345,8 +359,12 @@ const mergedParams = computed(() => {
         <!-- 数量选择 -->
         <div class="quantity-row">
           <span class="label">购买数量</span>
-          <el-input-number v-model="count" :min="1" :max="currentSku?.stock || 5" />
-          <span class="stock-info" v-if="currentSku"> (库存: {{ currentSku.stock }})</span>
+          <div class="qty-control">
+            <button class="qty-btn" @click="decreaseCount">−</button>
+            <span class="qty-val">{{ count }}</span>
+            <button class="qty-btn" @click="increaseCount">+</button>
+          </div>
+          <span class="stock-info" v-if="currentSku">(库存: {{ currentSku.stock }})</span>
         </div>
 
         <!-- 按钮组 -->
@@ -395,34 +413,51 @@ const mergedParams = computed(() => {
 </template>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 .product-detail-page {
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 30px 20px;
+  background-color: #f7f9fa;
+  min-height: 100vh;
 }
 
 .breadcrumb-container {
-  margin-bottom: 20px;
+  margin-bottom: 0;
+  padding: 20px 30px 0;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  border: 1px solid #f0f0f0;
+  border-bottom: none;
 }
 
 .main-container {
   display: flex;
   gap: 40px;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
+  background: #fff;
+  border-radius: 0 0 16px 16px;
+  padding: 20px 30px 30px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f0f0f0;
+  border-top: none;
 }
 
 .gallery-section {
   width: 500px;
   flex-shrink: 0;
   position: sticky;
-  top: 200px;
+  top: 100px;
   align-self: flex-start;
 }
 
 .product-carousel {
-  border: 1px solid #eee;
-  border-radius: 4px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  margin-top: 60px;
 }
 
 .carousel-image {
@@ -434,14 +469,16 @@ const mergedParams = computed(() => {
 
 .thumbnail-list {
   display: flex;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 12px;
+  margin-top: 15px;
+  justify-content: center;
 }
 
 .thumbnail {
   width: 60px;
   height: 60px;
-  border: 2px solid #ddd; /* 加粗一点边框以便高亮更明显 */
+  border: 2px solid #eee;
+  border-radius: 8px;
   cursor: pointer;
   object-fit: cover;
   transition: all 0.2s;
@@ -452,7 +489,7 @@ const mergedParams = computed(() => {
 }
 
 .thumbnail.active {
-  border-color: #e4393c;
+  border-color: #4f46e5;
 }
 
 .info-section {
@@ -473,10 +510,11 @@ const mergedParams = computed(() => {
 }
 
 .price-box {
-  background: #f5f5f5;
-  padding: 15px;
-  margin-bottom: 20px;
-  border-radius: 4px;
+  background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+  padding: 20px;
+  margin-bottom: 24px;
+  border-radius: 12px;
+  border: 1px solid #e0e7ff;
 }
 
 .price-symbol {
@@ -486,8 +524,8 @@ const mergedParams = computed(() => {
 }
 
 .price-value {
-  font-size: 24px;
-  color: #e4393c;
+  font-size: 32px;
+  color: #4f46e5;
   font-weight: bold;
 }
 
@@ -510,38 +548,40 @@ const mergedParams = computed(() => {
 }
 
 .spec-values {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   flex: 1;
 }
 
 .spec-item {
-  padding: 6px 15px;
-  border: 1px solid #ddd;
-  border-radius: 2px;
+  padding: 8px 15px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
   transition: all 0.2s;
-  /* 强制一行两个：(100% - gap) / 2 */
-  width: calc(50% - 5px);
   text-align: center;
   box-sizing: border-box;
+  background: #fafafa;
+  width: 100%;
 }
 
 .spec-item:hover {
-  border-color: #e4393c;
-  color: #e4393c;
+  border-color: #4f46e5;
+  color: #4f46e5;
+  background: #fff;
 }
 
 .spec-item.active {
-  border-color: #e4393c;
-  color: #e4393c;
-  background-color: transparent;
+  border-color: #4f46e5;
+  color: #4f46e5;
+  background-color: #eef2ff;
+  font-weight: 500;
 }
 
 .spec-item.disabled {
-  border-color: #eee;
+  border-color: #f0f0f0;
   color: #ccc;
   cursor: not-allowed;
   background-color: #f9f9f9;
@@ -562,9 +602,48 @@ const mergedParams = computed(() => {
   flex-shrink: 0;
 }
 
-/* 让数量选择器与上面的规格选项对齐 */
-.quantity-row :deep(.el-input-number) {
-  margin-left: 0;
+/* 自定义数量控制器 - 与购物车统一 */
+.qty-control {
+  display: inline-flex;
+  align-items: center;
+  background: #f8f9fc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.qty-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.qty-btn:hover {
+  background: #4f46e5;
+  color: #fff;
+}
+
+.qty-btn:active {
+  transform: scale(0.95);
+}
+
+.qty-val {
+  width: 48px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
 }
 
 .stock-info {
@@ -582,27 +661,58 @@ const mergedParams = computed(() => {
 
 .btn-cart {
   width: 160px;
-  border-color: #e4393c;
-  color: #e4393c;
+  border-color: #4f46e5;
+  color: #4f46e5;
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.btn-cart:hover {
+  background-color: #eef2ff;
+  border-color: #4338ca;
+  color: #4338ca;
 }
 
 .btn-buy {
   width: 160px;
-  background-color: #e4393c;
-  border-color: #e4393c;
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
+  border-color: transparent;
+  border-radius: 12px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.btn-buy:hover {
+  background: linear-gradient(135deg, #4338ca, #3730a3);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
 }
 
 .details-tabs {
-  margin-top: 40px;
   background: #fff;
-  padding: 0;
-  border: 1px solid #eee;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f0f0f0;
 }
 
-/* 增大 tabs 字体 */
+/* 增大 tabs 字体并设置选中颜色 */
 .details-tabs :deep(.el-tabs__item) {
   font-size: 16px;
-  padding: 0 24px;
+  padding: 0 28px;
+  height: 56px;
+  line-height: 56px;
+}
+
+.details-tabs :deep(.el-tabs__item:hover) {
+  color: #4f46e5;
+}
+
+.details-tabs :deep(.el-tabs__item.is-active) {
+  color: #4f46e5;
+}
+
+.details-tabs :deep(.el-tabs__active-bar) {
+  background-color: #4f46e5;
 }
 
 /* 让 Tabs 头部吸顶 */
@@ -611,49 +721,71 @@ const mergedParams = computed(() => {
   top: 64px; /* 顶部导航栏高度 */
   z-index: 100;
   background-color: #fff;
-  padding: 0px 15px;
+  padding: 0px 20px;
+  margin: 0;
+  border-bottom: 1px solid #f0f0f0;
+  border-radius: 16px;
 }
 
 /* 规格参数新样式 */
 .params-container {
-  padding: 10px 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 30px;
+  align-items: start;
 }
 
 .param-group {
-  margin-bottom: 30px;
+  margin-bottom: 0;
 }
 
 .group-title {
   font-size: 16px;
   font-weight: bold;
-  color: #333;
+  color: #4f46e5;
   margin-bottom: 15px;
-  padding-left: 10px;
-  border-left: 4px solid #e4393c;
-  background-color: #f9f9f9;
-  padding: 10px;
+  padding: 14px 20px;
+  background-color: #f5f3ff;
+  border-radius: 6px;
 }
 
 .group-items {
-  border-top: 1px solid #eee;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
 }
 
 .param-row {
   display: flex;
-  border-bottom: 1px solid #eee;
-  padding: 12px 20px;
+  border-bottom: 1px solid #f5f5f5;
+  padding: 18px 20px;
   align-items: center;
+  transition: background 0.2s;
+}
+
+.param-row:hover {
+  background: #fafafa;
+}
+
+.param-row:last-child {
+  border-bottom: none;
 }
 
 .param-key {
-  width: 150px;
+  width: 130px;
   color: #666;
   font-weight: 500;
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
 .param-value {
   flex: 1;
   color: #333;
+  font-size: 14px;
+  word-break: break-all;
 }
 
 .loading-container {
@@ -661,5 +793,35 @@ const mergedParams = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #f7f9fa;
+  min-height: 100vh;
+}
+
+/* 富文本内容区域 */
+.rich-text-content {
+  padding: 20px;
+}
+
+/* 富文本图片基础样式 */
+.rich-text-content :deep(img) {
+  display: block;
+  max-width: 100%;
+}
+
+/* 第一张图片顶部圆角 */
+.rich-text-content :deep(img:first-of-type) {
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+/* 最后一张图片底部圆角 */
+.rich-text-content :deep(img:last-of-type) {
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+/* 评价占位区域 */
+.reviews-placeholder {
+  padding: 40px 20px;
 }
 </style>

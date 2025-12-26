@@ -111,7 +111,7 @@ const currentYear = computed(() => new Date().getFullYear())
 <style scoped>
 .footer-container {
   width: 100%;
-  background: linear-gradient(to bottom, #1a1a1a, #0d0d0d);
+  background: linear-gradient(to bottom, #2e1a47, #1a0f2e);
   color: #b3b3b3;
   margin-top: 60px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -152,7 +152,7 @@ const currentYear = computed(() => new Date().getFullYear())
   bottom: 0;
   width: 40px;
   height: 2px;
-  background: linear-gradient(to right, #409eff, transparent);
+  background: linear-gradient(to right, #a855f7, transparent);
 }
 
 .footer-links {
@@ -179,7 +179,7 @@ const currentYear = computed(() => new Date().getFullYear())
 }
 
 .footer-links a:hover {
-  color: #409eff;
+  color: #a855f7;
 }
 
 /* 联系我们区域 */
@@ -199,7 +199,7 @@ const currentYear = computed(() => new Date().getFullYear())
 }
 
 .contact-info .el-icon {
-  color: #409eff;
+  color: #a855f7;
   font-size: 16px;
 }
 
@@ -244,7 +244,7 @@ const currentYear = computed(() => new Date().getFullYear())
 }
 
 .secondary-text a:hover {
-  color: #409eff;
+  color: #a855f7;
 }
 
 .separator {
