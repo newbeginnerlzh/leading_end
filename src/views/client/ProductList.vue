@@ -14,12 +14,12 @@ interface Category {
 }
 
 const categories = ref<Category[]>([
-  { id: 0, name: '全部商品', themeColor: 'linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%)', subTitle: '探索联想全系科技产品' },
-  { id: 25, name: '拯救者系列', themeColor: 'linear-gradient(120deg, #4facfe 0%, #00f2fe 100%)', subTitle: '为战而生 极致性能' },
-  { id: 26, name: '小新系列', themeColor: 'linear-gradient(120deg, #43e97b 0%, #38f9d7 100%)', subTitle: '年轻 就要出色' },
-  { id: 27, name: 'YOGA系列', themeColor: 'linear-gradient(120deg, #fccb90 0%, #d57eeb 100%)', subTitle: '品质 匠心 优雅随行' },
-  { id: 28, name: 'ThinkBook系列', themeColor: 'linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%)', subTitle: '新青年 创造力' },
-  { id: 29, name: 'ThinkPad系列', themeColor: 'linear-gradient(120deg, #202020 0%, #434343 100%)', subTitle: '思考 进化 商务旗舰' }
+  { id: 0, name: '全部商品', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '探索联想全系科技产品' },
+  { id: 25, name: '拯救者系列', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '为战而生 极致性能' },
+  { id: 26, name: '小新系列', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '年轻 就要出色' },
+  { id: 27, name: 'YOGA系列', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '品质 匠心 优雅随行' },
+  { id: 28, name: 'ThinkBook系列', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '新青年 创造力' },
+  { id: 29, name: 'ThinkPad系列', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '思考 进化 商务旗舰' }
 ])
 
 const route = useRoute()
@@ -38,7 +38,7 @@ const currentCategoryInfo = computed<Category>(() => {
     return {
       id: -1,
       name: `搜索结果：${searchKeyword.value}`,
-      themeColor: 'linear-gradient(120deg, #89f7fe 0%, #66a6ff 100%)',
+      themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
       subTitle: '全站搜索匹配商品'
     }
   }
@@ -55,7 +55,7 @@ const fetchCategories = async () => {
       const dbCategories = rawCats.map((item: any) => ({
         id: item.id,
         name: item.name,
-        themeColor: item.themeColor || item.theme_color || 'linear-gradient(120deg, #a18cd1 0%, #fbc2eb 100%)',
+        themeColor: item.themeColor || item.theme_color || 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
         subTitle: item.subTitle || item.sub_title || '联想精选'
       }))
       categories.value = [categories.value[0], ...dbCategories]
@@ -64,8 +64,6 @@ const fetchCategories = async () => {
     console.warn('使用默认分类配置')
   }
 }
-
-// --- 3. 获取商品列表 ---
 const fetchProductList = async () => {
   loading.value = true
   const token = localStorage.getItem('token') || ''
@@ -331,7 +329,7 @@ onMounted(async () => {
 }
 :deep(.custom-input .el-input__wrapper.is-focus) {
   background-color: #fff;
-  box-shadow: 0 0 0 1px var(--el-color-primary) !important;
+  box-shadow: 0 0 0 1px #4f46e5 !important;
 }
 
 .sidebar-header {
@@ -370,13 +368,13 @@ onMounted(async () => {
 }
 
 .nav-item.active {
-  background-color: #ecf5ff; /* 激活态浅蓝背景 */
-  color: var(--el-color-primary);
+  background-color: #eef2ff; /* 激活态浅蓝背景 */
+  color: #4f46e5;
   font-weight: 700;
 }
 
 .nav-item.active .arrow-icon {
-  color: var(--el-color-primary);
+  color: #4f46e5;
   opacity: 1;
 }
 
@@ -485,10 +483,10 @@ onMounted(async () => {
 }
 
 .sort-item.active {
-  background-color: #333; /* 选中变成黑色块 */
+  background-color: #4f46e5; /* 选中变成紫蓝色块 */
   color: #fff;
   font-weight: 500;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
 
 .price-item {

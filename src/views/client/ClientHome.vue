@@ -53,7 +53,7 @@ const initData = async () => {
       id: 1, 
       name: '联想秒杀',
       subTitle: '限时特惠 手慢无',
-      themeColor: 'linear-gradient(135deg, #ff4e50 0%, #f9d423 100%)'
+      themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)'
     }
 
     categoryList.value = [seckillCat, ...dbCats]
@@ -205,7 +205,7 @@ const scrollToFloor = (id: number) => {
 </template>
 
 <style scoped>
-.main-view { width: 100%; padding: 0; background-color: #f4f4f4; padding-bottom: 40px; }
+.main-view { width: 100%; padding: 0; background-color: #f7f9fa; padding-bottom: 40px; }
 
 /* --- 1. 全屏轮播容器 --- */
 .banner-container {
@@ -214,6 +214,8 @@ const scrollToFloor = (id: number) => {
   height: v-bind(bannerHeight); /* 使用 JS 定义的高度 */
   background-color: #000;
   margin-bottom: 30px;
+  border-radius: 16px;
+  overflow: hidden;
 }
 
 .full-width-carousel {
@@ -246,10 +248,11 @@ const scrollToFloor = (id: number) => {
 .category-sidebar {
   width: 240px;
   height: 100%; /* 关键：继承 wrapper 的 100% 高度 */
-  background: rgba(255, 255, 255, 0.85); 
+  background: rgba(255, 255, 255, 0.95); 
   backdrop-filter: blur(10px);
   pointer-events: auto; /* 恢复点击 */
-  box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.08);
+  border-radius: 16px 0 0 16px;
 }
 
 .category-list { 
@@ -278,7 +281,7 @@ const scrollToFloor = (id: number) => {
 
 .category-item:hover { 
   background-color: #fff;
-  color: #ff4e50; 
+  color: #4f46e5; 
   padding-left: 40px; 
   font-weight: bold;
 }
@@ -289,8 +292,8 @@ const scrollToFloor = (id: number) => {
 
 /* --- 3. 楼层样式 --- */
 .floor-container { max-width: 1240px; margin: 0 auto; padding: 0 20px; display: flex; flex-direction: column; gap: 30px; }
-.floor-section { display: flex; height: 360px; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03); scroll-margin-top: 20px; }
-.floor-section:hover { box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); transform: translateY(-2px); transition: all 0.3s; }
+.floor-section { display: flex; height: 360px; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04); scroll-margin-top: 20px; border: 1px solid #f0f0f0; }
+.floor-section:hover { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08); transform: translateY(-2px); transition: all 0.3s; }
 
 .floor-aside { width: 240px; flex-shrink: 0; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; padding: 20px; text-align: center; cursor: pointer; }
 
