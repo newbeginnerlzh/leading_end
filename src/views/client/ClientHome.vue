@@ -58,10 +58,9 @@ const initData = async () => {
 
     categoryList.value = [seckillCat, ...dbCats]
 
-    const floors = [seckillCat, ...dbCats].map((cat, index) => ({
+    const floors = [seckillCat, ...dbCats].map((cat) => ({
       ...cat,
-      products: [] as ProductSimple[],
-      backgroundColor: getFloorBgColor(index)
+      products: [] as ProductSimple[]
     }))
 
     floorList.value = floors
@@ -123,14 +122,6 @@ const scrollToFloor = (id: number) => {
     element.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 }
-
-const getFloorBgColor = (index: number) => {
-  const colors = [
-    'linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%)',
-    'linear-gradient(180deg, #fafbfc 0%, #ffffff 100%)',
-  ]
-  return colors[index % colors.length]
-}
 </script>
 
 <template>
@@ -177,15 +168,10 @@ const getFloorBgColor = (index: number) => {
           :key="floor.id"
           :id="`floor-${floor.id}`"
           class="floor"
-          :style="{ background: getFloorBgColor(floorList.indexOf(floor)) }"
         >
-          <div class="floor-header" :style="{ background: floor.themeColor }">
-            <div class="floor-header-content">
-              <div class="floor-badge" v-if="'badge' in floor && floor.badge">{{ floor.badge }}</div>
-              <h2 class="floor-title">{{ floor.name }}</h2>
-              <p class="floor-subtitle">{{ floor.subTitle }}</p>
-            </div>
-            <el-button type="primary" @click="goToCategory(floor.id)" class="view-more-btn">
+          <div class="floor-header">
+            <h2 class="floor-title">{{ floor.name }}</h2>
+            <el-button type="primary" link @click="goToCategory(floor.id)" class="view-more-btn">
               查看更多 <el-icon><ArrowRight /></el-icon>
             </el-button>
           </div>
@@ -214,7 +200,7 @@ const getFloorBgColor = (index: number) => {
 <style scoped>
 .home-page {
   width: 100%;
-  background: #fff;
+  background: #f0f2f5; /* 修正为与购物车一致的极浅蓝紫色 */
   padding-bottom: 60px;
 }
 
@@ -345,105 +331,59 @@ const getFloorBgColor = (index: number) => {
 }
 
 .floor {
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s ease;
+  margin-bottom: 40px;
   scroll-margin-top: 80px;
-}
-
-.floor:hover {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .floor-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 32px 40px;
-  color: #fff;
-  position: relative;
-  overflow: hidden;
-}
-
-.floor-header::before {
-  content: '';
-  position: absolute;
-  right: -60px;
-  top: -60px;
-  width: 240px;
-  height: 240px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-}
-
-.floor-header::after {
-  content: '';
-  position: absolute;
-  left: -40px;
-  bottom: -40px;
-  width: 180px;
-  height: 180px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 50%;
-}
-
-.floor-header-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  position: relative;
-  z-index: 2;
-}
-
-.floor-badge {
-  display: inline-block;
-  width: fit-content;
-  padding: 4px 14px;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
+  padding: 20px 0;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 24px;
 }
 
 .floor-title {
   margin: 0;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  color: #1a1a1a;
+  position: relative;
+  padding-left: 16px;
+  line-height: 1;
 }
 
-.floor-subtitle {
-  margin: 0;
-  font-size: 14px;
-  opacity: 0.9;
-  font-weight: 400;
+.floor-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 2px;
+  width: 4px;
+  height: 24px;
+  background: #4f46e5; /* 改为与购物车一致的靛蓝色 */
+  border-radius: 2px;
 }
 
 :deep(.view-more-btn) {
-  background: rgba(255, 255, 255, 0.2) !important;
-  border: 1px solid rgba(255, 255, 255, 0.4) !important;
-  color: #fff !important;
-  padding: 10px 24px !important;
   font-size: 14px !important;
-  font-weight: 600 !important;
-  border-radius: 24px !important;
+  font-weight: 500 !important;
+  color: #1a1a1a !important; /* 改为黑色 */
   transition: all 0.3s ease !important;
-  position: relative;
-  z-index: 2;
+  height: 0px !important; /* 与标题高度一致 */
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 !important;
 }
 
 :deep(.view-more-btn:hover) {
-  background: rgba(255, 255, 255, 0.35) !important;
-  border-color: rgba(255, 255, 255, 0.6) !important;
-  transform: translateY(-2px);
+  color: #9333ea !important; /* 悬停时变为紫色 */
+  transform: translateX(4px);
 }
 
 .floor-content {
-  padding: 32px 40px;
-  background: #fff;
+  padding: 0;
+  background: transparent;
 }
 
 .product-grid {
@@ -511,15 +451,11 @@ const getFloorBgColor = (index: number) => {
   }
 
   .floor-header {
-    padding: 24px 28px;
+    padding: 16px 0;
   }
 
   .floor-title {
-    font-size: 26px;
-  }
-
-  .floor-content {
-    padding: 24px 28px;
+    font-size: 24px;
   }
 
   .category-sidebar {
@@ -546,22 +482,11 @@ const getFloorBgColor = (index: number) => {
   }
 
   .floor-header {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 20px 24px;
+    padding: 12px 0;
   }
 
   .floor-title {
     font-size: 22px;
-  }
-
-  .floor-header :deep(.view-more-btn) {
-    align-self: flex-end;
-    margin-top: 12px;
-  }
-
-  .floor-content {
-    padding: 20px 24px;
   }
 
   .floor-container {
@@ -580,16 +505,8 @@ const getFloorBgColor = (index: number) => {
     font-size: 20px;
   }
 
-  .floor-subtitle {
-    font-size: 13px;
-  }
-
   .floor-header {
-    padding: 16px 20px;
-  }
-
-  .floor-content {
-    padding: 16px 20px;
+    padding: 10px 0;
   }
 }
 </style>
