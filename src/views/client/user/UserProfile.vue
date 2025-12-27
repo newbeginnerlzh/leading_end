@@ -150,7 +150,7 @@
                   <div class="action-bar">
                     <div class="beam-container">
                       <div class="beam-border"></div>
-                      <button class="primary-btn-beam" @click="handleSubmit" :disabled="isSaving">
+                      <button type="button" class="primary-btn-beam" @click="handleSubmit" :disabled="isSaving">
                         <el-icon v-if="isSaving" class="is-loading" style="margin-right: 8px"
                           ><Loading
                         /></el-icon>
@@ -528,12 +528,18 @@ const handlePickAvatarChange = async (uploadFile: UploadFile) => {
 const handleSubmit = async () => {
   if (!formRef.value) return
 
+  // 先进行表单验证，验证失败时提示用户并保持在编辑界面
+  try {
+    await formRef.value.validate()
+  } catch {
+    ElMessage.warning('请填写所有必填项')
+    return // 验证失败，保持在编辑界面不退出
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let loadingMessage: any = null
 
   try {
-    await formRef.value.validate()
-
     // 开启加载状态
     isSaving.value = true
 
