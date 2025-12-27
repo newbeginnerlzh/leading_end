@@ -121,11 +121,15 @@ const userAvatar = ref('')
 const showDropdown = ref(false)
 
 // 悬浮按钮拖拽逻辑
+const EDGE_MARGIN = 40
+const BUTTON_SIZE = 60
+
 const pos = ref({
-  x: typeof window !== 'undefined' ? window.innerWidth - 110 : 1130,
-  y: typeof window !== 'undefined' ? window.innerHeight - 110 : 590,
+  x: typeof window !== 'undefined' ? window.innerWidth - BUTTON_SIZE - EDGE_MARGIN : 1130,
+  y: typeof window !== 'undefined' ? window.innerHeight - BUTTON_SIZE - EDGE_MARGIN : 590,
 })
 const startPos = ref({ x: 0, y: 0 })
+const relativePos = ref({ x: 0, y: 0 })
 let isMoved = false
 
 const handleMouseDown = (e: MouseEvent) => {
@@ -138,7 +142,6 @@ const handleMouseDown = (e: MouseEvent) => {
     const dx = moveEvent.clientX - startPos.value.x
     const dy = moveEvent.clientY - startPos.value.y
 
-    // 如果移动距离超过 3 像素，则认为是拖拽而非点击
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
       isMoved = true
     }
@@ -146,13 +149,16 @@ const handleMouseDown = (e: MouseEvent) => {
     let newX = initialX + dx
     let newY = initialY + dy
 
-    // 边界检查（按钮宽高为 60px）
-    const maxX = window.innerWidth - 60
-    const maxY = window.innerHeight - 60
-    newX = Math.max(0, Math.min(newX, maxX))
-    newY = Math.max(0, Math.min(newY, maxY))
+    const maxX = window.innerWidth - BUTTON_SIZE - EDGE_MARGIN
+    const maxY = window.innerHeight - BUTTON_SIZE - EDGE_MARGIN
+    newX = Math.max(EDGE_MARGIN, Math.min(newX, maxX))
+    newY = Math.max(EDGE_MARGIN, Math.min(newY, maxY))
 
     pos.value = { x: newX, y: newY }
+    relativePos.value = {
+      x: newX / window.innerWidth,
+      y: newY / window.innerHeight,
+    }
   }
 
   const onMouseUp = () => {
@@ -171,19 +177,24 @@ const handleServiceClick = () => {
 }
 
 const initPosition = () => {
-  // 初始位置：右下角留出 50px 边距
-  pos.value = {
-    x: window.innerWidth - 110,
-    y: window.innerHeight - 110,
+  const x = window.innerWidth - BUTTON_SIZE - EDGE_MARGIN
+  const y = window.innerHeight - BUTTON_SIZE - EDGE_MARGIN
+  pos.value = { x, y }
+  relativePos.value = {
+    x: x / window.innerWidth,
+    y: y / window.innerHeight,
   }
 }
 
 const clampPosition = () => {
-  // 窗口缩放时，确保按钮仍在可视区域内
-  const maxX = window.innerWidth - 60
-  const maxY = window.innerHeight - 60
-  pos.value.x = Math.max(0, Math.min(pos.value.x, maxX))
-  pos.value.y = Math.max(0, Math.min(pos.value.y, maxY))
+  const newX = relativePos.value.x * window.innerWidth
+  const newY = relativePos.value.y * window.innerHeight
+
+  const maxX = window.innerWidth - BUTTON_SIZE - EDGE_MARGIN
+  const maxY = window.innerHeight - BUTTON_SIZE - EDGE_MARGIN
+
+  pos.value.x = Math.max(EDGE_MARGIN, Math.min(newX, maxX))
+  pos.value.y = Math.max(EDGE_MARGIN, Math.min(newY, maxY))
 }
 
 const goHome = () => router.push('/')
