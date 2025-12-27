@@ -1,3 +1,4 @@
+import 'pinia-plugin-persistedstate'
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import type { ProductDetail } from '@/api/model/productModel'
@@ -8,6 +9,7 @@ import {
   deleteCartItemBySku,
   batchUpdateSelected,
   getCartCount,
+  deleteCartItem,
 } from '@/api/cart'
 
 export interface CartItem {
@@ -220,7 +222,6 @@ export const useCartStore = defineStore(
       // 调用后端 API（仅在登录时）
       if (userId.value) {
         try {
-          const { deleteCartItem } = await import('@/api/cart')
           await deleteCartItem({ ids: selectedIds }) // 保证格式为 { ids: [...] }
           serverCartCount.value = await getCartCount()
         } catch (error) {
@@ -295,7 +296,6 @@ export const useCartStore = defineStore(
       // 3. 调用后端 API（仅在登录时）
       if (userId.value) {
         try {
-          const { clearCart } = await import('@/api/cart')
           await clearCart()
           serverCartCount.value = await getCartCount()
         } catch (error) {
@@ -358,6 +358,6 @@ export const useCartStore = defineStore(
     }
   },
   {
-    persist: true, // 开启持久化
+    persist: { storage: localStorage },
   },
 )
