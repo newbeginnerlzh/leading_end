@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { ArrowDown, ArrowUp, Search } from '@element-plus/icons-vue'
 import type { ProductSimple } from '@/api/model/productModel'
+import { getHomeCategories } from '@/api/home'
 
 // Scroll Reveal Directive
 const vScrollReveal = {
@@ -25,31 +26,53 @@ const vScrollReveal = {
 
 // --- 1. 分类配置 ---
 interface Category {
-  id: number
+  id: number | string
   name: string
   themeColor: string
   subTitle: string
 }
 
 const categories = ref<Category[]>([
-  { id: 0, name: '全部商品', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '探索联想全系科技产品' },
-  { id: 25, name: '拯救者', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '为战而生 极致性能' },
-  { id: 26, name: '小新', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '年轻 就要出色' },
-  { id: 27, name: 'YOGA', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '品质 匠心 优雅随行' },
-  { id: 28, name: 'ThinkBook', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '新青年 创造力' },
-  { id: 29, name: 'ThinkPad', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '思考 进化 商务旗舰' }
+  { id: 0, name: '全部商品', themeColor: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', subTitle: '探索联想全系科技产品' }
 ])
 
 const route = useRoute()
 const router = useRouter()
 
 // --- 状态定义 ---
-const currentCategoryId = ref<number>(0)
+const currentCategoryId = ref<number | string>(0)
 const sortType = ref('default')
 const allProducts = ref<ProductSimple[]>([])
 const searchKeyword = ref('')
 const loading = ref(false)
 const isFirstLoad = ref(true)
+
+// 背景水印映射表
+const watermarkMap: Record<string, string> = {
+  '全部商品': 'ALL',
+  '拯救者系列': 'LEGION',
+  '小新系列': 'XIAOXIN',
+  'YOGA系列': 'YOGA',
+  'ThinkBook系列': 'THINKBOOK',
+  'ThinkPad系列': 'THINKPAD',
+  '联想笔记本': 'LENOVO',
+  '扬音系列': 'YANGYIN',
+  '来酷系列': 'LECOO'
+}
+
+// 获取背景水印文字
+const getWatermark = (name: string): string => {
+  if (name.startsWith('搜索')) return 'SEARCH'
+  if (watermarkMap[name]) return watermarkMap[name]
+  // 匨底：去掉"系列"后缀，然后转大写
+  const cleanName = name.replace(/系列$/, '')
+  // 如果是纯英文，转大写
+  if (/^[a-zA-Z]+$/.test(cleanName)) {
+    return cleanName.toUpperCase()
+  }
+  // 否则返回默认
+  return 'LENOVO'
+}
 
 // --- 计算属性 ---
 const currentCategoryInfo = computed<Category>(() => {
@@ -61,26 +84,26 @@ const currentCategoryInfo = computed<Category>(() => {
       subTitle: '全站搜索匹配商品'
     }
   }
-  const found = categories.value.find(c => c.id === currentCategoryId.value)
+  // 使用字符串比较，因为 id 可能是 number 或 string
+  const found = categories.value.find(c => String(c.id) === String(currentCategoryId.value))
   return found || categories.value[0]!
 })
 
-// --- 2. 获取分类 (模拟/真实) ---
+// --- 2. 获取分类 (真实 API) ---
 const fetchCategories = async () => {
   try {
-    const res = await axios.get('/api/products/categories')
-    const rawCats = Array.isArray(res.data) ? res.data : (res.data.data || [])
-    if (rawCats.length > 0) {
-      const dbCategories = rawCats.map((item: Category) => ({
+    const res = await getHomeCategories()
+    if (res.data && res.data.length > 0) {
+      const dbCategories = res.data.map((item) => ({
         id: item.id,
         name: item.name,
         themeColor: item.themeColor || 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
         subTitle: item.subTitle || '联想精选'
       }))
-      categories.value = [categories.value[0], ...dbCategories]
+      categories.value = [categories.value[0]!, ...dbCategories]
     }
   } catch (err) {
-    console.warn('使用默认分类配置', err)
+    console.warn('获取分类失败，使用默认配置', err)
   }
 }
 const fetchProductList = async () => {
@@ -137,10 +160,10 @@ const fetchProductList = async () => {
 }
 
 // --- 事件处理 ---
-const handleCategoryChange = (id: number) => {
+const handleCategoryChange = (id: number | string) => {
   currentCategoryId.value = id
   searchKeyword.value = ''
-  router.push({ query: { category: id === 0 ? undefined : id } })
+  router.push({ query: { category: id === 0 ? undefined : id.toString() } })
   fetchProductList()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -172,8 +195,8 @@ watch(() => route.query, (query) => {
   }
 
   if (query.category) {
-    const catId = Number(query.category)
-    if (!isNaN(catId) && catId !== currentCategoryId.value) {
+    const catId = query.category as string
+    if (catId !== String(currentCategoryId.value)) {
       currentCategoryId.value = catId
       needsFetch = true
     }
@@ -245,7 +268,7 @@ onMounted(async () => {
             <p class="fade-in-up delay-1">{{ currentCategoryInfo?.subTitle }}</p>
           </div>
           <!-- 巨大的装饰性背景字 -->
-          <div class="bg-watermark">{{ currentCategoryInfo?.name === '全部商品' ? 'ALL' : currentCategoryInfo?.name.startsWith('搜') ? 'RESULT' : currentCategoryInfo?.name === '拯救者' ? 'LEGION': currentCategoryInfo?.name === '小新' ? 'XIAOXIN' : currentCategoryInfo?.name.toUpperCase() }}</div>
+          <div class="bg-watermark">{{ getWatermark(currentCategoryInfo?.name || '') }}</div>
         </div>
 
         <!-- B. 排序筛选工具栏 (悬浮感) -->
