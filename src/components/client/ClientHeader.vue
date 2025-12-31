@@ -727,7 +727,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   color: var(--accent-color);
-  cursor: move;
+  cursor: pointer;
   z-index: 9999;
   transition: all 0.3s ease;
   user-select: none;
