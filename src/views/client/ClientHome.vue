@@ -21,7 +21,7 @@ interface Banner {
 }
 
 interface Category {
-  id: number
+  id: number | string
   name: string
   subTitle?: string
   themeColor?: string
@@ -112,11 +112,11 @@ onMounted(() => {
   initData()
 })
 
-const goToCategory = (id: number) => {
-  router.push({ path: '/products', query: { category: id } })
+const goToCategory = (id: number | string) => {
+  router.push({ path: '/products', query: { category: id.toString() } })
 }
 
-const scrollToFloor = (id: number) => {
+const scrollToFloor = (id: number | string) => {
   const element = document.getElementById(`floor-${id}`)
   if (element) {
     element.scrollIntoView({ behavior: 'smooth', block: 'start' })

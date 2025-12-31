@@ -1,5 +1,5 @@
 // src/api/home.ts
-// import { get } from '@/utils/request'
+import { get } from '@/utils/request'
 import type { ProductSimple } from './model/productModel'
 
 // 首页数据接口定义
@@ -45,76 +45,80 @@ export function getHomeData() {
 export interface BannerItem {
   id: number
   imgUrl: string
-  link?: string
+  linkUrl?: string
+  sortOrder?: number
+  isActive?: number
+}
+
+// 轮播图 API 返回的数据格式
+export interface CarouselApiResponse {
+  status: number
+  message: string
+  data: BannerItem[]
 }
 
 export interface HomeCategory {
-  id: number
+  id: number | string
   name: string
   subTitle: string
   themeColor: string
 }
 
-// --- 模拟数据 (Mock Data) ---
-
-// 1. 模拟轮播图数据
-const mockBanners: BannerItem[] = [
-  { id: 1, imgUrl: 'https://p1.lefile.cn/fes/cms/2025/11/14/fqcf0ucoygm6564p5q2h2p3h2ri1l0795845.jpg' },
-  { id: 2, imgUrl: 'https://p1.lefile.cn/fes/cms/2025/12/08/amnrpzizrr95itmwgjjc8bbbvn4f2j126568.jpg' },
-  { id: 3, imgUrl: 'https://p4.lefile.cn/fes/cms/2025/11/26/clgl9znq9m6e8clobxpx0drrljj2ku877590.jpg' }
-]
-
-// 2. 模拟分类/楼层配置数据 (ID 与你的数据库保持一致)
-const mockCategories: HomeCategory[] = [
-  { 
-    id: 29, 
-    name: 'ThinkPad系列', 
-    subTitle: '思考 进化', 
-    themeColor: 'linear-gradient(135deg, #000000 0%, #434343 100%)' 
-  },
-  { 
-    id: 27, 
-    name: 'YOGA系列', 
-    subTitle: '品质 匠心', 
-    themeColor: 'linear-gradient(135deg, #cc95c0 0%, #dbd4b4 100%)' 
-  },
-  { 
-    id: 25, 
-    name: '拯救者系列', 
-    subTitle: '为战而生', 
-    themeColor: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)' 
-  },
-  { 
-    id: 26, 
-    name: '小新系列', 
-    subTitle: '年轻 就要出色', 
-    themeColor: 'linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)' 
-  },
-  { 
-    id: 28, 
-    name: 'ThinkBook系列', 
-    subTitle: '新青年 创造力', 
-    themeColor: 'linear-gradient(135deg, #bdc2e8 0%, #e6dee9 100%)' 
+// API 返回的分类数据格式
+export interface CategoryApiResponse {
+  status: number
+  message: string
+  data: {
+    data: HomeCategory[]
   }
-]
-
-// --- 模拟 API 函数 ---
-
-// 模拟获取轮播图
-export const getHomeBanners = async () => {
-  return new Promise<{ data: BannerItem[] }>((resolve) => {
-    // 模拟网络延迟 300ms
-    setTimeout(() => {
-      resolve({ data: mockBanners })
-    }, 300)
-  })
 }
 
-// 模拟获取分类配置
-export const getHomeCategories = async () => {
-  return new Promise<{ data: HomeCategory[] }>((resolve) => {
-    setTimeout(() => {
-      resolve({ data: mockCategories })
-    }, 300)
-  })
+// 默认分类样式配置
+const defaultCategoryStyles: Record<string, { subTitle: string; themeColor: string }> = {
+  'ThinkPad系列': { subTitle: '思考 进化 商务旗舰', themeColor: 'linear-gradient(135deg, #000000 0%, #434343 100%)' },
+  'YOGA系列': { subTitle: '品质 匠心 优雅随行', themeColor: 'linear-gradient(135deg, #cc95c0 0%, #dbd4b4 100%)' },
+  '拯救者系列': { subTitle: '为战而生 极致性能', themeColor: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)' },
+  '小新系列': { subTitle: '年轻 就要出色', themeColor: 'linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)' },
+  'ThinkBook系列': { subTitle: '新青年 创造力', themeColor: 'linear-gradient(135deg, #bdc2e8 0%, #e6dee9 100%)' },
+  '联想笔记本': { subTitle: '品质生活 智慧之选', themeColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }
+}
+
+// --- API 函数 ---
+
+/**
+ * 获取轮播图
+ * 调用真实 API: GET /api/product/carousel
+ */
+export const getHomeBanners = async (): Promise<{ data: BannerItem[] }> => {
+  const res = await get<CarouselApiResponse>('/api/product/carousel')
+  // 只返回启用的轮播图，并按 sortOrder 排序
+  const banners = res.data
+    .filter(item => item.isActive === 1)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+  return { data: banners }
+}
+
+/**
+ * 获取分类列表
+ * 调用真实 API: GET /api/products/category/list
+ */
+export const getHomeCategories = async (): Promise<{ data: HomeCategory[] }> => {
+  const res = await get<CategoryApiResponse>('/api/products/category/list')
+  // API 返回的是嵌套结构 { status, message, data: { data: [...] } }
+  const categories = res.data.data.map(cat => ({
+    ...cat,
+    // 如果后端没有返回 subTitle 和 themeColor，使用默认样式
+    subTitle: cat.subTitle || defaultCategoryStyles[cat.name]?.subTitle || '品质之选',
+    themeColor: cat.themeColor || defaultCategoryStyles[cat.name]?.themeColor || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+  }))
+
+  // 按 themeColor 中的数字拼接后进行降序排序，保证全局分类展示一致
+  const extractNumeric = (color: string) => {
+    const nums = String(color).match(/\d+/g)
+    return nums ? parseInt(nums.join(''), 10) : 0
+  }
+
+  categories.sort((a, b) => extractNumeric(a.themeColor) - extractNumeric(b.themeColor))
+
+  return { data: categories }
 }
