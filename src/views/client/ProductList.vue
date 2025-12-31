@@ -94,12 +94,21 @@ const fetchCategories = async () => {
   try {
     const res = await getHomeCategories()
     if (res.data && res.data.length > 0) {
-      const dbCategories = res.data.map((item) => ({
+      let dbCategories = res.data.map((item) => ({
         id: item.id,
         name: item.name,
         themeColor: item.themeColor || 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
         subTitle: item.subTitle || '联想精选'
       }))
+      // 按themeColor中的数字降序排序
+      dbCategories = dbCategories.sort((a, b) => {
+        // 提取themeColor字符串中的所有数字并拼接为一个大数
+        const getColorNum = (color: string) => {
+          const nums = color.match(/\d+/g)
+          return nums ? parseInt(nums.join(''), 10) : 0
+        }
+        return getColorNum(a.themeColor) - getColorNum(b.themeColor)
+      })
       categories.value = [categories.value[0]!, ...dbCategories]
     }
   } catch (err) {

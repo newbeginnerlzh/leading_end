@@ -111,5 +111,14 @@ export const getHomeCategories = async (): Promise<{ data: HomeCategory[] }> => 
     subTitle: cat.subTitle || defaultCategoryStyles[cat.name]?.subTitle || '品质之选',
     themeColor: cat.themeColor || defaultCategoryStyles[cat.name]?.themeColor || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
   }))
+
+  // 按 themeColor 中的数字拼接后进行降序排序，保证全局分类展示一致
+  const extractNumeric = (color: string) => {
+    const nums = String(color).match(/\d+/g)
+    return nums ? parseInt(nums.join(''), 10) : 0
+  }
+
+  categories.sort((a, b) => extractNumeric(a.themeColor) - extractNumeric(b.themeColor))
+
   return { data: categories }
 }
