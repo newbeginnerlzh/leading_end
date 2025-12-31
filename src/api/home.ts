@@ -45,7 +45,16 @@ export function getHomeData() {
 export interface BannerItem {
   id: number
   imgUrl: string
-  link?: string
+  linkUrl?: string
+  sortOrder?: number
+  isActive?: number
+}
+
+// 轮播图 API 返回的数据格式
+export interface CarouselApiResponse {
+  status: number
+  message: string
+  data: BannerItem[]
 }
 
 export interface HomeCategory {
@@ -64,15 +73,6 @@ export interface CategoryApiResponse {
   }
 }
 
-// --- 模拟数据 (Mock Data) ---
-
-// 1. 模拟轮播图数据
-const mockBanners: BannerItem[] = [
-  { id: 1, imgUrl: 'https://p1.lefile.cn/fes/cms/2025/11/14/fqcf0ucoygm6564p5q2h2p3h2ri1l0795845.jpg' },
-  { id: 2, imgUrl: 'https://p1.lefile.cn/fes/cms/2025/12/08/amnrpzizrr95itmwgjjc8bbbvn4f2j126568.jpg' },
-  { id: 3, imgUrl: 'https://p4.lefile.cn/fes/cms/2025/11/26/clgl9znq9m6e8clobxpx0drrljj2ku877590.jpg' }
-]
-
 // 默认分类样式配置
 const defaultCategoryStyles: Record<string, { subTitle: string; themeColor: string }> = {
   'ThinkPad系列': { subTitle: '思考 进化 商务旗舰', themeColor: 'linear-gradient(135deg, #000000 0%, #434343 100%)' },
@@ -80,21 +80,22 @@ const defaultCategoryStyles: Record<string, { subTitle: string; themeColor: stri
   '拯救者系列': { subTitle: '为战而生 极致性能', themeColor: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)' },
   '小新系列': { subTitle: '年轻 就要出色', themeColor: 'linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)' },
   'ThinkBook系列': { subTitle: '新青年 创造力', themeColor: 'linear-gradient(135deg, #bdc2e8 0%, #e6dee9 100%)' },
-  '联想笔记本': { subTitle: '品质生活 智慧之选', themeColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-  '扬音系列': { subTitle: '声临其境', themeColor: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
-  '来酷系列': { subTitle: '潮流科技', themeColor: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }
+  '联想笔记本': { subTitle: '品质生活 智慧之选', themeColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }
 }
 
 // --- API 函数 ---
 
-// 模拟获取轮播图（暂时保留模拟数据）
-export const getHomeBanners = async () => {
-  return new Promise<{ data: BannerItem[] }>((resolve) => {
-    // 模拟网络延迟 300ms
-    setTimeout(() => {
-      resolve({ data: mockBanners })
-    }, 300)
-  })
+/**
+ * 获取轮播图
+ * 调用真实 API: GET /api/product/carousel
+ */
+export const getHomeBanners = async (): Promise<{ data: BannerItem[] }> => {
+  const res = await get<CarouselApiResponse>('/api/product/carousel')
+  // 只返回启用的轮播图，并按 sortOrder 排序
+  const banners = res.data
+    .filter(item => item.isActive === 1)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+  return { data: banners }
 }
 
 /**
