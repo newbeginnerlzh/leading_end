@@ -61,9 +61,9 @@
           height: '50px',
         }"
       >
-        <el-table-column prop="orderSn" label="订单号" width="170" align="center" />
+        <el-table-column prop="orderSn" label="订单号" width="167" align="center" />
         <el-table-column prop="createdAt" label="创建时间" width="170" align="center" />
-        <el-table-column label="商品" min-width="250" align="center">
+        <el-table-column label="商品" min-width="240" align="center">
           <template #default="{ row }">
             <div class="cell-ellipsis">
               <span
@@ -83,7 +83,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="statusText" label="状态" width="80" align="center">
+        <el-table-column prop="statusText" label="状态" width="93" align="center">
           <template #default="{ row }">
             <span class="status-badge" :class="statusClass(row.statusText)">{{
               row.statusText
@@ -209,6 +209,7 @@ import type { OrderListItem, OrderPreviewItem } from '@/api/order'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 type OrderListView = OrderListItem & { statusText: string }
+type MoreCommand = 'pay' | 'refund' | 'delete' | 'confirm'
 
 // Scroll Reveal Directive
 const vScrollReveal = {
@@ -291,6 +292,7 @@ const refundDialogVisible = ref(false)
 const refundReason = ref('')
 const refunding = ref(false)
 const refundTargetSn = ref('')
+const confirmingSn = ref('')
 
 function statusTextOf(status?: string | number): string {
   if (typeof status === 'number') return statusNumberMap[status] || `${status}`
@@ -370,21 +372,50 @@ function isDeletable(statusText?: string) {
 }
 
 function availableMoreActions(row: OrderListView) {
-  const acts: { command: 'pay' | 'refund' | 'delete'; label: string }[] = []
+  const acts: { command: MoreCommand; label: string }[] = []
   if (row.statusText === '待付款') acts.push({ command: 'pay', label: '去支付' })
+  if (row.statusText === '待收货') acts.push({ command: 'confirm', label: '确认收货' })
   if (isRefundable(row.statusText)) acts.push({ command: 'refund', label: '申请退款' })
   if (isDeletable(row.statusText)) acts.push({ command: 'delete', label: '删除订单' })
   return acts
 }
 
-function handleMoreCommand(cmd: 'pay' | 'refund' | 'delete', row: OrderListView) {
+function handleMoreCommand(cmd: MoreCommand, row: OrderListView) {
   if (cmd === 'pay') return toPay(row.orderSn)
+  if (cmd === 'confirm') return confirmReceiveFromList(row)
   if (cmd === 'refund') return openRefund(row)
   if (cmd === 'delete') return onDeleteFromList(row)
 }
 
-function onMoreCommand(cmd: 'pay' | 'refund' | 'delete', row: OrderListView) {
+function onMoreCommand(cmd: MoreCommand, row: OrderListView) {
   handleMoreCommand(cmd, row)
+}
+
+async function confirmReceiveFromList(row: OrderListView) {
+  if (confirmingSn.value === row.orderSn || row.statusText !== '待收货') return
+
+  try {
+    await ElMessageBox.confirm('确认已收到货物？', '确认收货', {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+
+  confirmingSn.value = row.orderSn
+  try {
+    await updateOrderStatus(row.orderSn, { action: OrderAction.CONFIRM_RECEIPT })
+    orders.value = orders.value.map((o) =>
+      o.orderSn === row.orderSn ? { ...o, status: '已完成', statusText: '已完成' } : o,
+    )
+    ElMessage.success('已确认收货')
+  } catch (err) {
+    ElMessage.error((err as Error).message || '确认收货失败')
+  } finally {
+    confirmingSn.value = ''
+  }
 }
 
 function openRefund(row: OrderListView) {

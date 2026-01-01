@@ -507,6 +507,17 @@ async function submitRefund() {
 
 async function confirmReceive() {
   if (!order.value || confirming.value || displayStatus.value !== '待收货') return
+
+  try {
+    await ElMessageBox.confirm('确认已收到货物？', '确认收货', {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+
   confirming.value = true
   try {
     await updateOrderStatus(order.value.orderSn || '', { action: OrderAction.CONFIRM_RECEIPT })
@@ -714,6 +725,14 @@ function onBack() {
 .status-badge-large.st-refund {
   background: #fff7ed;
   color: #d97706;
+}
+.status-badge-large.st-refund-success {
+  background: #f0fdf4;
+  color: #15803d;
+}
+.status-badge-large.st-refund-fail {
+  background: #fef2f2;
+  color: #b91c1c;
 }
 .status-badge-large.st-expired {
   background: #fff7ed;
