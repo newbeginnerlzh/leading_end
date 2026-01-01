@@ -92,6 +92,11 @@ export function put<T>(url: string, data?: Record<string, unknown> | unknown[]):
   return service.put(url, data) as Promise<T>
 }
 
+// 通用 PATCH 请求
+export function patch<T>(url: string, data?: Record<string, unknown> | unknown[]): Promise<T> {
+  return service.patch(url, data) as Promise<T>
+}
+
 // 通用 DELETE 请求
 // 支持 DELETE 请求带 body（data）
 export function del<T>(url: string, data?: Record<string, unknown>): Promise<T> {

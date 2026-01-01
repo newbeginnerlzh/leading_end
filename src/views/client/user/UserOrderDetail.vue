@@ -33,6 +33,14 @@
           </div>
           <div class="status-actions">
             <button
+              v-if="canConfirmReceive"
+              class="custom-btn primary"
+              :disabled="confirming"
+              @click="confirmReceive"
+            >
+              {{ confirming ? '确认中...' : '确认收货' }}
+            </button>
+            <button
               v-if="isRefundable(order?.status)"
               class="custom-btn"
               :disabled="refunding"
@@ -117,6 +125,10 @@
             <div class="info-item" v-if="order.buyerRemark">
               <span class="label">备注</span>
               <div class="value">{{ order.buyerRemark }}</div>
+            </div>
+            <div class="info-item" v-if="showRefundReason && order.refundReason">
+              <span class="label">退款理由</span>
+              <div class="value">{{ order.refundReason }}</div>
             </div>
           </div>
         </div>
@@ -261,10 +273,12 @@ const items = ref<OrderItem[]>([])
 const loading = ref(true)
 const acting = ref(false)
 const deleting = ref(false)
+const confirming = ref(false)
 const refundDialogVisible = ref(false)
 const refundReason = ref('')
 const refunding = ref(false)
 const pendingStatuses = new Set(['待付款', '未支付'])
+const refundStatuses = new Set(['退款中', '退款成功', '退款失败'])
 
 // Scroll Reveal Directive
 const vScrollReveal = {
@@ -294,6 +308,8 @@ const isExpired = computed(() => {
 })
 
 const displayStatus = computed(() => (isExpired.value ? '已超时' : order.value?.status || ''))
+
+const showRefundReason = computed(() => refundStatuses.has(displayStatus.value))
 
 const activeStep = computed(() => {
   const s = displayStatus.value
@@ -329,6 +345,7 @@ const timelineItems = computed(() => {
     { content: '支付成功', timestamp: formatDate(o.payTime), show: !!o.payTime },
     { content: '平台发货', timestamp: formatDate(o.shippingTime), show: !!o.shippingTime },
     { content: '确认收货', timestamp: formatDate(o.confirmTime), show: !!o.confirmTime },
+    { content: '申请退款', timestamp: formatDate(o.refundTime), show: !!o.refundTime },
     { content: '订单取消', timestamp: formatDate(o.cancelTime), show: !!o.cancelTime },
   ]
   return list.filter((i) => i.show)
@@ -435,6 +452,8 @@ function isRefundable(text?: string | null) {
   return ['待发货', '待收货', '已完成'].includes(text || '')
 }
 
+const canConfirmReceive = computed(() => displayStatus.value === '待收货')
+
 async function load() {
   loading.value = true
   const id = route.params.id as string
@@ -483,6 +502,20 @@ async function submitRefund() {
     ElMessage.error((err as Error).message || '申请退款失败')
   } finally {
     refunding.value = false
+  }
+}
+
+async function confirmReceive() {
+  if (!order.value || confirming.value || displayStatus.value !== '待收货') return
+  confirming.value = true
+  try {
+    await updateOrderStatus(order.value.orderSn || '', { action: OrderAction.CONFIRM_RECEIPT })
+    order.value = { ...order.value, status: '已完成', confirmTime: new Date() }
+    ElMessage.success('已确认收货')
+  } catch (err) {
+    ElMessage.error((err as Error).message || '确认收货失败')
+  } finally {
+    confirming.value = false
   }
 }
 

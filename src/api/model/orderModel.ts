@@ -8,7 +8,6 @@ export interface BaseResponse<T> {
 }
 
 export interface Order {
-
     buyerRemark?: string;//买家留言
     cancelReason?: null | string;//取消原因
     cancelTime?: Date | null;//取消时间

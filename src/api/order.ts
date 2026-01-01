@@ -1,5 +1,6 @@
 // 订单相关API完整实现
 
+import { get, post, patch, del } from '@/utils/request'
 // 导入现有的模型
 import type { BaseResponse, Order, OrderItem } from './model/orderModel';
 
@@ -83,28 +84,12 @@ export interface UpdateOrderStatusRequest {
  * @returns 订单创建结果
  */
 export async function createOrdersFromCart(params: CreateOrdersFromCartRequest): Promise<BaseResponse<Order>> {
-
-  const token = localStorage.getItem('token')
-
-  const response = await fetch('/api/orders/from-cart', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`  // 添加Authorization头
-    },
-    body: JSON.stringify({
-      addressId: params.addressId,
-      cartItemIds: params.cartItemIds,
-      buyerRemark: params.buyerRemark || null
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-
-  const result: BaseResponse<Order> = await response.json();
-  return result;
+  const response = await post<BaseResponse<Order>>('/api/orders/from-cart', {
+    addressId: params.addressId,
+    cartItemIds: params.cartItemIds,
+    buyerRemark: params.buyerRemark ?? null
+  })
+  return response
 }
 
 /**
@@ -113,37 +98,13 @@ export async function createOrdersFromCart(params: CreateOrdersFromCartRequest):
  * @returns 订单创建结果
  */
 export async function buyNowOrder(params: BuyNowOrderRequest): Promise<BaseResponse<Order>> {
-
-  const token = localStorage.getItem('token')
-
-  const response = await fetch('/api/orders/buy-now', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`  // 添加Authorization头
-    },
-    body: JSON.stringify({
-      addressId: params.addressId,
-      specId: params.specId,
-      quantity: params.quantity,
-      buyerRemark: params.buyerRemark
-    })
-  });
-
-  if (!response.ok) {
-    // 根据不同的HTTP状态码抛出相应的错误
-    const errorResponse = await response.text();
-    let errorMessage = `HTTP error! status: ${response.status},${response.statusText}`;
-    try {
-      const errorObj = JSON.parse(errorResponse);
-      errorMessage = errorObj.message || errorMessage;
-    } catch {
-      // 如果无法解析错误响应，则使用默认错误消息
-    }
-    throw new Error(errorMessage);
-  }
-  const result: BaseResponse<Order> = await response.json();
-  return result;
+  const response = await post<BaseResponse<Order>>('/api/orders/buy-now', {
+    addressId: params.addressId,
+    specId: params.specId,
+    quantity: params.quantity,
+    buyerRemark: params.buyerRemark
+  })
+  return response
 }
 
 /**
@@ -152,45 +113,16 @@ export async function buyNowOrder(params: BuyNowOrderRequest): Promise<BaseRespo
  * @returns 订单列表
  */
 export async function getOrderList(params?: GetOrderListParams): Promise<BaseResponse<OrderListData>> {
-  // 构建查询参数
-  const queryParams = new URLSearchParams();
-  const token = localStorage.getItem('token')
-  if (params?.page !== undefined) queryParams.append('page', params.page.toString());
-  if (params?.pageSize !== undefined) queryParams.append('pageSize', params.pageSize.toString());
-  if (params?.status!== undefined) queryParams.append('status', params.status.toString());
-  if (params?.startDate) queryParams.append('startDate', params.startDate);
-  if (params?.endDate) queryParams.append('endDate', params.endDate);
-  if (params?.orderSn) queryParams.append('orderSn', params.orderSn);
-  if (params?.productName) queryParams.append('productName', params.productName);
-
-  const queryString = queryParams.toString();
-  const url = `/api/orders${queryString ? '?' + queryString : ''}`;
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`  // 添加Authorization头
-    }
-  });
-
-  if (!response.ok) {
-    // 根据不同的HTTP状态码抛出相应的错误
-    const errorResponse = await response.text();
-    let errorMessage = `HTTP error! status: ${response.status},${response.statusText}`;
-
-    try {
-      const errorObj = JSON.parse(errorResponse);
-      errorMessage = errorObj.message || errorMessage;
-    } catch {
-      // 如果无法解析错误响应，则使用默认错误消息
-    }
-
-    throw new Error(errorMessage);
-  }
-
-  const result: BaseResponse<OrderListData> = await response.json();
-  return result;
+  const response = await get<BaseResponse<OrderListData>>('/api/orders', {
+    page: params?.page,
+    pageSize: params?.pageSize,
+    status: params?.status,
+    startDate: params?.startDate,
+    endDate: params?.endDate,
+    orderSn: params?.orderSn,
+    productName: params?.productName
+  })
+  return response
 }
 
 /**
@@ -199,32 +131,8 @@ export async function getOrderList(params?: GetOrderListParams): Promise<BaseRes
  * @returns 订单详情
  */
 export async function getOrderDetail(orderSn: number | string): Promise<BaseResponse<OrderDetailData>> {
-  const token = localStorage.getItem('token')
-  const response = await fetch(`/api/orders/${orderSn}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`  // 添加Authorization头
-    }
-  });
-
-  if (!response.ok) {
-    // 根据不同的HTTP状态码抛出相应的错误
-    const errorResponse = await response.text();
-    let errorMessage = `HTTP error! status: ${response.status}`;
-
-    try {
-      const errorObj = JSON.parse(errorResponse);
-      errorMessage = errorObj.message || errorMessage;
-    } catch {
-      // 如果无法解析错误响应，则使用默认错误消息
-    }
-
-    throw new Error(errorMessage);
-  }
-
-  const result: BaseResponse<OrderDetailData> = await response.json();
-  return result;
+  const response = await get<BaseResponse<OrderDetailData>>(`/api/orders/${orderSn}`)
+  return response
 }
 
 /**
@@ -236,36 +144,11 @@ export async function getOrderDetail(orderSn: number | string): Promise<BaseResp
  * @returns 更新结果
  */
 export async function updateOrderStatus(orderSn: string, params: UpdateOrderStatusRequest): Promise<BaseResponse<null>> {
-  const token = localStorage.getItem('token')
-  const response = await fetch(`/api/orders/${orderSn}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`  // 添加Authorization头
-    },
-    body: JSON.stringify({
-      action: params.action,
-      reason: params.reason || null
-    })
-  });
-
-  if (!response.ok) {
-    // 根据不同的HTTP状态码抛出相应的错误
-    const errorResponse = await response.text();
-    let errorMessage = `HTTP error! status: ${response.status}`;
-
-    try {
-      const errorObj = JSON.parse(errorResponse);
-      errorMessage = errorObj.message || errorMessage;
-    } catch {
-      // 如果无法解析错误响应，则使用默认错误消息
-    }
-
-    throw new Error(errorMessage);
-  }
-
-  const result: BaseResponse<null> = await response.json();
-  return result;
+  const response = await patch<BaseResponse<null>>(`/api/orders/${orderSn}`, {
+    action: params.action,
+    reason: params.reason ?? null
+  })
+  return response
 }
 
 
@@ -283,32 +166,8 @@ export async function updateOrderStatus(orderSn: string, params: UpdateOrderStat
  * @returns 删除结果
  */
 export async function deleteOrder(orderSn: string): Promise<BaseResponse<null>> {
-  const token = localStorage.getItem('token')
-  const response = await fetch(`/api/orders/delete/${orderSn}`, {
-    method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`  // 添加Authorization头
-    }
-  });
-
-  if (!response.ok) {
-    // 根据不同的HTTP状态码抛出相应的错误
-    const errorResponse = await response.text();
-    let errorMessage = `HTTP error! status: ${response.status}`;
-
-    try {
-      const errorObj = JSON.parse(errorResponse);
-      errorMessage = errorObj.message || errorMessage;
-    } catch {
-      // 如果无法解析错误响应，则使用默认错误消息
-    }
-
-    throw new Error(errorMessage);
-  }
-
-  const result: BaseResponse<null> = await response.json();
-  return result;
+  const response = await del<BaseResponse<null>>(`/api/orders/delete/${orderSn}`)
+  return response
 }
 
 
