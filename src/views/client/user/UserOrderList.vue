@@ -97,7 +97,7 @@
             >
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="110" fixed="right" align="center">
+        <el-table-column label="操作" width="105" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-group">
               <span class="action-link" @click="viewDetail(row.orderSn)">详情</span>

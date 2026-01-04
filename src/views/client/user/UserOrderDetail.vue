@@ -340,6 +340,7 @@ const canPay = computed(
 const timelineItems = computed(() => {
   const o = order.value
   if (!o) return []
+  const status = o.status || ''
   const list = [
     { content: '订单创建', timestamp: formatDate(o.createdAt), show: !!o.createdAt },
     { content: '支付成功', timestamp: formatDate(o.payTime), show: !!o.payTime },
@@ -348,6 +349,9 @@ const timelineItems = computed(() => {
     { content: '申请退款', timestamp: formatDate(o.refundTime), show: !!o.refundTime },
     { content: '订单取消', timestamp: formatDate(o.cancelTime), show: !!o.cancelTime },
   ]
+  if (status === '退款成功' || status === '退款失败') {
+    list.push({ content: status, timestamp: formatDate(o.updatedAt), show: !!o.updatedAt })
+  }
   return list.filter((i) => i.show)
 })
 
