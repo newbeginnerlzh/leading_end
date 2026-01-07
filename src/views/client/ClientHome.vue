@@ -48,17 +48,9 @@ const initData = async () => {
     bannerList.value = resBanners.data
 
     const dbCats = resCats.data
-    const seckillCat = {
-      id: 53,
-      name: '限时秒杀',
-      subTitle: '每日特惠 限时抢购',
-      themeColor: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
-      badge: 'HOT'
-    }
+    categoryList.value = dbCats
 
-    categoryList.value = [seckillCat, ...dbCats]
-
-    const floors = [seckillCat, ...dbCats].map((cat) => ({
+    const floors = [...dbCats].map((cat) => ({
       ...cat,
       products: [] as ProductSimple[]
     }))
