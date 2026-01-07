@@ -49,7 +49,7 @@ const initData = async () => {
 
     const dbCats = resCats.data
     const seckillCat = {
-      id: 1,
+      id: 53,
       name: '限时秒杀',
       subTitle: '每日特惠 限时抢购',
       themeColor: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
