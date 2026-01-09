@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getProductDetail } from '@/api/product'
 import type { ProductDetail, SkuItem } from '@/api/model/productModel'
@@ -16,6 +16,7 @@ const count = ref(1)
 const activeTab = ref('intro')
 const activeImageIndex = ref(0)
 const carouselRef = ref()
+const thumbnailListRef = ref<HTMLElement | null>(null)
 
 // 选中的规格
 const selectedSpecs = ref<Record<string, string>>({})
@@ -217,6 +218,29 @@ const handleCarouselChange = (index: number) => {
   activeImageIndex.value = index
 }
 
+// 监听活动图片索引，自动滚动缩略图
+watch(activeImageIndex, async (newIndex) => {
+  await nextTick()
+  const container = thumbnailListRef.value
+  if (!container) return
+
+  const thumbnails = container.querySelectorAll('.thumbnail')
+  const target = thumbnails[newIndex] as HTMLElement
+  if (!target) return
+
+  // 计算目标位置，使选中的缩略图居中
+  const containerWidth = container.clientWidth
+  const targetLeft = target.offsetLeft
+  const targetWidth = target.offsetWidth
+
+  const scrollLeft = targetLeft - containerWidth / 2 + targetWidth / 2
+
+  container.scrollTo({
+    left: scrollLeft,
+    behavior: 'smooth',
+  })
+})
+
 // 规格参数分组
 const paramGroups = [
   { title: '基本参数', keys: ['model', 'os', 'positioning'] },
@@ -312,16 +336,18 @@ const mergedParams = computed(() => {
             <img :src="item" class="carousel-image" alt="Product Image" />
           </el-carousel-item>
         </el-carousel>
-        <div class="thumbnail-list">
-          <!-- 缩略图占位 -->
-          <img
-            v-for="(img, index) in product.mainImages"
-            :key="index"
-            :src="img"
-            class="thumbnail"
-            :class="{ active: activeImageIndex === index }"
-            @click="setActiveImage(index)"
-          />
+        <div class="thumbnail-list-wrapper">
+          <div class="thumbnail-list" ref="thumbnailListRef">
+            <!-- 缩略图占位 -->
+            <img
+              v-for="(img, index) in product.mainImages"
+              :key="index"
+              :src="img"
+              class="thumbnail"
+              :class="{ active: activeImageIndex === index }"
+              @click="setActiveImage(index)"
+            />
+          </div>
         </div>
       </div>
 
@@ -467,11 +493,43 @@ const mergedParams = computed(() => {
   background-color: #fff;
 }
 
+.thumbnail-list-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+}
+
 .thumbnail-list {
   display: flex;
   gap: 12px;
-  margin-top: 15px;
-  justify-content: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  padding: 2px 24px; /* 增加左右内边距，配合渐变遮罩 */
+  /* 隐藏滚动条 (Firefox) */
+  scrollbar-width: none;
+  /* 隐藏滚动条 (IE 10+) */
+  -ms-overflow-style: none;
+  /* 边缘渐变遮罩效果 */
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 24px,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 24px,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
+}
+
+/* 隐藏滚动条 (Chrome/Safari/Webkit) */
+.thumbnail-list::-webkit-scrollbar {
+  display: none;
 }
 
 .thumbnail {
