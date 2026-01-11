@@ -172,7 +172,7 @@
               <div class="beam-border"></div>
               <button class="primary-btn-beam full-width" @click="createOrder">提交订单</button>
             </div>
-            <button class="text-btn back-btn" @click="router.back()">返回购物车</button>
+            <button class="text-btn back-btn" @click="router.back()">返回</button>
           </div>
         </section>
       </div>
